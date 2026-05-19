@@ -1,0 +1,89 @@
+import apiClient from "@/api/client"
+import type {
+  AuthResponse,
+  LoginInput,
+  ProfileInput,
+  RegisterInput,
+  User,
+} from "@/types/auth"
+
+type ApiAuthResponse = {
+  access_token: string
+  token_type: string
+  seller: ApiSeller
+  message?: string
+}
+
+type ApiSeller = {
+  id: string
+  email: string
+  phone: string | null
+  full_name: string | null
+  business_name: string | null
+  industry: string | null
+  website: string | null
+  address_line: string | null
+  city: string | null
+  country: string | null
+  created_at?: string
+}
+
+const mapUser = (seller: ApiSeller): User => ({
+  id: String(seller.id),
+  email: seller.email,
+  phone: seller.phone ?? null,
+  fullName: seller.full_name ?? null,
+  businessName: seller.business_name ?? null,
+  industry: seller.industry ?? null,
+  website: seller.website ?? null,
+  addressLine: seller.address_line ?? null,
+  city: seller.city ?? null,
+  country: seller.country ?? null,
+  createdAt: seller.created_at,
+})
+
+export async function login(input: LoginInput): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiAuthResponse>("/auth/login", input)
+  return { token: data.access_token, user: mapUser(data.seller) }
+}
+
+export async function register(input: RegisterInput): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiAuthResponse>("/auth/register", input)
+  return { token: data.access_token, user: mapUser(data.seller) }
+}
+
+type ApiProfileUpdate = {
+  phone?: string | null
+  full_name?: string | null
+  business_name?: string | null
+  industry?: string | null
+  website?: string | null
+  address_line?: string | null
+  city?: string | null
+  country?: string | null
+}
+
+const normalizeOptional = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+export async function getProfile(): Promise<User> {
+  const { data } = await apiClient.get<ApiSeller>("/auth/me")
+  return mapUser(data)
+}
+
+export async function updateProfile(input: ProfileInput): Promise<User> {
+  const payload: ApiProfileUpdate = {
+    phone: normalizeOptional(input.phone),
+    full_name: normalizeOptional(input.fullName),
+    business_name: normalizeOptional(input.businessName),
+    industry: normalizeOptional(input.industry),
+    website: normalizeOptional(input.website),
+    address_line: normalizeOptional(input.addressLine),
+    city: normalizeOptional(input.city),
+    country: normalizeOptional(input.country),
+  }
+  const { data } = await apiClient.patch<ApiSeller>("/auth/profile", payload)
+  return mapUser(data)
+}
