@@ -21,7 +21,7 @@ class ProductService:
         statement = (
             select(Product)
             .where(Product.seller_id == seller_id)
-            .order_by(Product.id.desc())
+            .order_by(Product.created_at.desc(), Product.id.desc())
             .limit(limit)
             .offset(offset)
         )

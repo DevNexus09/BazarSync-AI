@@ -17,8 +17,9 @@ async def lifespan(_: FastAPI):
     # Fail fast on startup if the database is unreachable or misconfigured.
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
-    ensure_sellers_profile_columns(engine)
-    ensure_products_table(engine)
+    if settings.bootstrap_db_on_startup:
+        ensure_sellers_profile_columns(engine)
+        ensure_products_table(engine)
     yield
 
 

@@ -7,7 +7,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API
 
 if (!apiBaseUrl) {
   console.warn(
-    "VITE_API_BASE_URL is not set. Falling back to http://localhost:8000/api/v1."
+    "VITE_API_BASE_URL is not set. Falling back to http://localhost:8000/api/v1"
   )
 }
 

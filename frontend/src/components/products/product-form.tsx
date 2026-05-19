@@ -90,8 +90,8 @@ export function ProductForm({
     }
 
     const leadTime = parseNumber(formValues.supplierLeadTime)
-    if (!Number.isFinite(leadTime) || leadTime < 0) {
-      nextErrors.supplierLeadTime = "Lead time must be 0 or higher."
+    if (!Number.isFinite(leadTime) || leadTime <= 0) {
+      nextErrors.supplierLeadTime = "Lead time must be greater than 0."
     }
 
     const minimumMargin = parseNumber(formValues.minimumMargin)
@@ -156,7 +156,7 @@ export function ProductForm({
             label="Cost price (BDT)"
             type="number"
             inputMode="decimal"
-            min={0}
+            min={1}
             step={0.01}
             value={values.costPrice}
             placeholder="1200"
