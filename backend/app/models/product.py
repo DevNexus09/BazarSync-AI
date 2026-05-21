@@ -5,18 +5,25 @@ import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.competitor import Competitor
+    from app.models.scrape_run import ScrapeRun
     from app.models.seller import Seller
 
 
 class Product(Base):
     __tablename__ = "products"
+    __table_args__ = (
+        Index("ix_products_category", "category"),
+        Index("ix_products_searchable_text", "searchable_text"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -31,6 +38,10 @@ class Product(Base):
         nullable=False,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    specifications: Mapped[dict[str, str] | None] = mapped_column(JSONB, nullable=True)
+    searchable_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     stock_quantity: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -43,6 +54,14 @@ class Product(Base):
     )
 
     seller: Mapped["Seller"] = relationship(back_populates="products")
+    scrape_runs: Mapped[list["ScrapeRun"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    competitors: Mapped[list["Competitor"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def pricing_warning(self) -> str | None:

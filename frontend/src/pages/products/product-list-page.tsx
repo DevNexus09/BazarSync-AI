@@ -1,15 +1,41 @@
+import * as React from "react"
 import { Link } from "react-router-dom"
 
+import { InlineAlert } from "@/components/common/inline-alert"
 import { ProductList } from "@/components/products/product-list"
 import { ErrorState } from "@/components/common/error-state"
 import { LoadingState } from "@/components/common/loading-state"
 import { PageHeader } from "@/components/common/page-header"
 import { Button } from "@/components/ui/button"
-import { useProducts } from "@/hooks/use-products"
+import { useDeleteProduct, useProducts } from "@/hooks/use-products"
 import { getErrorMessage } from "@/utils/errors"
 
 export default function ProductListPage() {
   const { data, isLoading, isError, error, refetch } = useProducts()
+  const { mutateAsync: deleteProduct, isPending: isDeleting } = useDeleteProduct()
+  const [deleteError, setDeleteError] = React.useState<string | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+
+  const handleDelete = async (productId: string) => {
+    const confirmed = window.confirm(
+      "Delete this product permanently? This cannot be undone."
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setDeleteError(null)
+    setDeletingId(productId)
+    try {
+      await deleteProduct(productId)
+    } catch (err) {
+      setDeleteError(
+        getErrorMessage(err, "We couldn't delete the product. Please try again.")
+      )
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (isLoading) {
     return <LoadingState label="Loading products..." />
@@ -55,7 +81,16 @@ export default function ProductListPage() {
           </Button>
         </div>
       ) : (
-        <ProductList products={data} />
+        <div className="space-y-4">
+          {deleteError ? (
+            <InlineAlert variant="error" message={deleteError} />
+          ) : null}
+          <ProductList
+            products={data}
+            onDelete={handleDelete}
+            deletingId={isDeleting ? deletingId : null}
+          />
+        </div>
       )}
     </div>
   )

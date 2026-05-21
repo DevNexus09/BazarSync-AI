@@ -1,9 +1,14 @@
+import { Link } from "react-router-dom"
+
 import type { Product } from "@/types/product"
+import { Button } from "@/components/ui/button"
 import { formatCurrency, formatNumber, formatPercent } from "@/utils/formatters"
 import { cn } from "@/lib/utils"
 
 type ProductListProps = {
   products: Product[]
+  onDelete: (productId: string) => void
+  deletingId?: string | null
 }
 
 function getActualMargin(product: Product) {
@@ -14,7 +19,7 @@ function getActualMargin(product: Product) {
   return ((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100
 }
 
-export function ProductList({ products }: ProductListProps) {
+export function ProductList({ products, onDelete, deletingId }: ProductListProps) {
   return (
     <div className="space-y-4">
       <div className="hidden overflow-hidden rounded-xl border bg-background shadow-sm md:block">
@@ -28,6 +33,7 @@ export function ProductList({ products }: ProductListProps) {
               <th className="px-4 py-3">Stock</th>
               <th className="px-4 py-3">Lead time</th>
               <th className="px-4 py-3">Min margin</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -61,6 +67,21 @@ export function ProductList({ products }: ProductListProps) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatPercent(product.minimumMargin)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/app/products/${product.id}/edit`}>Edit</Link>
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => onDelete(product.id)}
+                        disabled={deletingId === product.id}
+                      >
+                        {deletingId === product.id ? "Deleting..." : "Delete"}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -120,6 +141,19 @@ export function ProductList({ products }: ProductListProps) {
                     {formatPercent(product.minimumMargin)}
                   </p>
                 </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/app/products/${product.id}/edit`}>Edit</Link>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => onDelete(product.id)}
+                  disabled={deletingId === product.id}
+                >
+                  {deletingId === product.id ? "Deleting..." : "Delete"}
+                </Button>
               </div>
             </div>
           )

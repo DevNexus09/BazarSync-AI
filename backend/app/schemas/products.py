@@ -15,6 +15,15 @@ PositiveInt = Annotated[int, Field(gt=0)]
 
 class ProductBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255, description="Product title")
+    description: str | None = Field(
+        None, min_length=10, max_length=5000, description="Product description"
+    )
+    category: str | None = Field(
+        None, min_length=2, max_length=120, description="Product category"
+    )
+    specifications: dict[str, str] | None = Field(
+        default_factory=dict, description="Structured product specifications"
+    )
     cost_price: Price = Field(..., description="Product cost price")
     selling_price: Price = Field(..., description="Product selling price")
     stock_quantity: NonNegativeInt = Field(..., description="Current stock quantity")
@@ -23,11 +32,24 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
+    description: str = Field(
+        ..., min_length=10, max_length=5000, description="Product description"
+    )
+    category: str = Field(
+        ..., min_length=2, max_length=120, description="Product category"
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
                     "title": "Wireless Mouse",
+                    "description": "Ergonomic wireless mouse with 2.4G receiver.",
+                    "category": "Electronics",
+                    "specifications": {
+                        "dpi": "1600",
+                        "color": "Black",
+                        "battery": "AA",
+                    },
                     "cost_price": "8.50",
                     "selling_price": "12.99",
                     "stock_quantity": 120,
@@ -41,6 +63,9 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = Field(None, min_length=10, max_length=5000)
+    category: str | None = Field(None, min_length=2, max_length=120)
+    specifications: dict[str, str] | None = None
     cost_price: Price | None = None
     selling_price: Price | None = None
     stock_quantity: NonNegativeInt | None = None
@@ -53,6 +78,9 @@ class ProductResponse(ProductBase):
     seller_id: UUID
     created_at: datetime
     pricing_warning: str | None = Field(None, description="Warning when selling price is below cost")
+    searchable_text: str | None = Field(
+        None, description="Normalized text used for matching"
+    )
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -62,6 +90,13 @@ class ProductResponse(ProductBase):
                     "id": "1b244d3b-1fbe-4e8c-aea6-47ad97527ac7",
                     "seller_id": "360c1da3-bffc-42c4-97b1-8cf5440700cb",
                     "title": "Wireless Mouse",
+                    "description": "Ergonomic wireless mouse with 2.4G receiver.",
+                    "category": "Electronics",
+                    "specifications": {
+                        "dpi": "1600",
+                        "color": "Black",
+                        "battery": "AA",
+                    },
                     "cost_price": "8.50",
                     "selling_price": "12.99",
                     "stock_quantity": 120,
@@ -69,6 +104,7 @@ class ProductResponse(ProductBase):
                     "minimum_margin": "2.00",
                     "created_at": "2026-05-19T08:00:00Z",
                     "pricing_warning": None,
+                    "searchable_text": "wireless mouse ergonomic 2.4g receiver electronics",
                 }
             ]
         },
@@ -88,6 +124,13 @@ class ProductDetailResponse(BaseModel):
                         "id": "1b244d3b-1fbe-4e8c-aea6-47ad97527ac7",
                         "seller_id": "360c1da3-bffc-42c4-97b1-8cf5440700cb",
                         "title": "Wireless Mouse",
+                        "description": "Ergonomic wireless mouse with 2.4G receiver.",
+                        "category": "Electronics",
+                        "specifications": {
+                            "dpi": "1600",
+                            "color": "Black",
+                            "battery": "AA",
+                        },
                         "cost_price": "8.50",
                         "selling_price": "12.99",
                         "stock_quantity": 120,
@@ -95,6 +138,7 @@ class ProductDetailResponse(BaseModel):
                         "minimum_margin": "2.00",
                         "created_at": "2026-05-19T08:00:00Z",
                         "pricing_warning": None,
+                        "searchable_text": "wireless mouse ergonomic 2.4g receiver electronics",
                     },
                 }
             ]
@@ -117,6 +161,13 @@ class ProductListResponse(BaseModel):
                             "id": "1b244d3b-1fbe-4e8c-aea6-47ad97527ac7",
                             "seller_id": "360c1da3-bffc-42c4-97b1-8cf5440700cb",
                             "title": "Wireless Mouse",
+                            "description": "Ergonomic wireless mouse with 2.4G receiver.",
+                            "category": "Electronics",
+                            "specifications": {
+                                "dpi": "1600",
+                                "color": "Black",
+                                "battery": "AA",
+                            },
                             "cost_price": "8.50",
                             "selling_price": "12.99",
                             "stock_quantity": 120,
@@ -124,6 +175,7 @@ class ProductListResponse(BaseModel):
                             "minimum_margin": "2.00",
                             "created_at": "2026-05-19T08:00:00Z",
                             "pricing_warning": None,
+                            "searchable_text": "wireless mouse ergonomic 2.4g receiver electronics",
                         }
                     ],
                     "total": 1,

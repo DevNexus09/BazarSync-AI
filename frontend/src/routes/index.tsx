@@ -63,6 +63,14 @@ const router = createBrowserRouter([
                 }),
               },
               {
+                path: "products/:productId/edit",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/products/product-edit-page"
+                  )).default,
+                }),
+              },
+              {
                 path: "recommendations",
                 lazy: async () => ({
                   Component: (await import(

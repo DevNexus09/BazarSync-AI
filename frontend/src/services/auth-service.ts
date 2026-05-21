@@ -43,7 +43,15 @@ const mapUser = (seller: ApiSeller): User => ({
 })
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
-  const { data } = await apiClient.post<ApiAuthResponse>("/auth/login", input)
+  const payload = new URLSearchParams({
+    username: input.email,
+    password: input.password,
+  })
+  const { data } = await apiClient.post<ApiAuthResponse>("/auth/login", payload, {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  })
   return { token: data.access_token, user: mapUser(data.seller) }
 }
 
