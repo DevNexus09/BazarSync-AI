@@ -2,6 +2,10 @@ export type Product = {
   id: string
   sellerId?: string
   title: string
+  description: string
+  category: string
+  specifications: Record<string, string>
+  searchableText?: string | null
   costPrice: number
   sellingPrice: number
   stockQuantity: number
@@ -14,6 +18,9 @@ export type Product = {
 
 export type ProductInput = {
   title: string
+  description: string
+  category: string
+  specifications: Record<string, string>
   costPrice: number
   sellingPrice: number
   stockQuantity: number

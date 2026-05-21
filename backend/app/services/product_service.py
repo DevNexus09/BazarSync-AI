@@ -39,9 +39,19 @@ class ProductService:
         return self._db.execute(statement).scalar_one_or_none()
 
     def create_product(self, seller_id: UUID, payload: ProductCreate) -> Product:
+        searchable_text = self._build_searchable_text(
+            title=payload.title,
+            description=payload.description,
+            category=payload.category,
+            specifications=payload.specifications or {},
+        )
         product = Product(
             seller_id=seller_id,
             title=payload.title,
+            description=payload.description,
+            category=payload.category,
+            specifications=payload.specifications or {},
+            searchable_text=searchable_text,
             cost_price=payload.cost_price,
             selling_price=payload.selling_price,
             stock_quantity=payload.stock_quantity,
@@ -62,9 +72,38 @@ class ProductService:
         for field, value in updates.items():
             setattr(product, field, value)
 
+        if any(
+            field in updates
+            for field in ("title", "description", "category", "specifications")
+        ):
+            product.searchable_text = self._build_searchable_text(
+                title=product.title,
+                description=product.description or "",
+                category=product.category or "",
+                specifications=product.specifications or {},
+            )
+
         self._db.commit()
         self._db.refresh(product)
         return product
+
+    @staticmethod
+    def _build_searchable_text(
+        *,
+        title: str,
+        description: str,
+        category: str,
+        specifications: dict[str, str],
+    ) -> str:
+        specs_text = " ".join(
+            f"{key} {value}".strip()
+            for key, value in specifications.items()
+            if key and value
+        )
+        combined = " ".join(
+            part for part in (title, description, category, specs_text) if part
+        )
+        return " ".join(combined.split()).strip()
 
     def delete_product(self, seller_id: UUID, product_id: UUID) -> None:
         product = self.get_product(seller_id, product_id)

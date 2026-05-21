@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.scrape_run import ScrapeRun
     from app.models.product import Product
 
 
@@ -39,6 +40,10 @@ class Seller(Base):
         nullable=False,
     )
     products: Mapped[list["Product"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    scrape_runs: Mapped[list["ScrapeRun"]] = relationship(
         back_populates="seller",
         cascade="all, delete-orphan",
     )

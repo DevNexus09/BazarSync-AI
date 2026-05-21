@@ -10,6 +10,7 @@ from app.api.router import register_routers
 from app.core.config import settings
 from app.db.bootstrap import ensure_products_table, ensure_sellers_profile_columns
 from app.db.session import engine
+from app.scraper.browser import BrowserManager
 
 
 @asynccontextmanager
@@ -20,7 +21,10 @@ async def lifespan(_: FastAPI):
     if settings.bootstrap_db_on_startup:
         ensure_sellers_profile_columns(engine)
         ensure_products_table(engine)
-    yield
+    try:
+        yield
+    finally:
+        await BrowserManager.shutdown_shared()
 
 
 def create_app() -> FastAPI:

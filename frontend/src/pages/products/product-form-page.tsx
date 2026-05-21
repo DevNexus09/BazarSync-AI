@@ -56,18 +56,18 @@ export default function ProductFormPage() {
               Why we collect these fields
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              BazarSync AI uses pricing, margin, and stock signals to detect
-              competitor moves and trigger WhatsApp alerts.
+              BazarSync AI combines pricing, descriptions, and specifications to
+              improve competitor matching and alert quality.
             </p>
             <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
               <li>Cost + selling price power AI pricing recommendations.</li>
               <li>Stock + lead time help forecast restock risk.</li>
+              <li>Descriptions + specs reduce false competitor matches.</li>
               <li>Minimum margin protects profitability during discounts.</li>
             </ul>
           </div>
           <div className="rounded-xl border bg-muted/40 p-5 text-sm text-muted-foreground">
-            Tip: Keep product titles aligned with marketplace naming conventions to
-            improve Daraz competitor matching.
+            Tip: Add clear specs like storage, color, or size to improve matching.
           </div>
         </div>
       </div>

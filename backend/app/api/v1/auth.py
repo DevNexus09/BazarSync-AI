@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token
@@ -35,8 +36,12 @@ def register_seller(payload: SellerCreate, db: Session = Depends(get_db)) -> Reg
 
 
 @router.post("/login", response_model=LoginResponse)
-def login_seller(payload: SellerLogin, db: Session = Depends(get_db)) -> LoginResponse:
+def login_seller(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+) -> LoginResponse:
     service = AuthService(db)
+    payload = SellerLogin(email=form_data.username, password=form_data.password)
     try:
         seller = service.authenticate_seller(payload)
     except InvalidCredentialsError as exc:
