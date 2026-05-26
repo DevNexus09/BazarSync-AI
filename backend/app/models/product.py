@@ -15,6 +15,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
     from app.models.scrape_run import ScrapeRun
+    from app.models.recommendation import Recommendation
     from app.models.seller import Seller
 
 
@@ -59,6 +60,10 @@ class Product(Base):
         cascade="all, delete-orphan",
     )
     competitors: Mapped[list["Competitor"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    recommendations: Mapped[list["Recommendation"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )
