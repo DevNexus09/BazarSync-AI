@@ -33,6 +33,7 @@ class Settings(BaseModel):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     bootstrap_db_on_startup: bool = False
+    scraper_schedule_enabled: bool = False
     supabase_url: str | None = None
     supabase_key: str | None = None
     redis_broker_url: str | None = None
@@ -42,6 +43,7 @@ class Settings(BaseModel):
         load_dotenv()
         env = os.getenv("APP_ENV", "development")
         bootstrap_default = env == "development"
+        scraper_schedule_default = env != "development"
         data = {
             "app_name": os.getenv("APP_NAME", "BazarSync AI"),
             "env": env,
@@ -54,6 +56,10 @@ class Settings(BaseModel):
             "bootstrap_db_on_startup": _parse_bool(
                 os.getenv("DB_BOOTSTRAP_ON_STARTUP"),
                 default=bootstrap_default,
+            ),
+            "scraper_schedule_enabled": _parse_bool(
+                os.getenv("SCRAPER_SCHEDULE_ENABLED"),
+                default=scraper_schedule_default,
             ),
             "supabase_url": os.getenv("SUPABASE_URL"),
             "supabase_key": os.getenv("SUPABASE_KEY"),

@@ -10,7 +10,13 @@ from typing import Any
 import torch
 from sentence_transformers import SentenceTransformer, util
 
-from app.scraper.constants import SIMILARITY_BATCH_SIZE, SIMILARITY_MODEL_NAME, SIMILARITY_THRESHOLD
+from app.scraper.constants import (
+    SIMILARITY_BATCH_SIZE,
+    SIMILARITY_DEVICE,
+    SIMILARITY_MIN_RESULTS,
+    SIMILARITY_MODEL_NAME,
+    SIMILARITY_THRESHOLD,
+)
 from app.scraper.exceptions import SimilarityError
 
 logger = logging.getLogger(__name__)
@@ -595,8 +601,18 @@ def _adjust_threshold(
 
 @lru_cache(maxsize=1)
 def _get_model() -> SentenceTransformer:
+    device = SIMILARITY_DEVICE.strip().lower()
+    if device == "auto":
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
     try:
-        return SentenceTransformer(SIMILARITY_MODEL_NAME)
+        model = SentenceTransformer(SIMILARITY_MODEL_NAME, device=device)
+        logger.info("Similarity model loaded on %s.", device)
+        return model
     except Exception as exc:
         logger.exception("Failed to load similarity model %s.", SIMILARITY_MODEL_NAME)
         raise SimilarityError("Failed to load similarity model.") from exc
@@ -815,6 +831,7 @@ def filter_similar_products(
         return []
 
     results: list[dict[str, Any]] = []
+    scored_results: list[dict[str, Any]] = []
     for competitor, title_score_tensor, desc_score_tensor, metadata in zip(
         candidates, title_similarities, description_similarities, candidate_metadata
     ):
@@ -866,21 +883,37 @@ def filter_similar_products(
             metadata["entities"],
         )
 
+        record = {
+            **competitor,
+            "similarity_score": final_score,
+            "title_similarity": title_similarity,
+            "description_similarity": description_similarity,
+            "attribute_similarity": attribute_score,
+            "keyword_score": keyword_score,
+            "ranking_score": ranking_score,
+            "match_confidence": final_score,
+            "category_match": category_match,
+            "matched_attributes": metadata["matched_attributes"],
+        }
+        scored_results.append(record)
+
         if final_score >= adjusted_threshold:
-            results.append(
-                {
-                    **competitor,
-                    "similarity_score": final_score,
-                    "title_similarity": title_similarity,
-                    "description_similarity": description_similarity,
-                    "attribute_similarity": attribute_score,
-                    "keyword_score": keyword_score,
-                    "ranking_score": ranking_score,
-                    "match_confidence": final_score,
-                    "category_match": category_match,
-                    "matched_attributes": metadata["matched_attributes"],
-                }
-            )
+            results.append(record)
+
+    if SIMILARITY_MIN_RESULTS > 0 and len(results) < SIMILARITY_MIN_RESULTS:
+        ranked = sorted(
+            scored_results,
+            key=lambda item: item.get("similarity_score", 0.0),
+            reverse=True,
+        )
+        selected_ids = {id(item) for item in results}
+        for item in ranked:
+            if id(item) in selected_ids:
+                continue
+            results.append(item)
+            selected_ids.add(id(item))
+            if len(results) >= SIMILARITY_MIN_RESULTS:
+                break
 
     return results
 

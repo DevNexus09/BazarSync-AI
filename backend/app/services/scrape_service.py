@@ -6,6 +6,7 @@ import asyncio
 from uuid import UUID
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
@@ -148,6 +149,26 @@ class ScrapeService:
 
     def _get_scrape_run(self, scrape_run_id: UUID) -> ScrapeRun | None:
         return self._db.get(ScrapeRun, scrape_run_id)
+
+    def get_scrape_run_status(
+        self,
+        *,
+        seller: Seller,
+        scrape_run_id: UUID,
+    ) -> tuple[ScrapeRun, Product]:
+        statement = select(ScrapeRun).where(
+            ScrapeRun.id == scrape_run_id,
+            ScrapeRun.seller_id == seller.id,
+        )
+        scrape_run = self._db.execute(statement).scalar_one_or_none()
+        if not scrape_run:
+            raise ScrapeRunNotFoundError("Scrape run not found.")
+
+        product = self._db.get(Product, scrape_run.product_id)
+        if not product:
+            raise ScrapeProductNotFoundError("Product not found.")
+
+        return scrape_run, product
 
     def _create_scrape_run(self, seller_id: UUID, product_id: UUID) -> ScrapeRun:
         scrape_run = ScrapeRun(

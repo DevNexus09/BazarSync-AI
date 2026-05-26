@@ -14,7 +14,7 @@ from app.scraper.schemas import ScrapeResponse
 from app.scraper.services.competitor_service import scrape_daraz_competitors
 from app.core.celery_app import celery_app
 from app.scraper.constants import SIMILARITY_THRESHOLD
-from app.schemas.scrape import ScrapeTaskResponse
+from app.schemas.scrape import ScrapeRunStatusResponse, ScrapeTaskResponse
 from app.services.scrape_service import (
     ProductAccessError,
     ScrapeProductNotFoundError,
@@ -81,3 +81,31 @@ async def run_scrape(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     except ScrapeRunNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/runs/{scrape_run_id}", response_model=ScrapeRunStatusResponse)
+def get_scrape_run_status(
+    scrape_run_id: UUID,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> ScrapeRunStatusResponse:
+    service = ScrapeService(db)
+    try:
+        scrape_run, product = service.get_scrape_run_status(
+            seller=current_seller,
+            scrape_run_id=scrape_run_id,
+        )
+    except (ScrapeRunNotFoundError, ScrapeProductNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return ScrapeRunStatusResponse(
+        scrape_run_id=scrape_run.id,
+        product_id=product.id,
+        product_title=product.title,
+        status=scrape_run.status,
+        started_at=scrape_run.started_at,
+        finished_at=scrape_run.finished_at,
+        total_results=scrape_run.total_results,
+        successful_matches=scrape_run.successful_matches,
+        error_message=scrape_run.error_message,
+    )

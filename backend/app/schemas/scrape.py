@@ -73,3 +73,15 @@ class ScrapeTaskResponse(BaseModel):
             ]
         }
     )
+
+
+class ScrapeRunStatusResponse(BaseModel):
+    scrape_run_id: UUID = Field(..., description="Scrape run ID")
+    product_id: UUID = Field(..., description="Seller product ID")
+    product_title: str = Field(..., description="Seller product title")
+    status: str = Field(..., description="Scrape run status")
+    started_at: datetime | None = Field(None, description="Scrape run start time")
+    finished_at: datetime | None = Field(None, description="Scrape run finish time")
+    total_results: int | None = Field(None, description="Total competitors scraped")
+    successful_matches: int | None = Field(None, description="Competitors passing similarity threshold")
+    error_message: str | None = Field(None, description="Failure reason")

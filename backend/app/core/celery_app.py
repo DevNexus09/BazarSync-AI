@@ -39,13 +39,17 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["app.tasks"])
 
-celery_app.conf.beat_schedule = {
-    "scraper_every_6_hours": {
-        "task": "scraper.run_periodic_scrape",
-        "schedule": crontab(minute=0, hour="*/6"),
-    },
-    "scraper_nightly_refresh": {
-        "task": "scraper.run_nightly_refresh",
-        "schedule": crontab(minute=0, hour=2),
-    },
-}
+celery_app.conf.beat_schedule = (
+    {
+        "scraper_every_6_hours": {
+            "task": "scraper.run_periodic_scrape",
+            "schedule": crontab(minute=0, hour="*/6"),
+        },
+        "scraper_nightly_refresh": {
+            "task": "scraper.run_nightly_refresh",
+            "schedule": crontab(minute=0, hour=2),
+        },
+    }
+    if settings.scraper_schedule_enabled
+    else {}
+)

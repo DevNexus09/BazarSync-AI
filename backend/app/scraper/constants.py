@@ -4,19 +4,6 @@ from dataclasses import dataclass
 import os
 from typing import Final
 
-MARKETPLACE_NAME: Final = "Daraz Bangladesh"
-DARAZ_BASE_URL: Final = "https://www.daraz.com.bd"
-DARAZ_SEARCH_PATH: Final = "/catalog/"
-
-DEFAULT_MAX_RESULTS: Final = 15
-WEIGHTED_RATING_C: Final = 75
-WEIGHTS: Final = {
-    "sold": 0.30,
-    "revenue": 0.25,
-    "weighted_rating": 0.20,
-    "rating_count": 0.15,
-    "discount": 0.10,
-}
 def _read_float_env(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -37,9 +24,24 @@ def _read_int_env(name: str, default: int) -> int:
         return default
 
 
+MARKETPLACE_NAME: Final = "Daraz Bangladesh"
+DARAZ_BASE_URL: Final = "https://www.daraz.com.bd"
+DARAZ_SEARCH_PATH: Final = "/catalog/"
+
+DEFAULT_MAX_RESULTS: Final = _read_int_env("SCRAPER_MAX_RESULTS", 25)
+WEIGHTED_RATING_C: Final = 75
+WEIGHTS: Final = {
+    "sold": 0.30,
+    "revenue": 0.25,
+    "weighted_rating": 0.20,
+    "rating_count": 0.15,
+    "discount": 0.10,
+}
 SIMILARITY_MODEL_NAME: Final = os.getenv("SIMILARITY_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
+SIMILARITY_DEVICE: Final = os.getenv("SIMILARITY_DEVICE", "cpu")
 SIMILARITY_THRESHOLD: Final = _read_float_env("SIMILARITY_THRESHOLD", 0.65)
 SIMILARITY_BATCH_SIZE: Final = _read_int_env("SIMILARITY_BATCH_SIZE", 32)
+SIMILARITY_MIN_RESULTS: Final = _read_int_env("SIMILARITY_MIN_RESULTS", 10)
 
 DEFAULT_TIMEOUT_MS: Final = 30_000
 NAVIGATION_TIMEOUT_MS: Final = 45_000
