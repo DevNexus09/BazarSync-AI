@@ -72,8 +72,23 @@ export type CompetitorApiResponse =
     }
 
 export type ScraperRunResponse = {
-  message: string
-  status?: string
-  run_id?: string
-  triggered_at?: string
+  success: boolean
+  task_id: string
+  scrape_run_id: string
+  product_id: string
+  product_title: string
+  threshold: number
+  status: string
+}
+
+export type ScrapeRunStatusResponse = {
+  scrape_run_id: string
+  product_id: string
+  product_title: string
+  status: string
+  started_at?: string | null
+  finished_at?: string | null
+  total_results?: number | null
+  successful_matches?: number | null
+  error_message?: string | null
 }

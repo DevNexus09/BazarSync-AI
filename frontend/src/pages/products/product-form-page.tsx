@@ -31,7 +31,7 @@ export default function ProductFormPage() {
     <div className="space-y-6">
       <PageHeader
         title="Add a product"
-        description="Add SKUs to power competitor scraping, AI pricing, and WhatsApp alerts."
+        description="Add SKUs to power competitor scraping, AI pricing, and Telegram alerts."
         action={
           <Button variant="outline" size="sm" asChild>
             <Link to="/app/products">View products</Link>

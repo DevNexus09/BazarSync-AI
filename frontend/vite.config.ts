@@ -5,8 +5,15 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      {
+        find: /^es-toolkit\/compat\/(.+)$/,
+        replacement: path.resolve(
+          __dirname,
+          "./src/vendor/es-toolkit-compat/$1"
+        ),
+      },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
   },
 })

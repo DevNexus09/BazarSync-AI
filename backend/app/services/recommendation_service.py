@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 import logging
+import os
 import time
 from typing import Any, Mapping
 from uuid import UUID
@@ -29,6 +30,8 @@ from app.schemas.recommendation import (
     RecommendationGenerateResponse,
     RecommendationResponse,
 )
+from app.services.dashboard.events import DashboardEvent, DashboardEventEmitter
+from app.websocket.socket_manager import socket_manager
 
 
 class RecommendationServiceError(Exception):
@@ -79,13 +82,26 @@ class RecommendationServiceResult:
 class RecommendationService:
     """Orchestrates analytics, AI generation, and persistence."""
 
-    def __init__(self, db: Session, logger: logging.Logger | None = None) -> None:
+    def __init__(
+        self,
+        db: Session,
+        logger: logging.Logger | None = None,
+        *,
+        event_emitter: DashboardEventEmitter | None = None,
+        stock_risk_threshold: float | None = None,
+    ) -> None:
         self._db = db
         self._logger = logger or logging.getLogger(__name__)
         self._pricing_engine = PricingEngine()
         self._stock_engine = StockEngine()
         self._context_builder = RecommendationContextBuilder()
         self._ai_generator = RecommendationGenerator()
+        self._event_emitter = event_emitter or socket_manager
+        self._stock_risk_threshold = (
+            stock_risk_threshold
+            if stock_risk_threshold is not None
+            else _get_env_float("BAZARSYNC_STOCK_RISK_EVENT_THRESHOLD", 0.7)
+        )
 
     async def generate_recommendation(
         self, *, seller_id: UUID, product_id: UUID
@@ -104,6 +120,11 @@ class RecommendationService:
             logging.INFO,
             "recommendation_analytics_complete",
             product_id=str(product_id),
+        )
+        await self._emit_stock_risk_event(
+            seller_id=str(seller_id),
+            product=product,
+            analytics=analytics,
         )
         context = self.build_context(product, competitors, analytics)
         self._log_event(
@@ -131,6 +152,11 @@ class RecommendationService:
             "recommendation_saved",
             recommendation_id=str(recommendation.id),
             product_id=str(product_id),
+        )
+        await self._emit_recommendation_created(
+            seller_id=str(seller_id),
+            recommendation=recommendation,
+            analytics=analytics,
         )
         response = self.build_response(recommendation, analytics)
 
@@ -360,6 +386,49 @@ class RecommendationService:
         payload = " ".join(f"{key}={value}" for key, value in safe_fields.items())
         self._logger.log(level, f"{event} {payload}".strip())
 
+    async def _emit_recommendation_created(
+        self,
+        *,
+        seller_id: str,
+        recommendation: Recommendation,
+        analytics: Mapping[str, Any],
+    ) -> None:
+        payload = {
+            "recommendation_id": str(recommendation.id),
+            "product_id": str(recommendation.product_id),
+            "seller_id": seller_id,
+            "action": recommendation.action.value,
+            "confidence": recommendation.confidence.value,
+            "revenue_opportunity": float(recommendation.revenue_opportunity),
+            "urgency_score": analytics.get("urgency_score"),
+            "stock_risk_score": analytics.get("stock_risk_score"),
+            "created_at": recommendation.created_at.isoformat()
+            if recommendation.created_at
+            else None,
+        }
+        await self._event_emitter.emit(DashboardEvent.recommendation_created, payload)
+
+    async def _emit_stock_risk_event(
+        self,
+        *,
+        seller_id: str,
+        product: Product,
+        analytics: Mapping[str, Any],
+    ) -> None:
+        stock_risk_score = self._to_float(analytics.get("stock_risk_score"))
+        if stock_risk_score is None:
+            return
+        if stock_risk_score < self._stock_risk_threshold:
+            return
+        payload = {
+            "product_id": str(product.id),
+            "seller_id": seller_id,
+            "stock_risk_score": stock_risk_score,
+            "estimated_days_of_stock_left": analytics.get("estimated_days_of_stock_left"),
+            "stock_quantity": product.stock_quantity,
+        }
+        await self._event_emitter.emit(DashboardEvent.stock_risk_detected, payload)
+
     def _build_analytics_response(
         self,
         analytics: Mapping[str, Any] | None,
@@ -428,3 +497,13 @@ class RecommendationService:
             return int(value)
         except (TypeError, ValueError):
             return None
+
+
+def _get_env_float(key: str, default: float) -> float:
+    value = os.getenv(key)
+    if not value:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default

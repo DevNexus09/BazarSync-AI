@@ -37,6 +37,14 @@ class Settings(BaseModel):
     supabase_url: str | None = None
     supabase_key: str | None = None
     redis_broker_url: str | None = None
+    socketio_mount_path: str = "/ws"
+    socketio_path: str = "socket.io"
+    socketio_ping_interval: int = 20
+    socketio_ping_timeout: int = 25
+    socketio_max_http_buffer_size: int = 1_000_000
+    socketio_session_ttl_seconds: int = 300
+    socketio_heartbeat_interval: int = 15
+    socketio_heartbeat_timeout: int = 60
 
     @classmethod
     def load(cls) -> "Settings":
@@ -64,6 +72,22 @@ class Settings(BaseModel):
             "supabase_url": os.getenv("SUPABASE_URL"),
             "supabase_key": os.getenv("SUPABASE_KEY"),
             "redis_broker_url": os.getenv("REDIS_BROKER_URL"),
+            "socketio_mount_path": os.getenv("SOCKETIO_MOUNT_PATH", "/ws"),
+            "socketio_path": os.getenv("SOCKETIO_PATH", "socket.io"),
+            "socketio_ping_interval": int(os.getenv("SOCKETIO_PING_INTERVAL", "20")),
+            "socketio_ping_timeout": int(os.getenv("SOCKETIO_PING_TIMEOUT", "25")),
+            "socketio_max_http_buffer_size": int(
+                os.getenv("SOCKETIO_MAX_HTTP_BUFFER_SIZE", "1000000")
+            ),
+            "socketio_session_ttl_seconds": int(
+                os.getenv("SOCKETIO_SESSION_TTL_SECONDS", "300")
+            ),
+            "socketio_heartbeat_interval": int(
+                os.getenv("SOCKETIO_HEARTBEAT_INTERVAL", "15")
+            ),
+            "socketio_heartbeat_timeout": int(
+                os.getenv("SOCKETIO_HEARTBEAT_TIMEOUT", "60")
+            ),
         }
         return cls.model_validate(data)
 

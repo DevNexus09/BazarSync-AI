@@ -46,6 +46,10 @@ class SellerProfileUpdate(BaseModel):
     country: str | None = Field(None, max_length=120, description="Business country")
 
 
+class SellerDeleteRequest(BaseModel):
+    password: str = Field(..., min_length=8, description="Seller password")
+
+
 class SellerResponse(SellerBase):
     id: UUID
     created_at: datetime
@@ -64,3 +68,13 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     seller: SellerResponse
+
+
+class DeleteAccountResponse(BaseModel):
+    message: str = "Seller account deleted successfully."
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"message": "Seller account deleted successfully."}]
+        }
+    )

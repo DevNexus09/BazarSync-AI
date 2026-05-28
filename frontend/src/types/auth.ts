@@ -30,6 +30,10 @@ export type AuthResponse = {
   user: User
 }
 
+export type DeleteAccountInput = {
+  password: string
+}
+
 export type ProfileInput = {
   fullName: string
   businessName: string
@@ -52,5 +56,6 @@ export type AuthContextValue = AuthState & {
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   updateProfile: (input: ProfileInput) => Promise<void>
+  deleteAccount: (input: DeleteAccountInput) => Promise<void>
   logout: () => void
 }

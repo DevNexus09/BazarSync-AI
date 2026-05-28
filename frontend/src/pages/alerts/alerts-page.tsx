@@ -12,7 +12,7 @@ const alertTracks = [
   },
   {
     title: "Campaign spikes",
-    description: "WhatsApp notifications for sudden demand surges.",
+    description: "Telegram notifications for sudden demand surges.",
   },
 ]
 
@@ -20,7 +20,7 @@ export default function AlertsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="WhatsApp alerts"
+        title="Telegram alerts"
         description="Reach sellers instantly with critical marketplace signals."
         action={<Button size="sm">Create alert</Button>}
       />

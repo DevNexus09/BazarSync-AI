@@ -1,28 +1,18 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { Suspense } from "react"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { RouterProvider } from "react-router-dom"
 
-import { LoadingState } from "@/components/common/loading-state"
 import { AuthProvider } from "@/context/auth-provider"
+import { queryClient } from "@/lib/query-client"
 import router from "@/routes"
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-})
-
-export default function App() {
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Suspense fallback={<LoadingState label="Loading workspace..." />}>
-          <RouterProvider router={router} />
-        </Suspense>
+        <RouterProvider router={router} />
       </AuthProvider>
     </QueryClientProvider>
   )
 }
+
+export default App

@@ -64,3 +64,9 @@ class AuthService:
         self._db.commit()
         self._db.refresh(seller)
         return seller
+
+    def delete_seller_account(self, seller: Seller, password: str) -> None:
+        if not verify_password(password, seller.password_hash):
+            raise InvalidCredentialsError
+        self._db.delete(seller)
+        self._db.commit()

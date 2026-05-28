@@ -106,8 +106,8 @@ export default function LoginPage() {
               description: "Convert insights into next-best actions instantly.",
             },
             {
-              title: "WhatsApp alerts",
-              description: "Keep the team aligned with instant notifications.",
+              title: "Telegram alerts",
+              description: "Keep the team aligned with instant Telegram updates.",
             },
           ]}
         />

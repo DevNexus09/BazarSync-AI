@@ -4,6 +4,7 @@ import type {
   ApiCompetitor,
   Competitor,
   CompetitorApiResponse,
+  ScrapeRunStatusResponse,
   ScraperRunResponse,
 } from "../types/competitor.types"
 
@@ -86,6 +87,19 @@ export async function runScraper(productId: string): Promise<ScraperRunResponse>
 
   const { data } = await apiClient.post<ScraperRunResponse>(
     `/scraper/run/${encodeURIComponent(productId)}`
+  )
+  return data
+}
+
+export async function getScrapeRunStatus(
+  scrapeRunId: string
+): Promise<ScrapeRunStatusResponse> {
+  if (!scrapeRunId) {
+    throw new Error("Scrape run id is required to fetch status.")
+  }
+
+  const { data } = await apiClient.get<ScrapeRunStatusResponse>(
+    `/scraper/runs/${encodeURIComponent(scrapeRunId)}`
   )
   return data
 }

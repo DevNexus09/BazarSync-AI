@@ -4,11 +4,13 @@ import type {
   AuthContextValue,
   AuthResponse,
   AuthState,
+  DeleteAccountInput,
   LoginInput,
   ProfileInput,
   RegisterInput,
 } from "@/types/auth"
 import {
+  deleteAccount as deleteAccountService,
   login as loginService,
   register as registerService,
   updateProfile as updateProfileService,
@@ -100,6 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ status: "unauthenticated", token: null, user: null })
   }, [])
 
+  const deleteAccount = React.useCallback(
+    async (input: DeleteAccountInput) => {
+      setIsAuthenticating(true)
+
+      try {
+        await deleteAccountService(input)
+        logout()
+      } finally {
+        setIsAuthenticating(false)
+      }
+    },
+    [logout]
+  )
+
   const value = React.useMemo<AuthContextValue>(
     () => ({
       ...state,
@@ -107,9 +123,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       updateProfile,
+      deleteAccount,
       logout,
     }),
-    [state, isAuthenticating, login, register, updateProfile, logout]
+    [state, isAuthenticating, login, register, updateProfile, deleteAccount, logout]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

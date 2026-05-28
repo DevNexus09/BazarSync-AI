@@ -108,7 +108,7 @@ export default function RegisterPage() {
             },
             {
               title: "Team-ready alerts",
-              description: "Keep ops and sales aligned with WhatsApp notifications.",
+              description: "Keep ops and sales aligned with Telegram notifications.",
             },
           ]}
         />

@@ -10,7 +10,7 @@ import { getErrorMessage } from "@/utils/errors"
 import { isValidPhone } from "@/utils/validation"
 
 export default function ProfilePage() {
-  const { user, updateProfile, isAuthenticating } = useAuth()
+  const { user, updateProfile, isAuthenticating, deleteAccount } = useAuth()
   const [formValues, setFormValues] = React.useState<ProfileInput>(() => ({
     fullName: user?.fullName ?? "",
     businessName: user?.businessName ?? "",
@@ -26,6 +26,13 @@ export default function ProfilePage() {
   >({})
   const [formError, setFormError] = React.useState<string | null>(null)
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
+  const [deletePassword, setDeletePassword] = React.useState("")
+  const [deleteFieldError, setDeleteFieldError] = React.useState<string | undefined>(
+    undefined
+  )
+  const [deleteError, setDeleteError] = React.useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const isSaving = isAuthenticating && !isDeleting
 
   const validateForm = (values: ProfileInput) => {
     const errors: Partial<Record<keyof ProfileInput, string>> = {}
@@ -84,6 +91,39 @@ export default function ProfilePage() {
       setSuccessMessage("Profile updated successfully.")
     } catch (error) {
       setFormError(getErrorMessage(error, "Unable to update your profile."))
+    }
+  }
+
+  const handleDeleteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDeletePassword(event.target.value)
+    setDeleteFieldError(undefined)
+    setDeleteError(null)
+  }
+
+  const handleDeleteSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setDeleteError(null)
+    setDeleteFieldError(undefined)
+
+    if (!deletePassword.trim()) {
+      setDeleteFieldError("Password is required.")
+      return
+    }
+
+    const confirmed = window.confirm(
+      "This will permanently delete your account and all data. This cannot be undone. Continue?"
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      await deleteAccount({ password: deletePassword })
+    } catch (error) {
+      setDeleteError(getErrorMessage(error, "Unable to delete your account."))
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -188,7 +228,34 @@ export default function ProfilePage() {
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={isAuthenticating}>
-              {isAuthenticating ? "Saving..." : "Save profile"}
+              {isSaving ? "Saving..." : "Save profile"}
+            </Button>
+          </div>
+        </form>
+      </div>
+      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 shadow-sm">
+        <div className="mb-4 space-y-1">
+          <h2 className="text-base font-semibold text-foreground">Delete account</h2>
+          <p className="text-xs text-muted-foreground">
+            Permanently removes your seller profile, products, alerts, and history.
+          </p>
+        </div>
+        <form onSubmit={handleDeleteSubmit} className="space-y-4">
+          <AuthFormAlert message={deleteError} />
+          <AuthField
+            id="delete-account-password"
+            name="deletePassword"
+            type="password"
+            label="Confirm password"
+            value={deletePassword}
+            onChange={handleDeleteChange}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            error={deleteFieldError}
+          />
+          <div className="flex items-center justify-end">
+            <Button type="submit" variant="destructive" disabled={isAuthenticating}>
+              {isDeleting ? "Deleting..." : "Delete account"}
             </Button>
           </div>
         </form>

@@ -9,9 +9,11 @@ from app.dependencies.auth import get_current_seller
 from app.dependencies.db import get_db
 from app.models.seller import Seller
 from app.schemas.auth import (
+    DeleteAccountResponse,
     LoginResponse,
     RegisterResponse,
     SellerCreate,
+    SellerDeleteRequest,
     SellerLogin,
     SellerProfileUpdate,
     SellerResponse,
@@ -69,3 +71,21 @@ def update_profile(
     service = AuthService(db)
     seller = service.update_seller_profile(current_seller, payload)
     return seller
+
+
+@router.post("/delete-account", response_model=DeleteAccountResponse)
+def delete_account(
+    payload: SellerDeleteRequest,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> DeleteAccountResponse:
+    service = AuthService(db)
+    try:
+        service.delete_seller_account(current_seller, payload.password)
+    except InvalidCredentialsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    return DeleteAccountResponse()
