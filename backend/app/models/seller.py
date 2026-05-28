@@ -13,6 +13,10 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.scrape_run import ScrapeRun
     from app.models.product import Product
+    from app.models.alert import Alert
+    from app.models.alert_delivery_log import AlertDeliveryLog
+    from app.models.telegram_connection import SellerTelegramConnection
+    from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
 
 
 class Seller(Base):
@@ -46,4 +50,21 @@ class Seller(Base):
     scrape_runs: Mapped[list["ScrapeRun"]] = relationship(
         back_populates="seller",
         cascade="all, delete-orphan",
+    )
+    alerts: Mapped[list["Alert"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    alert_delivery_logs: Mapped[list["AlertDeliveryLog"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    snapshot_logs: Mapped[list["TelegramProductSnapshotLog"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    telegram_connection: Mapped["SellerTelegramConnection | None"] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+        uselist=False,
     )

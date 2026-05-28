@@ -5,4 +5,5 @@ export type NavItem = {
   path: string
   icon: LucideIcon
   description?: string
+  comingSoon?: boolean
 }

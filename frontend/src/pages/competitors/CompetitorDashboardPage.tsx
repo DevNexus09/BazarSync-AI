@@ -1,5 +1,6 @@
 import axios from "axios"
 import { useEffect, useMemo, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { InlineAlert } from "@/components/common/inline-alert"
 import { PageHeader } from "@/components/common/page-header"
@@ -14,8 +15,9 @@ import { EmptyState } from "./components/EmptyState"
 import { ErrorState } from "./components/ErrorState"
 import { LoadingState } from "./components/LoadingState"
 import { RunScraperButton } from "./components/RunScraperButton"
-import { useCompetitors } from "./hooks/useCompetitors"
+import { competitorsQueryKey, useCompetitors } from "./hooks/useCompetitors"
 import { useRunScraper } from "./hooks/useRunScraper"
+import { useScrapeRunStatus } from "./hooks/useScrapeRunStatus"
 
 const getAuthAwareMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -31,6 +33,8 @@ const isInStock = (status: string) => {
 
 export default function CompetitorDashboardPage() {
   const [selectedProductId, setSelectedProductId] = useState("")
+  const [activeScrapeRunId, setActiveScrapeRunId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   const {
     data: products,
@@ -39,7 +43,19 @@ export default function CompetitorDashboardPage() {
     error: productsError,
   } = useProducts()
 
-  const activeProductId = selectedProductId || products?.[0]?.id || ""
+  const activeProductId = useMemo(() => {
+    if (!products || products.length === 0) {
+      return ""
+    }
+
+    if (selectedProductId) {
+      return products.some((product) => product.id === selectedProductId)
+        ? selectedProductId
+        : ""
+    }
+
+    return products.length === 1 ? products[0].id : ""
+  }, [products, selectedProductId])
   const selectedProduct = products?.find(
     (product) => product.id === activeProductId
   )
@@ -53,21 +69,45 @@ export default function CompetitorDashboardPage() {
   } = useCompetitors(activeProductId || null)
 
   const runScraper = useRunScraper(activeProductId || null)
+  const scrapeRunStatus = useScrapeRunStatus(
+    activeProductId ? activeScrapeRunId : null
+  )
 
   useEffect(() => {
     runScraper.reset()
   }, [activeProductId, runScraper])
+
+  useEffect(() => {
+    if (!activeProductId) {
+      return
+    }
+
+    if (scrapeRunStatus.data?.status === "completed") {
+      queryClient.invalidateQueries({
+        queryKey: competitorsQueryKey(activeProductId),
+      })
+    }
+  }, [activeProductId, queryClient, scrapeRunStatus.data?.status])
+
+  const scraperRunFailure =
+    scrapeRunStatus.data?.status === "failed"
+      ? scrapeRunStatus.data?.error_message || "Scraper failed. Please try again."
+      : null
 
   const scraperError = runScraper.isError
     ? getAuthAwareMessage(
         runScraper.error,
         "Scraper failed to start. Please try again."
       )
-    : null
+    : scraperRunFailure
 
-  const scraperSuccess = runScraper.isSuccess
-    ? runScraper.data?.message ?? "Scraper run queued."
-    : null
+  const scraperSuccess = scrapeRunStatus.data?.status === "running"
+    ? "Scraper running. Fetching fresh competitor data..."
+    : scrapeRunStatus.data?.status === "completed"
+      ? "Scraper completed. Refreshing results..."
+      : runScraper.isSuccess
+        ? `Scraper queued for ${runScraper.data?.product_title ?? "selected product"}.`
+        : null
 
   const competitorSummary = useMemo(() => {
     if (!competitors || competitors.length === 0) {
@@ -125,6 +165,7 @@ export default function CompetitorDashboardPage() {
   const hasProducts = (products?.length ?? 0) > 0
   const hasCompetitors = (competitors?.length ?? 0) > 0
   const canRunScraper = Boolean(activeProductId)
+  const isScraperBusy = runScraper.isPending || scrapeRunStatus.data?.status === "running"
 
   return (
     <div className="space-y-6">
@@ -145,8 +186,14 @@ export default function CompetitorDashboardPage() {
               </p>
             </div>
             <RunScraperButton
-              onRun={() => runScraper.mutate()}
-              isRunning={runScraper.isPending}
+              onRun={() =>
+                runScraper.mutate(undefined, {
+                  onSuccess: (data) => {
+                    setActiveScrapeRunId(data.scrape_run_id)
+                  },
+                })
+              }
+              isRunning={isScraperBusy}
               disabled={!canRunScraper}
               statusMessage={scraperSuccess}
               errorMessage={scraperError}
@@ -165,10 +212,18 @@ export default function CompetitorDashboardPage() {
                 <select
                   id="competitor-product"
                   value={activeProductId}
-                  onChange={(event) => setSelectedProductId(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedProductId(event.target.value)
+                    setActiveScrapeRunId(null)
+                  }}
                   className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   disabled={isProductsLoading}
                 >
+                  {products && products.length > 1 ? (
+                    <option value="" disabled>
+                      Select a product
+                    </option>
+                  ) : null}
                   {products?.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.title}
@@ -179,7 +234,10 @@ export default function CompetitorDashboardPage() {
                 <Input
                   id="competitor-product"
                   value={selectedProductId}
-                  onChange={(event) => setSelectedProductId(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedProductId(event.target.value)
+                    setActiveScrapeRunId(null)
+                  }}
                   placeholder="Enter product id"
                   disabled={isProductsLoading}
                 />

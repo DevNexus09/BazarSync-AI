@@ -49,6 +49,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.product import Product
+    from app.models.alert import Alert
 
 
 class RecommendationAction(str, Enum):
@@ -118,6 +119,7 @@ class Recommendation(Base):
     )
 
     product: Mapped["Product"] = relationship(back_populates="recommendations")
+    alerts: Mapped[list["Alert"]] = relationship(back_populates="recommendation")
 
     @validates("reasoning_bn")
     def _validate_reasoning(self, _: str, value: str) -> str:

@@ -1,6 +1,7 @@
 import apiClient from "@/api/client"
 import type {
   AuthResponse,
+  DeleteAccountInput,
   LoginInput,
   ProfileInput,
   RegisterInput,
@@ -94,4 +95,15 @@ export async function updateProfile(input: ProfileInput): Promise<User> {
   }
   const { data } = await apiClient.patch<ApiSeller>("/auth/profile", payload)
   return mapUser(data)
+}
+
+type ApiDeleteAccountPayload = {
+  password: string
+}
+
+export async function deleteAccount(input: DeleteAccountInput): Promise<void> {
+  const payload: ApiDeleteAccountPayload = {
+    password: input.password,
+  }
+  await apiClient.post("/auth/delete-account", payload)
 }

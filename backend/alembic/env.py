@@ -3,19 +3,27 @@ import os
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+from dotenv import load_dotenv
 
 # Import your SQLAlchemy Base
 from app.db.base import Base
 
 # Import ALL models so Alembic can detect them
-from app.models.seller import Seller
-from app.models.product import Product
-from app.models.scrape_run import ScrapeRun
+from app.models.alert import Alert
+from app.models.alert_delivery_log import AlertDeliveryLog
 from app.models.competitor import Competitor
 from app.models.price_history import PriceHistory
+from app.models.product import Product
+from app.models.recommendation import Recommendation
+from app.models.scrape_run import ScrapeRun
+from app.models.seller import Seller
+from app.models.telegram_connection import SellerTelegramConnection
+from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
 
 # Alembic Config object
 config = context.config
+
+load_dotenv()
 
 # Load DATABASE_URL from environment variable
 database_url = os.getenv("DATABASE_URL")
@@ -84,10 +92,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-
-import os
-
-config.set_main_option(
-    "sqlalchemy.url",
-    os.getenv("DATABASE_URL")
-)

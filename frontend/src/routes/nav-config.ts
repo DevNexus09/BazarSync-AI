@@ -1,9 +1,10 @@
 import {
   Activity,
-  Bell,
   LayoutDashboard,
   LineChart,
+  MessageCircle,
   Package,
+  Shield,
   Sparkles,
   Users,
 } from "lucide-react"
@@ -16,6 +17,12 @@ export const appNavItems: NavItem[] = [
     path: "/app/dashboard",
     icon: LayoutDashboard,
     description: "Core marketplace pulse",
+  },
+  {
+    label: "War Room",
+    path: "/app/war-room",
+    icon: Shield,
+    description: "Realtime competitor intelligence",
   },
   {
     label: "Products",
@@ -40,17 +47,19 @@ export const appNavItems: NavItem[] = [
     path: "/app/pricing",
     icon: LineChart,
     description: "Price elasticity insights",
+    comingSoon: true,
   },
   {
-    label: "WhatsApp Alerts",
-    path: "/app/alerts",
-    icon: Bell,
-    description: "Seller notifications",
+    label: "Telegram Alerts",
+    path: "/app/telegram-alerts",
+    icon: MessageCircle,
+    description: "BazarSync AI Telegram alerts",
   },
   {
     label: "Realtime Monitoring",
     path: "/app/realtime",
     icon: Activity,
     description: "Live marketplace tracking",
+    comingSoon: true,
   },
 ]

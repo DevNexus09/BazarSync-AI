@@ -1,13 +1,15 @@
 import { useMemo } from "react"
 import { NavLink, useLocation } from "react-router-dom"
 
-import { Button } from "@/components/ui/button"
 import UserMenu from "@/components/app/user-menu"
+import { ComingSoonModal } from "@/components/common/coming-soon-modal"
+import { useComingSoon } from "@/hooks/useComingSoon"
 import { appNavItems } from "@/routes/nav-config"
 import { cn } from "@/lib/utils"
 
 export default function AppHeader() {
   const location = useLocation()
+  const comingSoon = useComingSoon()
 
   const activeItem = useMemo(
     () =>
@@ -28,10 +30,6 @@ export default function AppHeader() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            Connect WhatsApp
-          </Button>
-          <Button size="sm">New alert</Button>
           <UserMenu />
         </div>
       </div>
@@ -40,6 +38,7 @@ export default function AppHeader() {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={(event) => comingSoon.handleNavClick(event, item)}
             className={({ isActive }) =>
               cn(
                 "whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors",
@@ -53,6 +52,7 @@ export default function AppHeader() {
           </NavLink>
         ))}
       </nav>
+      <ComingSoonModal open={comingSoon.open} onClose={comingSoon.onClose} />
     </div>
   )
 }

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_seller
 from app.dependencies.db import get_db
+from app.dependencies.events import get_dashboard_event_emitter
 from app.models.seller import Seller
 from app.schemas.recommendation import (
     RecommendationErrorResponse,
@@ -22,6 +23,7 @@ from app.services.recommendation_service import (
     RecommendationPersistenceError,
     RecommendationService,
 )
+from app.services.dashboard.events import DashboardEventEmitter
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
@@ -43,8 +45,9 @@ async def generate_recommendation(
     product_id: UUID,
     db: Session = Depends(get_db),
     current_seller: Seller = Depends(get_current_seller),
+    event_emitter: DashboardEventEmitter = Depends(get_dashboard_event_emitter),
 ) -> RecommendationGenerateResponse | JSONResponse:
-    service = RecommendationService(db)
+    service = RecommendationService(db, event_emitter=event_emitter)
     try:
         return await service.generate_recommendation(
             seller_id=current_seller.id,

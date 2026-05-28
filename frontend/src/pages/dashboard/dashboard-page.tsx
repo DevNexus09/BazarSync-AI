@@ -73,7 +73,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Product command center"
-        description="Monitor products feeding competitor scraping, AI pricing, and WhatsApp alerts."
+        description="Monitor products feeding competitor scraping, AI pricing, and Telegram alerts."
         action={
           <Button size="sm" asChild>
             <Link to="/app/products/new">Add product</Link>

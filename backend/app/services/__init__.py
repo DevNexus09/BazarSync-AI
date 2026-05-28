@@ -11,6 +11,7 @@ from app.services.scrape_service import (
     ScrapeRunNotFoundError,
     ScrapeService,
 )
+from app.services.realtime import RealtimeService
 
 __all__ = [
     "AuthService",
@@ -25,4 +26,5 @@ __all__ = [
     "ScrapePipelineError",
     "ScrapeRunNotFoundError",
     "ScrapeService",
+    "RealtimeService",
 ]

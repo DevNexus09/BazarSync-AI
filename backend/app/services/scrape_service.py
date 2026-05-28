@@ -19,6 +19,8 @@ from app.scraper.constants import SIMILARITY_THRESHOLD
 from app.schemas.scrape import ScrapeRunResponse
 from app.schemas.competitor import CompetitorSnapshot
 from app.services.competitor_service import CompetitorService
+from app.services.dashboard.events import DashboardEvent, DashboardEventEmitter
+from app.websocket.socket_manager import socket_manager
 
 
 class ScrapeProductNotFoundError(Exception):
@@ -38,9 +40,15 @@ class ScrapeRunNotFoundError(Exception):
 
 
 class ScrapeService:
-    def __init__(self, db: Session) -> None:
+    def __init__(
+        self,
+        db: Session,
+        *,
+        event_emitter: DashboardEventEmitter | None = None,
+    ) -> None:
         self._db = db
         self._competitor_service = CompetitorService(db)
+        self._event_emitter = event_emitter or socket_manager
 
     async def run_manual_scrape(
         self,
@@ -101,6 +109,14 @@ class ScrapeService:
 
             self._db.commit()
             self._db.refresh(scrape_run)
+
+            await self._emit_competitor_updated(
+                scrape_run=scrape_run,
+                product=product,
+                matched_results=matched_results,
+                marketplace=scrape_response.marketplace,
+                scraped_at=scrape_response.scraped_at,
+            )
 
             processing_time = time.monotonic() - start
             return ScrapeRunResponse(
@@ -198,9 +214,29 @@ class ScrapeService:
     def _to_snapshot(item: dict) -> CompetitorSnapshot:
         return CompetitorSnapshot(
             competitor_title=item.get("competitor_title") or item.get("product_title") or "",
-            competitor_price=item.get("competitor_price") or item.get("product_price"),
+            competitor_price=item.get("competitor_price")
+            or item.get("product_price"),
             competitor_store=item.get("competitor_store") or item.get("store_name"),
             similarity_score=item.get("similarity_score"),
             stock_status=item.get("stock_status"),
             product_url=item.get("product_url") or item.get("daraz_product_url"),
         )
+
+    async def _emit_competitor_updated(
+        self,
+        *,
+        scrape_run: ScrapeRun,
+        product: Product,
+        matched_results: int,
+        marketplace: str,
+        scraped_at: datetime | None,
+    ) -> None:
+        payload = {
+            "scrape_run_id": str(scrape_run.id),
+            "product_id": str(product.id),
+            "seller_id": str(product.seller_id),
+            "marketplace": marketplace,
+            "matched_results": matched_results,
+            "scraped_at": scraped_at.isoformat() if scraped_at else None,
+        }
+        await self._event_emitter.emit(DashboardEvent.competitor_updated, payload)

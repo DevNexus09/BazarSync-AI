@@ -28,6 +28,23 @@ _PRODUCT_COLUMNS: dict[str, str] = {
     "created_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()",
 }
 
+_SNAPSHOT_LOG_COLUMNS: dict[str, str] = {
+    "id": "UUID PRIMARY KEY",
+    "seller_id": "UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE",
+    "product_id": "UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE",
+    "telegram_chat_id": "VARCHAR(120) NOT NULL",
+    "sent_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+    "status": "VARCHAR(50) NOT NULL",
+    "error_message": "TEXT",
+}
+
+_SNAPSHOT_LOG_INDEXES: dict[str, str] = {
+    "ix_snapshot_logs_seller_id": "seller_id",
+    "ix_snapshot_logs_product_id": "product_id",
+    "ix_snapshot_logs_status": "status",
+    "ix_snapshot_logs_sent_at": "sent_at",
+}
+
 
 def ensure_sellers_profile_columns(engine: Engine) -> None:
     inspector = inspect(engine)
@@ -73,3 +90,23 @@ def ensure_products_table(engine: Engine) -> None:
                 .replace(" PRIMARY KEY", "")
             )
             connection.execute(text(f"ALTER TABLE products ADD COLUMN {name} {safe_type}"))
+
+
+def ensure_snapshot_logs_table(engine: Engine) -> None:
+    inspector = inspect(engine)
+    if "snapshot_logs" not in inspector.get_table_names():
+        columns_sql = ", ".join(
+            f"{name} {sql_type}" for name, sql_type in _SNAPSHOT_LOG_COLUMNS.items()
+        )
+        with engine.begin() as connection:
+            connection.execute(
+                text(f"CREATE TABLE IF NOT EXISTS snapshot_logs ({columns_sql})")
+            )
+            for index_name, column_name in _SNAPSHOT_LOG_INDEXES.items():
+                connection.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS "
+                        f"{index_name} ON snapshot_logs ({column_name})"
+                    )
+                )
+        return

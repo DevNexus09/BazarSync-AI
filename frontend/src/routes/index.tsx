@@ -39,6 +39,12 @@ const router = createBrowserRouter([
                 }),
               },
               {
+                path: "war-room",
+                lazy: async () => ({
+                  Component: (await import("@/pages/war-room-page")).default,
+                }),
+              },
+              {
                 path: "competitors",
                 lazy: async () => ({
                   Component: (await import(
@@ -86,10 +92,14 @@ const router = createBrowserRouter([
                 }),
               },
               {
-                path: "alerts",
+                path: "telegram-alerts",
                 lazy: async () => ({
-                  Component: (await import("@/pages/alerts/alerts-page")).default,
+                  Component: (await import("@/pages/telegram-alerts-page")).default,
                 }),
+              },
+              {
+                path: "alerts",
+                loader: () => redirect("/app/telegram-alerts"),
               },
               {
                 path: "realtime",
