@@ -50,7 +50,11 @@ export function TelegramInstructions({
 
   if (isLoading) {
     return (
+<<<<<<< HEAD
       <div className="glass-panel p-5">
+=======
+      <div className="rounded-xl border bg-background p-5 shadow-sm">
+>>>>>>> develop
         <div className="h-5 w-40 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 space-y-2">
           <div className="h-6 w-full animate-pulse rounded bg-muted/30" />
@@ -75,7 +79,11 @@ export function TelegramInstructions({
   }
 
   return (
+<<<<<<< HEAD
     <div className="glass-panel p-5">
+=======
+    <div className="rounded-xl border bg-background p-5 shadow-sm">
+>>>>>>> develop
       <h3 className="text-sm font-semibold text-foreground">
         Bot connection instructions
       </h3>
@@ -92,7 +100,11 @@ export function TelegramInstructions({
         ].map((step, index) => (
           <div
             key={step}
+<<<<<<< HEAD
             className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2"
+=======
+            className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2"
+>>>>>>> develop
           >
             <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
               {index + 1}
@@ -102,12 +114,21 @@ export function TelegramInstructions({
         ))}
       </div>
 
+<<<<<<< HEAD
       <div className="mt-4 rounded-lg border border-border/60 bg-card/60 p-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
           <CheckCircle2 className="size-4 text-emerald-300" />
           Send this command in Telegram
         </div>
         <div className="mt-2 flex flex-col gap-2 rounded-md border border-border/60 bg-background/60 p-3">
+=======
+      <div className="mt-4 rounded-lg border bg-muted/20 p-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+          <CheckCircle2 className="size-4 text-emerald-500" />
+          Send this command in Telegram
+        </div>
+        <div className="mt-2 flex flex-col gap-2 rounded-md border bg-background p-3">
+>>>>>>> develop
           <code className="text-xs text-foreground">{command}</code>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="xs" onClick={handleCopy}>

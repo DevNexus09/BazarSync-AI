@@ -16,10 +16,17 @@ type TelegramAlertHistoryProps = {
 }
 
 const statusStyles: Record<string, string> = {
+<<<<<<< HEAD
   delivered: "bg-emerald-500/15 text-emerald-300",
   failed: "bg-rose-500/15 text-rose-300",
   pending: "bg-amber-500/15 text-amber-300",
   duplicate: "bg-muted/60 text-muted-foreground",
+=======
+  delivered: "bg-emerald-100 text-emerald-700",
+  failed: "bg-rose-100 text-rose-700",
+  pending: "bg-amber-100 text-amber-700",
+  duplicate: "bg-muted text-muted-foreground",
+>>>>>>> develop
 }
 
 const toTitleCase = (value: string) =>
@@ -36,7 +43,11 @@ export function TelegramAlertHistory({
 }: TelegramAlertHistoryProps) {
   if (isLoading) {
     return (
+<<<<<<< HEAD
       <div className="glass-panel p-5">
+=======
+      <div className="rounded-xl border bg-background p-5 shadow-sm">
+>>>>>>> develop
         <div className="h-5 w-40 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 space-y-2">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -65,7 +76,11 @@ export function TelegramAlertHistory({
   }
 
   return (
+<<<<<<< HEAD
     <div className="glass-panel p-5">
+=======
+    <div className="rounded-xl border bg-background p-5 shadow-sm">
+>>>>>>> develop
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
@@ -85,9 +100,15 @@ export function TelegramAlertHistory({
           No Telegram alerts sent yet. Alerts will appear here once delivery starts.
         </div>
       ) : (
+<<<<<<< HEAD
         <div className="mt-4 overflow-x-auto rounded-lg border border-border/60">
           <div className="min-w-[720px]">
             <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.9fr] gap-2 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
+=======
+        <div className="mt-4 overflow-x-auto rounded-lg border">
+          <div className="min-w-[720px]">
+            <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.9fr] gap-2 bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
+>>>>>>> develop
               <span>Alert Type</span>
               <span>Product</span>
               <span>Action</span>
@@ -97,7 +118,11 @@ export function TelegramAlertHistory({
             {alerts.map((alert) => (
               <div
                 key={alert.id}
+<<<<<<< HEAD
                 className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.9fr] gap-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground"
+=======
+                className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.9fr] gap-2 border-t px-4 py-3 text-xs text-muted-foreground"
+>>>>>>> develop
               >
                 <span className="font-semibold text-foreground">
                   {toTitleCase(alert.alertType)}

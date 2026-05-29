@@ -4,6 +4,7 @@ import {
   LineChart,
   MessageCircle,
   Package,
+  Shield,
   Sparkles,
   Settings,
   Users,
@@ -17,6 +18,12 @@ export const appNavItems: NavItem[] = [
     path: "/app/dashboard",
     icon: LayoutDashboard,
     description: "AI operations center",
+  },
+  {
+    label: "War Room",
+    path: "/app/war-room",
+    icon: Shield,
+    description: "Realtime competitor intelligence",
   },
   {
     label: "Products",
@@ -37,6 +44,7 @@ export const appNavItems: NavItem[] = [
     description: "Next-best actions",
   },
   {
+<<<<<<< HEAD
     label: "Telegram Alerts",
     path: "/app/telegram-alerts",
     icon: MessageCircle,
@@ -48,6 +56,19 @@ export const appNavItems: NavItem[] = [
     icon: LineChart,
     description: "Market analytics suite",
     comingSoon: true,
+=======
+    label: "Pricing Analytics",
+    path: "/app/pricing",
+    icon: LineChart,
+    description: "Price elasticity insights",
+    comingSoon: true,
+  },
+  {
+    label: "Telegram Alerts",
+    path: "/app/telegram-alerts",
+    icon: MessageCircle,
+    description: "BazarSync AI Telegram alerts",
+>>>>>>> develop
   },
   {
     label: "Realtime Monitoring",
@@ -55,11 +76,14 @@ export const appNavItems: NavItem[] = [
     icon: Activity,
     description: "Live marketplace tracking",
     comingSoon: true,
+<<<<<<< HEAD
   },
   {
     label: "Settings",
     path: "/app/profile",
     icon: Settings,
     description: "Account preferences",
+=======
+>>>>>>> develop
   },
 ]

@@ -40,7 +40,11 @@ export function ComingSoonModal({ open, onClose, className }: ComingSoonModalPro
         aria-modal="true"
         aria-label="Coming Soon"
         className={cn(
+<<<<<<< HEAD
           "relative w-full max-w-md rounded-2xl border border-border/70 bg-card/80 p-6 shadow-[0_0_0_1px_rgba(59,130,246,0.2),_0_24px_60px_rgba(4,8,16,0.6)] backdrop-blur",
+=======
+          "relative w-full max-w-md rounded-2xl border bg-background p-6 shadow-xl",
+>>>>>>> develop
           "animate-in fade-in zoom-in-95",
           className
         )}
@@ -62,7 +66,12 @@ export function ComingSoonModal({ open, onClose, className }: ComingSoonModalPro
           </Button>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
+<<<<<<< HEAD
           Advanced realtime intelligence modules are under development.
+=======
+          This module is currently under development and will be available in a
+          future release of BazarSync AI.
+>>>>>>> develop
         </p>
         <div className="mt-5 inline-flex items-center rounded-full border border-dashed px-3 py-1 text-xs font-semibold text-muted-foreground">
           Coming Soon

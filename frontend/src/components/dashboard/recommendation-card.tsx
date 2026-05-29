@@ -14,6 +14,7 @@ type RecommendationCardProps = {
 }
 
 const priorityStyles: Record<RecommendationPriority, string> = {
+<<<<<<< HEAD
   [RecommendationPriority.Low]: "bg-muted/60 text-muted-foreground",
   [RecommendationPriority.Medium]: "bg-amber-500/15 text-amber-300",
   [RecommendationPriority.High]: "bg-rose-500/15 text-rose-300",
@@ -25,6 +26,19 @@ const statusStyles: Record<RecommendationStatus, string> = {
   [RecommendationStatus.Reviewed]: "bg-sky-500/15 text-sky-300",
   [RecommendationStatus.Implemented]: "bg-indigo-500/15 text-indigo-300",
   [RecommendationStatus.Dismissed]: "bg-muted/60 text-muted-foreground",
+=======
+  [RecommendationPriority.Low]: "bg-muted text-muted-foreground",
+  [RecommendationPriority.Medium]: "bg-amber-100 text-amber-700",
+  [RecommendationPriority.High]: "bg-rose-100 text-rose-700",
+  [RecommendationPriority.Critical]: "bg-rose-200 text-rose-800",
+}
+
+const statusStyles: Record<RecommendationStatus, string> = {
+  [RecommendationStatus.New]: "bg-emerald-100 text-emerald-700",
+  [RecommendationStatus.Reviewed]: "bg-blue-100 text-blue-700",
+  [RecommendationStatus.Implemented]: "bg-indigo-100 text-indigo-700",
+  [RecommendationStatus.Dismissed]: "bg-muted text-muted-foreground",
+>>>>>>> develop
 }
 
 const actionLabels: Record<RecommendationAction, string> = {
@@ -47,7 +61,11 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       : recommendation.expectedLift
 
   return (
+<<<<<<< HEAD
     <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.15)]">
+=======
+    <div className="rounded-xl border bg-background p-4 shadow-sm">
+>>>>>>> develop
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground">
@@ -60,7 +78,11 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
             {recommendation.summary}
           </p>
         </div>
+<<<<<<< HEAD
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+=======
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+>>>>>>> develop
           <Sparkles className="size-4" />
         </div>
       </div>

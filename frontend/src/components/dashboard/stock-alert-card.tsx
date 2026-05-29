@@ -33,10 +33,17 @@ const severityIcons = {
 }
 
 const severityTone = {
+<<<<<<< HEAD
   [AlertSeverity.Low]: "text-emerald-300",
   [AlertSeverity.Medium]: "text-amber-300",
   [AlertSeverity.High]: "text-rose-300",
   [AlertSeverity.Critical]: "text-rose-200",
+=======
+  [AlertSeverity.Low]: "text-emerald-600",
+  [AlertSeverity.Medium]: "text-amber-600",
+  [AlertSeverity.High]: "text-rose-600",
+  [AlertSeverity.Critical]: "text-rose-700",
+>>>>>>> develop
 }
 
 const severityLabel: Record<AlertSeverity, string> = {
@@ -54,7 +61,11 @@ export function StockAlertCard({
 }: StockAlertCardProps) {
   if (isLoading) {
     return (
+<<<<<<< HEAD
       <div className="glass-panel p-4">
+=======
+      <div className="rounded-xl border bg-background p-4 shadow-sm">
+>>>>>>> develop
         <div className="h-5 w-32 animate-pulse rounded bg-muted/60" />
         <div className="mt-3 space-y-2">
           {Array.from({ length: 3 }).map((_, index) => (
@@ -112,7 +123,11 @@ export function StockAlertCard({
   ]
 
   return (
+<<<<<<< HEAD
     <div className="glass-panel p-4">
+=======
+    <div className="rounded-xl border bg-background p-4 shadow-sm">
+>>>>>>> develop
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
@@ -135,7 +150,11 @@ export function StockAlertCard({
               <BarChart data={chartData}>
                 <XAxis dataKey="name" tickLine={false} axisLine={false} />
                 <Tooltip cursor={{ fill: "transparent" }} />
+<<<<<<< HEAD
                 <Bar dataKey="count" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+=======
+                <Bar dataKey="count" fill="#6366F1" radius={[6, 6, 0, 0]} />
+>>>>>>> develop
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -145,7 +164,11 @@ export function StockAlertCard({
               return (
                 <div
                   key={alert.id}
+<<<<<<< HEAD
                   className="rounded-lg border border-border/60 bg-card/60 p-3"
+=======
+                  className="rounded-lg border bg-muted/20 p-3"
+>>>>>>> develop
                 >
                   <div className="flex items-start gap-2">
                     <Icon

@@ -71,6 +71,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+<<<<<<< HEAD
       {summary.isError && !summary.data ? (
         <ErrorState
           title="AI Operations Center unavailable"
@@ -78,6 +79,105 @@ export default function DashboardPage() {
           action={
             <Button variant="outline" size="sm" onClick={() => summary.refetch()}>
               Retry
+=======
+      <PageHeader
+        title="Product command center"
+        description="Monitor products feeding competitor scraping, AI pricing, and Telegram alerts."
+        action={
+          <Button size="sm" asChild>
+            <Link to="/app/products/new">Add product</Link>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border bg-background p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Total products</p>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {formatNumber(totalProducts)}
+          </div>
+        </div>
+        <div className="rounded-xl border bg-background p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Low stock items</p>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {formatNumber(lowStockCount)}
+          </div>
+        </div>
+        <div className="rounded-xl border bg-background p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Average margin</p>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {formatPercent(averageMargin)}
+          </div>
+        </div>
+        <div className="rounded-xl border bg-background p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Potential profit</p>
+          <div className="mt-2 text-2xl font-semibold text-foreground">
+            {formatCurrency(potentialProfit)}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-xl border bg-background p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">
+              Products needing attention
+            </h3>
+            {isFetching ? (
+              <span className="text-xs text-muted-foreground">Updating...</span>
+            ) : null}
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Low stock or margin risks that could impact pricing alerts.
+          </p>
+          {attentionList.length === 0 ? (
+            <div className="mt-4 rounded-lg border border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">
+              All products are healthy. You’re ready for competitor scraping.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {attentionList.map((product) => {
+                const actualMargin = getActualMargin(product)
+                const isLowStock =
+                  product.stockQuantity <= LOW_STOCK_THRESHOLD
+                const isBelowMargin = actualMargin < product.minimumMargin
+                return (
+                  <div
+                    key={product.id}
+                    className="rounded-lg border border-dashed bg-muted/40 p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">
+                        {product.title}
+                      </p>
+                      <span
+                        className={cn(
+                          "text-xs font-semibold",
+                          isBelowMargin ? "text-rose-600" : "text-emerald-600"
+                        )}
+                      >
+                        {formatPercent(actualMargin)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {isLowStock
+                        ? `Stock at ${formatNumber(product.stockQuantity)} units.`
+                        : "Margin below minimum threshold."}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border bg-background p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">
+              Recently added
+            </h3>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/app/products">View all</Link>
+>>>>>>> develop
             </Button>
           }
         />

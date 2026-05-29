@@ -29,6 +29,7 @@ type CompetitorTableProps = {
 }
 
 const stockTone: Record<StockStatus, string> = {
+<<<<<<< HEAD
   [StockStatus.InStock]: "bg-emerald-500/15 text-emerald-300",
   [StockStatus.LowStock]: "bg-amber-500/15 text-amber-300",
   [StockStatus.OutOfStock]: "bg-rose-500/15 text-rose-300",
@@ -37,6 +38,16 @@ const stockTone: Record<StockStatus, string> = {
 const trendTone: Record<CompetitorTrend, string> = {
   [CompetitorTrend.Up]: "text-rose-300",
   [CompetitorTrend.Down]: "text-emerald-300",
+=======
+  [StockStatus.InStock]: "bg-emerald-100 text-emerald-700",
+  [StockStatus.LowStock]: "bg-amber-100 text-amber-700",
+  [StockStatus.OutOfStock]: "bg-rose-100 text-rose-700",
+}
+
+const trendTone: Record<CompetitorTrend, string> = {
+  [CompetitorTrend.Up]: "text-rose-600",
+  [CompetitorTrend.Down]: "text-emerald-600",
+>>>>>>> develop
   [CompetitorTrend.Flat]: "text-muted-foreground",
 }
 
@@ -187,7 +198,11 @@ export function CompetitorTable({
 
   if (isLoading) {
     return (
+<<<<<<< HEAD
       <div className="glass-panel p-4">
+=======
+      <div className="rounded-xl border bg-background p-4 shadow-sm">
+>>>>>>> develop
         <div className="h-5 w-40 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
@@ -216,7 +231,11 @@ export function CompetitorTable({
   }
 
   return (
+<<<<<<< HEAD
     <div className="glass-panel p-4">
+=======
+    <div className="rounded-xl border bg-background p-4 shadow-sm">
+>>>>>>> develop
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
@@ -238,9 +257,15 @@ export function CompetitorTable({
         </div>
       </div>
 
+<<<<<<< HEAD
       <div className="mt-4 overflow-hidden rounded-lg border border-border/60">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
+=======
+      <div className="mt-4 overflow-hidden rounded-lg border">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+>>>>>>> develop
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -291,8 +316,13 @@ export function CompetitorTable({
                   <tr
                     key={row.id}
                     className={cn(
+<<<<<<< HEAD
                       "border-t border-border/60",
                       isCritical ? "bg-rose-500/10" : "bg-transparent"
+=======
+                      "border-t",
+                      isCritical ? "bg-rose-50/60" : "bg-background"
+>>>>>>> develop
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (

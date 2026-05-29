@@ -41,7 +41,13 @@ const router = createBrowserRouter([
               },
               {
                 path: "war-room",
+<<<<<<< HEAD
                 loader: () => redirect("/app/dashboard"),
+=======
+                lazy: async () => ({
+                  Component: (await import("@/pages/war-room-page")).default,
+                }),
+>>>>>>> develop
               },
               {
                 path: "competitors",
@@ -91,10 +97,13 @@ const router = createBrowserRouter([
                 }),
               },
               {
+<<<<<<< HEAD
                 path: "pricing",
                 loader: () => redirect("/app/analytics"),
               },
               {
+=======
+>>>>>>> develop
                 path: "telegram-alerts",
                 lazy: async () => ({
                   Component: (await import("@/pages/telegram-alerts-page")).default,

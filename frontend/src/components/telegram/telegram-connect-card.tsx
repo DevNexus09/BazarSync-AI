@@ -51,7 +51,11 @@ export function TelegramConnectCard({
   const isConnected = status?.isConnected ?? false
 
   return (
+<<<<<<< HEAD
     <div className="glass-panel p-5">
+=======
+    <div className="rounded-xl border bg-background p-5 shadow-sm">
+>>>>>>> develop
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
@@ -89,7 +93,11 @@ export function TelegramConnectCard({
           </span>
         </div>
         {errorMessage ? (
+<<<<<<< HEAD
           <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200">
+=======
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+>>>>>>> develop
             {errorMessage}
           </div>
         ) : null}
