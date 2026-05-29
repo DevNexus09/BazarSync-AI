@@ -1,41 +1,21 @@
-import { Button } from "@/components/ui/button"
-import { PageHeader } from "@/components/common/page-header"
-
-const monitoringTiles = [
-  {
-    title: "Live category heatmap",
-    description: "See which categories are surging in real time.",
-  },
-  {
-    title: "Order velocity",
-    description: "Track orders per minute for top-performing SKUs.",
-  },
-  {
-    title: "Seller sentiment",
-    description: "Monitor review shifts and chat feedback continuously.",
-  },
-]
+import { Activity } from "lucide-react"
 
 export default function RealtimePage() {
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Realtime monitoring"
-        description="Live visibility into demand, pricing, and seller signals."
-        action={<Button size="sm">Start monitoring</Button>}
-      />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {monitoringTiles.map((item) => (
-          <div key={item.title} className="rounded-xl border bg-background p-4">
-            <h3 className="text-base font-semibold text-foreground">
-              {item.title}
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        ))}
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="glass-panel w-full max-w-lg p-8 text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-[0_0_18px_rgba(59,130,246,0.35)]">
+          <Activity className="size-6" />
+        </div>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+          Coming Soon
+        </p>
+        <h1 className="heading-font mt-2 text-2xl font-semibold text-foreground">
+          Realtime Monitoring
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Advanced realtime intelligence modules are under development.
+        </p>
       </div>
     </div>
   )

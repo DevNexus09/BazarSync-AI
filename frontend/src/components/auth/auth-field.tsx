@@ -29,7 +29,7 @@ export function AuthField({
 }: AuthFieldProps) {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground" htmlFor={id}>
+      <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground" htmlFor={id}>
         {label}
       </label>
       <Input

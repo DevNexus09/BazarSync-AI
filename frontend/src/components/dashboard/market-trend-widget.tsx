@@ -27,7 +27,7 @@ export function MarketTrendWidget({
 }: MarketTrendWidgetProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
+      <div className="glass-panel p-4">
         <div className="h-5 w-32 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 h-40 animate-pulse rounded-lg bg-muted/30" />
       </div>
@@ -50,7 +50,7 @@ export function MarketTrendWidget({
 
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
+      <div className="glass-panel p-4">
         <h3 className="text-sm font-semibold text-foreground">Market trends</h3>
         <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-4 text-xs text-muted-foreground">
           Trend signals will appear once market intelligence starts streaming.
@@ -60,7 +60,7 @@ export function MarketTrendWidget({
   }
 
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="glass-panel p-4">
       <h3 className="text-sm font-semibold text-foreground">Market trends</h3>
       <p className="text-xs text-muted-foreground">
         Demand, urgency, and opportunity indices.
@@ -76,7 +76,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="demandIndex"
               name="Demand"
-              stroke="#0EA5E9"
+              stroke="#38BDF8"
               strokeWidth={2}
               dot={false}
             />
@@ -84,7 +84,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="urgencyIndex"
               name="Urgency"
-              stroke="#F97316"
+              stroke="#F59E0B"
               strokeWidth={2}
               dot={false}
             />

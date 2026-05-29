@@ -9,22 +9,22 @@ const statusConfig: Record<
 > = {
   not_connected: {
     label: "Not connected",
-    tone: "bg-muted text-muted-foreground",
+    tone: "bg-muted/60 text-muted-foreground",
     Icon: Clock,
   },
   connecting: {
     label: "Connecting",
-    tone: "bg-amber-100 text-amber-700",
+    tone: "bg-amber-500/15 text-amber-300",
     Icon: Clock,
   },
   connected: {
     label: "Connected",
-    tone: "bg-emerald-100 text-emerald-700",
+    tone: "bg-emerald-500/15 text-emerald-300",
     Icon: CheckCircle2,
   },
   error: {
     label: "Error",
-    tone: "bg-rose-100 text-rose-700",
+    tone: "bg-rose-500/15 text-rose-300",
     Icon: AlertTriangle,
   },
 }

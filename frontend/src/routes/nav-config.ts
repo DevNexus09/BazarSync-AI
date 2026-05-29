@@ -4,8 +4,8 @@ import {
   LineChart,
   MessageCircle,
   Package,
-  Shield,
   Sparkles,
+  Settings,
   Users,
 } from "lucide-react"
 
@@ -13,16 +13,10 @@ import type { NavItem } from "@/types/navigation"
 
 export const appNavItems: NavItem[] = [
   {
-    label: "Overview",
+    label: "Dashboard",
     path: "/app/dashboard",
     icon: LayoutDashboard,
-    description: "Core marketplace pulse",
-  },
-  {
-    label: "War Room",
-    path: "/app/war-room",
-    icon: Shield,
-    description: "Realtime competitor intelligence",
+    description: "AI operations center",
   },
   {
     label: "Products",
@@ -37,17 +31,10 @@ export const appNavItems: NavItem[] = [
     description: "Competitive benchmarking",
   },
   {
-    label: "AI Recommendations",
+    label: "Recommendations",
     path: "/app/recommendations",
     icon: Sparkles,
     description: "Next-best actions",
-  },
-  {
-    label: "Pricing Analytics",
-    path: "/app/pricing",
-    icon: LineChart,
-    description: "Price elasticity insights",
-    comingSoon: true,
   },
   {
     label: "Telegram Alerts",
@@ -56,10 +43,23 @@ export const appNavItems: NavItem[] = [
     description: "BazarSync AI Telegram alerts",
   },
   {
+    label: "Analytics",
+    path: "/app/analytics",
+    icon: LineChart,
+    description: "Market analytics suite",
+    comingSoon: true,
+  },
+  {
     label: "Realtime Monitoring",
     path: "/app/realtime",
     icon: Activity,
     description: "Live marketplace tracking",
     comingSoon: true,
+  },
+  {
+    label: "Settings",
+    path: "/app/profile",
+    icon: Settings,
+    description: "Account preferences",
   },
 ]

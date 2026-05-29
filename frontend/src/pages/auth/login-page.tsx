@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Loader2 } from "lucide-react"
 import { Navigate, useLocation, useNavigate, type Location } from "react-router-dom"
 
 import { AuthField } from "@/components/auth/auth-field"
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = React.useState<
     Partial<Record<keyof LoginInput, string>>
   >({})
+  const [rememberMe, setRememberMe] = React.useState(true)
   const [formValues, setFormValues] = React.useState<LoginInput>({
     email: "",
     password: "",
@@ -113,7 +115,7 @@ export default function LoginPage() {
         />
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <AuthFormAlert message={formError} />
         <AuthField
           id="login-email"
@@ -138,12 +140,31 @@ export default function LoginPage() {
           autoComplete="current-password"
           error={fieldErrors.password}
         />
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              className="size-4 rounded border-border/70 bg-card/60"
+            />
+            Remember me
+          </label>
+          <span className="text-muted-foreground">Forgot password?</span>
+        </div>
         <Button
           type="submit"
           className="w-full"
           disabled={isAuthenticating}
         >
-          {isAuthenticating ? "Signing in..." : "Sign in"}
+          {isAuthenticating ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            "Sign in"
+          )}
         </Button>
       </form>
     </AuthLayout>

@@ -7,8 +7,8 @@ type OpportunityMetricsPanelProps = {
 }
 
 const trendStyles: Record<KpiTrend, string> = {
-  [KpiTrend.Up]: "text-emerald-600",
-  [KpiTrend.Down]: "text-rose-600",
+  [KpiTrend.Up]: "text-emerald-300",
+  [KpiTrend.Down]: "text-rose-300",
   [KpiTrend.Flat]: "text-muted-foreground",
 }
 
@@ -18,7 +18,7 @@ export function OpportunityMetricsPanel({
 }: OpportunityMetricsPanelProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
+      <div className="glass-panel p-4">
         <div className="h-4 w-28 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, index) => (
@@ -35,7 +35,7 @@ export function OpportunityMetricsPanel({
   const items = metrics ?? []
 
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="glass-panel p-4">
       <h3 className="text-sm font-semibold text-foreground">
         Opportunity metrics
       </h3>
@@ -46,7 +46,10 @@ export function OpportunityMetricsPanel({
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {items.map((metric) => (
-            <div key={metric.id} className="rounded-lg border bg-muted/20 p-3">
+            <div
+              key={metric.id}
+              className="rounded-lg border border-border/60 bg-card/60 p-3"
+            >
               <p className="text-xs text-muted-foreground">{metric.label}</p>
               <p className="mt-2 text-lg font-semibold text-foreground">
                 {metric.value}

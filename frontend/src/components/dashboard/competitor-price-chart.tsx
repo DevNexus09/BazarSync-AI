@@ -28,7 +28,7 @@ export function CompetitorPriceChart({
 }: CompetitorPriceChartProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
+      <div className="glass-panel p-4">
         <div className="h-5 w-40 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 h-44 animate-pulse rounded-lg bg-muted/30" />
       </div>
@@ -51,7 +51,7 @@ export function CompetitorPriceChart({
 
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
+      <div className="glass-panel p-4">
         <h3 className="text-sm font-semibold text-foreground">
           Competitor price trend
         </h3>
@@ -64,7 +64,7 @@ export function CompetitorPriceChart({
   }
 
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="glass-panel p-4">
       <h3 className="text-sm font-semibold text-foreground">
         Competitor price trend
       </h3>
@@ -90,7 +90,7 @@ export function CompetitorPriceChart({
               type="monotone"
               dataKey="competitorPrice"
               name="Competitor"
-              stroke="#F97316"
+              stroke="#F59E0B"
               strokeWidth={2}
               dot={false}
             />
@@ -98,7 +98,7 @@ export function CompetitorPriceChart({
               type="monotone"
               dataKey="sellerPrice"
               name="Your price"
-              stroke="#6366F1"
+              stroke="#3B82F6"
               strokeWidth={2}
               dot={false}
             />

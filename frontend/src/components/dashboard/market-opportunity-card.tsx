@@ -9,9 +9,9 @@ type MarketOpportunityCardProps = {
 }
 
 const urgencyTone = (score: number) => {
-  if (score >= 80) return "text-rose-600 bg-rose-50"
-  if (score >= 60) return "text-amber-600 bg-amber-50"
-  return "text-emerald-600 bg-emerald-50"
+  if (score >= 80) return "text-rose-300 bg-rose-500/15"
+  if (score >= 60) return "text-amber-300 bg-amber-500/15"
+  return "text-emerald-300 bg-emerald-500/15"
 }
 
 export function MarketOpportunityCard({ opportunity }: MarketOpportunityCardProps) {
@@ -21,7 +21,7 @@ export function MarketOpportunityCard({ opportunity }: MarketOpportunityCardProp
       : opportunity.probability
 
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground">
@@ -34,7 +34,7 @@ export function MarketOpportunityCard({ opportunity }: MarketOpportunityCardProp
             {opportunity.description}
           </p>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Sparkles className="size-4" />
         </div>
       </div>

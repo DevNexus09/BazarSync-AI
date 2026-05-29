@@ -7,6 +7,7 @@ import ProtectedRoute from "@/routes/protected-route"
 import LoginPage from "@/pages/auth/login-page"
 import RegisterPage from "@/pages/auth/register-page"
 import NotFoundPage from "@/pages/not-found"
+import LandingPage from "@/pages/landing/landing-page"
 
 const router = createBrowserRouter([
   {
@@ -16,7 +17,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        loader: () => redirect("/app/dashboard"),
+        Component: LandingPage,
       },
       { path: "login", Component: LoginPage },
       { path: "register", Component: RegisterPage },
@@ -40,9 +41,7 @@ const router = createBrowserRouter([
               },
               {
                 path: "war-room",
-                lazy: async () => ({
-                  Component: (await import("@/pages/war-room-page")).default,
-                }),
+                loader: () => redirect("/app/dashboard"),
               },
               {
                 path: "competitors",
@@ -85,11 +84,15 @@ const router = createBrowserRouter([
                 }),
               },
               {
-                path: "pricing",
+                path: "analytics",
                 lazy: async () => ({
-                  Component: (await import("@/pages/pricing/pricing-page"))
+                  Component: (await import("@/pages/analytics/analytics-page"))
                     .default,
                 }),
+              },
+              {
+                path: "pricing",
+                loader: () => redirect("/app/analytics"),
               },
               {
                 path: "telegram-alerts",

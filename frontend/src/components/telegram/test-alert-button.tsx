@@ -41,7 +41,7 @@ export function TestAlertButton({ enabled }: TestAlertButtonProps) {
   }, [toast])
 
   return (
-    <div className="rounded-xl border bg-background p-5 shadow-sm">
+    <div className="glass-panel p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Test alert</h3>
@@ -73,8 +73,8 @@ export function TestAlertButton({ enabled }: TestAlertButtonProps) {
           className={cn(
             "mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
             toast.tone === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-rose-200 bg-rose-50 text-rose-700"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+              : "border-rose-500/30 bg-rose-500/10 text-rose-200"
           )}
           role="status"
           aria-live="polite"

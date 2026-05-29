@@ -12,7 +12,7 @@ export function ErrorState({
   action,
 }: ErrorStateProps) {
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-background p-6 text-center">
+  <div className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-card/60 p-6 text-center">
       <div className="text-sm font-semibold text-foreground">{title}</div>
       <div className="text-sm text-muted-foreground">{message}</div>
       {action ? <div>{action}</div> : null}
