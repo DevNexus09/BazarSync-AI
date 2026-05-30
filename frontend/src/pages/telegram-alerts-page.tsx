@@ -1,8 +1,4 @@
 import { useState } from "react"
-<<<<<<< HEAD
-=======
-import { ShieldCheck } from "lucide-react"
->>>>>>> develop
 
 import { PageHeader } from "@/components/common/page-header"
 import { TelegramConnectCard } from "@/components/telegram/telegram-connect-card"
@@ -50,16 +46,12 @@ export default function TelegramAlertsPage() {
         ? "Bot offline"
         : "Bot online"
 
-<<<<<<< HEAD
   const urgencyFeed = alerts.alerts.slice(0, 4)
 
-=======
->>>>>>> develop
   return (
     <div className="space-y-6">
       <PageHeader
         title="Telegram Alerts"
-<<<<<<< HEAD
         description="BazarSync AI bot control center and alert delivery monitoring."
       />
 
@@ -168,23 +160,6 @@ export default function TelegramAlertsPage() {
         </div>
 
         <div className="space-y-6">
-=======
-        description="Manage BazarSync AI Telegram connections and delivery preferences."
-      />
-
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
-          <TelegramConnectCard
-            status={status.data}
-            state={connectionState}
-            isConnecting={connectToken.isPending}
-            isDisconnecting={disconnect.isPending}
-            errorMessage={status.isError ? getErrorMessage(status.error) : null}
-            onConnect={() => connectToken.mutate()}
-            onDisconnect={() => disconnect.mutate()}
-            onShowInstructions={() => setInstructionsOpen(true)}
-          />
->>>>>>> develop
           <TelegramAlertHistory
             alerts={alerts.alerts}
             meta={alerts.meta}
@@ -194,84 +169,7 @@ export default function TelegramAlertsPage() {
             isError={alerts.isError}
             onRetry={() => alerts.refetch()}
           />
-<<<<<<< HEAD
           <ProductSnapshotCard isConnected={isConnected} />
-=======
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-xl border bg-background p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Connection status
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Track your Telegram connection health in real time.
-                </p>
-              </div>
-              <TelegramStatusBadge state={connectionState} />
-            </div>
-            <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-              <div className="flex items-center justify-between">
-                <span>Bot</span>
-                <span className="font-semibold text-foreground">{botUsername}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Health</span>
-                <span className="font-semibold text-foreground">{healthLabel}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Connected since</span>
-                <span className="font-semibold text-foreground">
-                  {status.data?.connectedAt
-                    ? new Date(status.data.connectedAt).toLocaleString()
-                    : "Not connected"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <ProductSnapshotCard isConnected={isConnected} />
-
-          <div className="rounded-xl border bg-background p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <ShieldCheck className="size-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Alert preferences
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Control which alerts are delivered to Telegram. Preferences will be
-                  persisted in a future release.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-3 text-xs text-muted-foreground">
-              {[
-                { id: "pricing-alerts", label: "Pricing and undercut alerts" },
-                { id: "stock-alerts", label: "Stock risk alerts" },
-                { id: "opportunity-alerts", label: "Revenue opportunity alerts" },
-              ].map((item) => (
-                <label
-                  key={item.id}
-                  htmlFor={item.id}
-                  className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2"
-                >
-                  <input
-                    id={item.id}
-                    type="checkbox"
-                    defaultChecked
-                    className="size-4 rounded border-muted"
-                  />
-                  <span>{item.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
->>>>>>> develop
         </div>
       </div>
 

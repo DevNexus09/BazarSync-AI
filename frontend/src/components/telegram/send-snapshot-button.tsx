@@ -21,11 +21,7 @@ export function SendSnapshotButton({
       disabled={disabled || isLoading}
     >
       {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-<<<<<<< HEAD
       {isLoading ? "Sending..." : "Send Telegram Alert"}
-=======
-      {isLoading ? "Sending..." : "Send Snapshot"}
->>>>>>> develop
     </Button>
   )
 }

@@ -20,15 +20,9 @@ const categoryIcons: Record<ActivityItem["category"], typeof Activity> = {
 }
 
 const severityTone: Record<ActivitySeverity, string> = {
-<<<<<<< HEAD
   [ActivitySeverity.Info]: "text-emerald-300",
   [ActivitySeverity.Warning]: "text-amber-300",
   [ActivitySeverity.Critical]: "text-rose-300",
-=======
-  [ActivitySeverity.Info]: "text-emerald-500",
-  [ActivitySeverity.Warning]: "text-amber-500",
-  [ActivitySeverity.Critical]: "text-rose-500",
->>>>>>> develop
 }
 
 export function RealtimeActivityFeed({
@@ -39,11 +33,7 @@ export function RealtimeActivityFeed({
 }: RealtimeActivityFeedProps) {
   if (isLoading) {
     return (
-<<<<<<< HEAD
       <div className="glass-panel p-4">
-=======
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
->>>>>>> develop
         <div className="h-5 w-32 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 space-y-2">
           {Array.from({ length: 4 }).map((_, index) => (
@@ -74,11 +64,7 @@ export function RealtimeActivityFeed({
   const feed = items ?? []
 
   return (
-<<<<<<< HEAD
     <div className="glass-panel p-4">
-=======
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
->>>>>>> develop
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">
           Realtime activity
@@ -98,11 +84,7 @@ export function RealtimeActivityFeed({
             return (
               <div
                 key={item.id}
-<<<<<<< HEAD
                 className="flex items-start gap-3 rounded-lg border border-border/60 bg-card/60 p-3"
-=======
-                className="flex items-start gap-3 rounded-lg border bg-muted/10 p-3"
->>>>>>> develop
               >
                 <Icon
                   className={cn(

@@ -41,11 +41,7 @@ export function LiveStatusIndicator({ status, className }: LiveStatusIndicatorPr
   return (
     <div
       className={cn(
-<<<<<<< HEAD
         "flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-3 py-2 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]",
-=======
-        "flex items-center gap-3 rounded-xl border bg-background px-3 py-2 shadow-sm",
->>>>>>> develop
         className
       )}
       role="status"

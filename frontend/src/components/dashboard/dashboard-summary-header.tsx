@@ -1,18 +1,12 @@
 import { RefreshCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-<<<<<<< HEAD
-=======
 import { LiveStatusIndicator } from "@/components/dashboard/live-status-indicator"
->>>>>>> develop
 import { cn } from "@/lib/utils"
 import {
   KpiTrend,
   type DashboardSummary,
-<<<<<<< HEAD
-=======
   type RealtimeStatus,
->>>>>>> develop
 } from "@/types/dashboard"
 import { formatNumber } from "@/utils/formatters"
 
@@ -20,10 +14,7 @@ type DashboardSummaryHeaderProps = {
   summary?: DashboardSummary
   isLoading: boolean
   isRefreshing: boolean
-<<<<<<< HEAD
-=======
-  realtimeStatus: RealtimeStatus
->>>>>>> develop
+  realtimeStatus?: RealtimeStatus
   onRefresh: () => void
 }
 
@@ -37,19 +28,12 @@ export function DashboardSummaryHeader({
   summary,
   isLoading,
   isRefreshing,
-<<<<<<< HEAD
-=======
   realtimeStatus,
->>>>>>> develop
   onRefresh,
 }: DashboardSummaryHeaderProps) {
   if (isLoading && !summary) {
     return (
-<<<<<<< HEAD
       <div className="glass-panel p-6">
-=======
-      <div className="rounded-2xl border bg-background p-6 shadow-sm">
->>>>>>> develop
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <div className="h-6 w-48 animate-pulse rounded bg-muted/70" />
@@ -102,7 +86,6 @@ export function DashboardSummaryHeader({
         : []
 
   return (
-<<<<<<< HEAD
     <section className="glass-panel p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -114,27 +97,13 @@ export function DashboardSummaryHeader({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Live pricing, urgency, and recommendation signals for BazarSync AI
-=======
-    <section className="rounded-2xl border bg-background p-6 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            War Room
-          </p>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Competitor intelligence command center
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Live pricing, urgency, and recommendation signals for BazarSync-AI
->>>>>>> develop
             sellers.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-<<<<<<< HEAD
-=======
-          <LiveStatusIndicator status={realtimeStatus} />
->>>>>>> develop
+          {realtimeStatus ? (
+            <LiveStatusIndicator status={realtimeStatus} />
+          ) : null}
           <Button variant="outline" size="sm" onClick={onRefresh}>
             <RefreshCcw
               className={cn("size-4", isRefreshing ? "animate-spin" : "")}
@@ -148,11 +117,7 @@ export function DashboardSummaryHeader({
         {metrics.map((metric) => (
           <div
             key={metric.label}
-<<<<<<< HEAD
             className="rounded-xl border border-border/60 bg-card/60 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_0_18px_rgba(59,130,246,0.2)]"
-=======
-            className="rounded-xl border bg-muted/20 p-4"
->>>>>>> develop
           >
             <p className="text-xs text-muted-foreground">{metric.label}</p>
             <div className="mt-2 text-2xl font-semibold text-foreground">

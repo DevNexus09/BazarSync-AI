@@ -17,11 +17,6 @@ import { Button } from "@/components/ui/button"
 import { useAlerts, useResolveAlert } from "@/hooks/useAlerts"
 import { useCompetitors } from "@/hooks/useCompetitors"
 import { useDashboard } from "@/hooks/useDashboard"
-<<<<<<< HEAD
-
-export default function WarRoomPage() {
-  const queryClient = useQueryClient()
-=======
 import { useLiveDashboard } from "@/hooks/useLiveDashboard"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -29,7 +24,6 @@ export default function WarRoomPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const realtimeStatus = useLiveDashboard({ sellerId: user?.id })
->>>>>>> develop
   const {
     summary,
     marketTrends,
@@ -76,13 +70,8 @@ export default function WarRoomPage() {
     <div className="space-y-6">
       {summary.isError && !summary.data ? (
         <ErrorState
-<<<<<<< HEAD
-          title="Operations Center unavailable"
-          message="We couldn't load the operations summary."
-=======
           title="War Room unavailable"
           message="We couldn't load the War Room summary."
->>>>>>> develop
           action={
             <Button variant="outline" size="sm" onClick={() => summary.refetch()}>
               Retry
@@ -94,10 +83,7 @@ export default function WarRoomPage() {
           summary={summary.data}
           isLoading={summary.isLoading}
           isRefreshing={isRefreshing}
-<<<<<<< HEAD
-=======
           realtimeStatus={realtimeStatus}
->>>>>>> develop
           onRefresh={handleRefresh}
         />
       )}

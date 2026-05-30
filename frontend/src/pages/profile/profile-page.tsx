@@ -16,11 +16,8 @@ import { isValidPhone } from "@/utils/validation"
 
 export default function ProfilePage() {
   const { user, updateProfile, isAuthenticating, deleteAccount } = useAuth()
-<<<<<<< HEAD
   const telegram = useTelegramConnection()
   const alerts = useAlerts()
-=======
->>>>>>> develop
   const [formValues, setFormValues] = React.useState<ProfileInput>(() => ({
     fullName: user?.fullName ?? "",
     businessName: user?.businessName ?? "",
@@ -43,7 +40,6 @@ export default function ProfilePage() {
   const [deleteError, setDeleteError] = React.useState<string | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const isSaving = isAuthenticating && !isDeleting
-<<<<<<< HEAD
 
   const telegramState: TelegramConnectionState = telegram.status.isError
     ? "error"
@@ -54,8 +50,6 @@ export default function ProfilePage() {
         : "not_connected"
 
   const activity = (alerts.alertHistory.data ?? []).slice(0, 4)
-=======
->>>>>>> develop
 
   const validateForm = (values: ProfileInput) => {
     const errors: Partial<Record<keyof ProfileInput, string>> = {}
@@ -376,107 +370,6 @@ export default function ProfilePage() {
             Permanently removes your seller profile, products, alerts, and history.
           </p>
         </div>
-<<<<<<< HEAD
-=======
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <AuthFormAlert message={formError} />
-          {successMessage ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {successMessage}
-            </div>
-          ) : null}
-          <div className="grid gap-4 md:grid-cols-2">
-            <AuthField
-              id="profile-full-name"
-              name="fullName"
-              label="Full name"
-              value={formValues.fullName}
-              onChange={handleChange}
-              placeholder="e.g. Ayesha Rahman"
-              error={fieldErrors.fullName}
-            />
-            <AuthField
-              id="profile-business-name"
-              name="businessName"
-              label="Business name"
-              value={formValues.businessName}
-              onChange={handleChange}
-              placeholder="e.g. Dhaka Gadgets"
-              error={fieldErrors.businessName}
-            />
-            <AuthField
-              id="profile-industry"
-              name="industry"
-              label="Industry"
-              value={formValues.industry}
-              onChange={handleChange}
-              placeholder="e.g. Consumer electronics"
-              error={fieldErrors.industry}
-            />
-            <AuthField
-              id="profile-website"
-              name="website"
-              label="Website"
-              value={formValues.website}
-              onChange={handleChange}
-              placeholder="https://example.com"
-              error={fieldErrors.website}
-            />
-            <div className="md:col-span-2">
-              <AuthField
-                id="profile-address"
-                name="addressLine"
-                label="Business address"
-                value={formValues.addressLine}
-                onChange={handleChange}
-                placeholder="Street address"
-                error={fieldErrors.addressLine}
-              />
-            </div>
-            <AuthField
-              id="profile-city"
-              name="city"
-              label="City"
-              value={formValues.city}
-              onChange={handleChange}
-              placeholder="e.g. Dhaka"
-              error={fieldErrors.city}
-            />
-            <AuthField
-              id="profile-country"
-              name="country"
-              label="Country"
-              value={formValues.country}
-              onChange={handleChange}
-              placeholder="e.g. Bangladesh"
-              error={fieldErrors.country}
-            />
-            <AuthField
-              id="profile-phone"
-              name="phone"
-              type="tel"
-              label="Phone number"
-              value={formValues.phone}
-              onChange={handleChange}
-              placeholder="+8801XXXXXXXXX"
-              error={fieldErrors.phone}
-            />
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isAuthenticating}>
-              {isSaving ? "Saving..." : "Save profile"}
-            </Button>
-          </div>
-        </form>
-      </div>
-      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 shadow-sm">
-        <div className="mb-4 space-y-1">
-          <h2 className="text-base font-semibold text-foreground">Delete account</h2>
-          <p className="text-xs text-muted-foreground">
-            Permanently removes your seller profile, products, alerts, and history.
-          </p>
-        </div>
->>>>>>> develop
         <form onSubmit={handleDeleteSubmit} className="space-y-4">
           <AuthFormAlert message={deleteError} />
           <AuthField
