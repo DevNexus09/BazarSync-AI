@@ -6,14 +6,20 @@ import asyncio
 import logging
 import time
 from typing import Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import socketio
 from fastapi import FastAPI
+from jwt import ExpiredSignatureError, InvalidTokenError
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.security import decode_access_token
 from app.core.socketio_config import build_socketio_resources
+from app.db.async_session import AsyncSessionLocal
+from app.models.product import Product
+from app.models.seller import Seller
 from app.websocket.connection_manager import ConnectionManager
 from app.websocket.socket_emitter import SocketEmitter
 from app.websocket.socket_events import (
@@ -30,9 +36,11 @@ from app.websocket.socket_rooms import (
     ACTIVITY_ROOM,
     ALERTS_ROOM,
     DASHBOARD_ROOM,
+    RoomScope,
     RoomSubscriptionRequest,
-    resolve_rooms,
+    resolve_room,
     seller_room,
+    product_room,
 )
 
 
@@ -54,8 +62,10 @@ class RealtimeSocketManager:
         @self._server.event
         async def connect(sid: str, _environ: dict, auth: dict | None) -> bool:
             auth = auth or {}
-            session_id = auth.get("session_id") or str(uuid4())
-            seller_id = auth.get("seller_id")
+            auth_result = await self._authenticate(auth)
+            if not auth_result:
+                return False
+            seller_id, session_id = auth_result
             restored_rooms = await self._connections.register_connection(
                 sid, session_id, seller_id=seller_id
             )
@@ -86,6 +96,14 @@ class RealtimeSocketManager:
         @self._server.on("subscribe_rooms")
         async def subscribe_rooms(sid: str, payload: dict | None) -> None:
             await self._connections.mark_seen(sid)
+            seller_id = await self._connections.get_seller_id(sid)
+            if not seller_id:
+                await self._emit_error(
+                    sid,
+                    code="unauthorized",
+                    message="Authentication required to subscribe to rooms.",
+                )
+                return
             try:
                 request = RoomSubscriptionRequest.model_validate(payload or {})
             except ValidationError as exc:
@@ -96,7 +114,16 @@ class RealtimeSocketManager:
                     details={"error": str(exc)},
                 )
                 return
-            rooms = resolve_rooms(request)
+            rooms, rejected = await self._resolve_authorized_rooms(
+                request, seller_id=seller_id, include_seller_room=True
+            )
+            if rejected:
+                await self._emit_error(
+                    sid,
+                    code="unauthorized_room",
+                    message="One or more requested rooms are not authorized.",
+                    details={"rooms": ",".join(rejected)},
+                )
             for room in rooms:
                 await self._server.enter_room(sid, room)
             active_rooms = await self._connections.add_rooms(sid, rooms)
@@ -106,6 +133,14 @@ class RealtimeSocketManager:
         @self._server.on("unsubscribe_rooms")
         async def unsubscribe_rooms(sid: str, payload: dict | None) -> None:
             await self._connections.mark_seen(sid)
+            seller_id = await self._connections.get_seller_id(sid)
+            if not seller_id:
+                await self._emit_error(
+                    sid,
+                    code="unauthorized",
+                    message="Authentication required to unsubscribe from rooms.",
+                )
+                return
             try:
                 request = RoomSubscriptionRequest.model_validate(payload or {})
             except ValidationError as exc:
@@ -116,7 +151,16 @@ class RealtimeSocketManager:
                     details={"error": str(exc)},
                 )
                 return
-            rooms = resolve_rooms(request)
+            rooms, rejected = await self._resolve_authorized_rooms(
+                request, seller_id=seller_id, include_seller_room=False
+            )
+            if rejected:
+                await self._emit_error(
+                    sid,
+                    code="unauthorized_room",
+                    message="One or more requested rooms are not authorized.",
+                    details={"rooms": ",".join(rejected)},
+                )
             for room in rooms:
                 await self._server.leave_room(sid, room)
             active_rooms = await self._connections.remove_rooms(sid, rooms)
@@ -126,14 +170,8 @@ class RealtimeSocketManager:
         @self._server.on("subscribe_war_room")
         async def subscribe_war_room(sid: str, payload: dict | None) -> None:
             await self._connections.mark_seen(sid)
-            seller_id = None
-            if payload:
-                seller_id = payload.get("sellerId") or payload.get("seller_id")
-            rooms = {
-                DASHBOARD_ROOM,
-                ALERTS_ROOM,
-                ACTIVITY_ROOM,
-            }
+            seller_id = await self._connections.get_seller_id(sid)
+            rooms = {DASHBOARD_ROOM, ALERTS_ROOM, ACTIVITY_ROOM}
             if seller_id:
                 rooms.add(seller_room(seller_id))
             for room in rooms:
@@ -163,6 +201,84 @@ class RealtimeSocketManager:
                 )
             )
             await self._emitter.emit_event(event, to=sid)
+
+    async def _authenticate(self, auth: dict[str, Any]) -> tuple[str, str] | None:
+        token = auth.get("token")
+        if not token:
+            self._logger.warning("socket_auth_missing")
+            return None
+        try:
+            payload = decode_access_token(token)
+        except ExpiredSignatureError:
+            self._logger.warning("socket_auth_expired")
+            return None
+        except InvalidTokenError:
+            self._logger.warning("socket_auth_invalid")
+            return None
+        subject = payload.get("sub")
+        if not subject:
+            self._logger.warning("socket_auth_subject_missing")
+            return None
+        try:
+            seller_uuid = UUID(subject)
+        except ValueError:
+            self._logger.warning("socket_auth_subject_invalid")
+            return None
+        async with AsyncSessionLocal() as session:
+            seller = await session.get(Seller, seller_uuid)
+            if not seller:
+                self._logger.warning("socket_auth_seller_not_found seller_id=%s", seller_uuid)
+                return None
+        session_id = auth.get("session_id") or str(uuid4())
+        return str(seller_uuid), session_id
+
+    async def _resolve_authorized_rooms(
+        self,
+        request: RoomSubscriptionRequest,
+        *,
+        seller_id: str,
+        include_seller_room: bool,
+    ) -> tuple[set[str], list[str]]:
+        rooms: set[str] = set()
+        rejected: list[str] = []
+        if include_seller_room:
+            rooms.add(seller_room(seller_id))
+        for target in request.rooms:
+            if target.scope is RoomScope.SELLER:
+                if target.id and target.id != seller_id:
+                    rejected.append(resolve_room(target) or "seller")
+                    continue
+                rooms.add(seller_room(seller_id))
+                continue
+            if target.scope is RoomScope.PRODUCT:
+                if not target.id:
+                    continue
+                if await self._owns_product(seller_id, target.id):
+                    rooms.add(product_room(target.id))
+                else:
+                    rejected.append(resolve_room(target) or f"product:{target.id}")
+                continue
+            if target.scope in {RoomScope.DASHBOARD, RoomScope.ALERTS, RoomScope.ACTIVITY}:
+                resolved = resolve_room(target)
+                if resolved:
+                    rooms.add(resolved)
+                continue
+            if target.scope is RoomScope.CUSTOM:
+                rejected.append(resolve_room(target) or "custom")
+        return rooms, rejected
+
+    async def _owns_product(self, seller_id: str, product_id: str) -> bool:
+        try:
+            product_uuid = UUID(product_id)
+        except ValueError:
+            return False
+        async with AsyncSessionLocal() as session:
+            stmt = select(Product.id).where(
+                Product.id == product_uuid,
+                Product.seller_id == seller_id,
+            )
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none() is not None
 
     async def start(self) -> None:
         if self._heartbeat_task:

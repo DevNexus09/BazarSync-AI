@@ -9,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.competitor import Competitor
+from app.models.price_history import PriceHistory
 from app.models.product import Product
 from app.models.scrape_run import ScrapeRun
 from app.models.seller import Seller
@@ -19,8 +21,12 @@ from app.scraper.constants import SIMILARITY_THRESHOLD
 from app.schemas.scrape import ScrapeRunResponse
 from app.schemas.competitor import CompetitorSnapshot
 from app.services.competitor_service import CompetitorService
-from app.services.dashboard.events import DashboardEvent, DashboardEventEmitter
-from app.websocket.socket_manager import socket_manager
+from app.services.dashboard.events import DashboardEventEmitter
+from app.services.realtime import RealtimeService
+from app.websocket.socket_events import CompetitorSnapshot as RealtimeCompetitorSnapshot
+from app.websocket.socket_events import CompetitorUpdatedPayload
+from app.websocket.socket_manager import get_socket_emitter
+from app.websocket.socket_rooms import seller_room
 
 
 class ScrapeProductNotFoundError(Exception):
@@ -48,7 +54,8 @@ class ScrapeService:
     ) -> None:
         self._db = db
         self._competitor_service = CompetitorService(db)
-        self._event_emitter = event_emitter or socket_manager
+        self._event_emitter = event_emitter
+        self._realtime: RealtimeService | None = None
 
     async def run_manual_scrape(
         self,
@@ -94,7 +101,7 @@ class ScrapeService:
             matched_results = len(filtered)
             filtered_results = max(0, competitors_found - matched_results)
 
-            self._competitor_service.store_competitors(
+            competitor_rows = self._competitor_service.store_competitors(
                 scrape_run=scrape_run,
                 product=product,
                 marketplace=scrape_response.marketplace,
@@ -113,6 +120,7 @@ class ScrapeService:
             await self._emit_competitor_updated(
                 scrape_run=scrape_run,
                 product=product,
+                competitors=competitor_rows,
                 matched_results=matched_results,
                 marketplace=scrape_response.marketplace,
                 scraped_at=scrape_response.scraped_at,
@@ -227,16 +235,107 @@ class ScrapeService:
         *,
         scrape_run: ScrapeRun,
         product: Product,
+        competitors: list[Competitor],
         matched_results: int,
         marketplace: str,
         scraped_at: datetime | None,
     ) -> None:
-        payload = {
-            "scrape_run_id": str(scrape_run.id),
-            "product_id": str(product.id),
-            "seller_id": str(product.seller_id),
-            "marketplace": marketplace,
-            "matched_results": matched_results,
-            "scraped_at": scraped_at.isoformat() if scraped_at else None,
-        }
-        await self._event_emitter.emit(DashboardEvent.competitor_updated, payload)
+        realtime = self._resolve_realtime()
+        if not realtime:
+            return
+        if not competitors:
+            return
+        primary = self._select_primary_competitor(competitors)
+        if not primary or primary.competitor_price is None:
+            return
+        seller_price = float(product.selling_price)
+        competitor_price = float(primary.competitor_price)
+        price_gap = seller_price - competitor_price
+        trend = self._resolve_price_trend(primary.id)
+        snapshot = RealtimeCompetitorSnapshot(
+            id=primary.id,
+            product=product.title,
+            competitor=primary.competitor_title,
+            competitor_price=competitor_price,
+            seller_price=seller_price,
+            price_gap=price_gap,
+            stock_status=primary.stock_status or "in_stock",
+            urgency_score=_compute_competitor_urgency(
+                price_gap_percent=_compute_price_gap_percent(seller_price, competitor_price),
+                stock_status=primary.stock_status,
+            ),
+            recommendation_action=_recommendation_action_label(seller_price, competitor_price),
+            trend=trend,
+            last_updated=primary.updated_at or scraped_at or datetime.now(timezone.utc),
+            status="active",
+        )
+        payload = CompetitorUpdatedPayload(competitor=snapshot)
+        await realtime.emit_competitor_updated(
+            payload,
+            seller_id=product.seller_id,
+            product_id=product.id,
+            rooms=[seller_room(str(product.seller_id))],
+        )
+
+    def _resolve_realtime(self) -> RealtimeService | None:
+        if self._realtime is not None:
+            return self._realtime
+        try:
+            emitter = get_socket_emitter()
+        except RuntimeError:
+            return None
+        self._realtime = RealtimeService(emitter)
+        return self._realtime
+
+    @staticmethod
+    def _select_primary_competitor(competitors: list[Competitor]) -> Competitor | None:
+        if not competitors:
+            return None
+        return max(
+            competitors,
+            key=lambda item: item.similarity_score or 0.0,
+        )
+
+    def _resolve_price_trend(self, competitor_id: UUID) -> str:
+        stmt = (
+            select(PriceHistory.observed_price)
+            .where(PriceHistory.competitor_id == competitor_id)
+            .order_by(PriceHistory.observed_at.desc())
+            .limit(2)
+        )
+        prices = self._db.execute(stmt).scalars().all()
+        if len(prices) < 2:
+            return "flat"
+        latest, previous = prices[0], prices[1]
+        if latest is None or previous is None:
+            return "flat"
+        if latest > previous:
+            return "up"
+        if latest < previous:
+            return "down"
+        return "flat"
+
+
+def _compute_price_gap_percent(seller_price: float, competitor_price: float) -> float:
+    if competitor_price <= 0:
+        return 0.0
+    return ((seller_price - competitor_price) / competitor_price) * 100.0
+
+
+def _compute_competitor_urgency(
+    *, price_gap_percent: float, stock_status: str | None
+) -> int:
+    base = min(abs(price_gap_percent) * 2, 100)
+    if stock_status == "out_of_stock":
+        return int(max(base, 85))
+    if stock_status == "low_stock":
+        return int(max(base, 65))
+    return int(round(base))
+
+
+def _recommendation_action_label(seller_price: float, competitor_price: float) -> str:
+    if seller_price > competitor_price:
+        return "Lower price"
+    if seller_price < competitor_price:
+        return "Raise price"
+    return "Hold"

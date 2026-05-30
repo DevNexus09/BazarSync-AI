@@ -18,6 +18,7 @@ class DashboardSummaryResponse(BaseModel):
     opportunity_count: int = Field(..., ge=0)
     high_risk_stock_count: int = Field(..., ge=0)
     average_urgency_score: float = Field(..., ge=0, le=100)
+    latest_urgency_score: float = Field(..., ge=0, le=100)
     average_competitor_price_gap: float = Field(..., ge=-100, le=100)
     market_trend_summary: str
     realtime_activity: RealtimeActivityCounters
@@ -32,6 +33,7 @@ class DashboardSummaryResponse(BaseModel):
                     "opportunity_count": 22,
                     "high_risk_stock_count": 4,
                     "average_urgency_score": 58.3,
+                    "latest_urgency_score": 74.2,
                     "average_competitor_price_gap": 6.2,
                     "market_trend_summary": "Moderate volatility with rising competitor pressure.",
                     "realtime_activity": {
