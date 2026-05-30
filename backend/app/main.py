@@ -70,12 +70,15 @@ def create_app() -> FastAPI:
 
     # CORS configuration
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://bazar-sync-ai.vercel.app/",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
     # Global exception handlers
     register_exception_handlers(app)
