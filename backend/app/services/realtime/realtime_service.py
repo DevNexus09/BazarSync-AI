@@ -285,7 +285,9 @@ class RealtimeService:
     def _default_dashboard_rooms(
         self, seller_id: UUID | None, product_id: UUID | None
     ) -> set[str]:
-        rooms = {DASHBOARD_ROOM, ACTIVITY_ROOM}
+        rooms: set[str] = set()
+        if seller_id is None:
+            rooms.update({DASHBOARD_ROOM, ACTIVITY_ROOM})
         if seller_id:
             rooms.add(seller_room(str(seller_id)))
         if product_id:
@@ -295,7 +297,9 @@ class RealtimeService:
     def _default_alert_rooms(
         self, seller_id: UUID | None, product_id: UUID | None
     ) -> set[str]:
-        rooms = {ALERTS_ROOM, ACTIVITY_ROOM, DASHBOARD_ROOM}
+        rooms: set[str] = set()
+        if seller_id is None:
+            rooms.update({ALERTS_ROOM, ACTIVITY_ROOM, DASHBOARD_ROOM})
         if seller_id:
             rooms.add(seller_room(str(seller_id)))
         if product_id:

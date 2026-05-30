@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 
+print("DATABASE_URL =", os.getenv("DATABASE_URL"))
+
 def _split_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 

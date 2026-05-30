@@ -25,13 +25,28 @@ from app.models.competitor import Competitor
 from app.models.product import Product
 from app.models.recommendation import Recommendation, RecommendationAction, RecommendationConfidence
 from app.models.scrape_run import ScrapeRun
+from app.recommendations.opportunity_calculator import OpportunityCalculator, OpportunityInput
 from app.schemas.recommendation import (
     RecommendationAnalyticsResponse,
     RecommendationGenerateResponse,
     RecommendationResponse,
 )
-from app.services.dashboard.events import DashboardEvent, DashboardEventEmitter
-from app.websocket.socket_manager import socket_manager
+from app.schemas.dashboard.summary_schema import DashboardSummaryResponse
+from app.services.dashboard.events import DashboardEventEmitter
+from app.services.dashboard.dashboard_service import DashboardService
+from app.services.realtime import RealtimeService
+from app.websocket.socket_events import (
+    DashboardSummaryPayload,
+    DashboardSummarySnapshot,
+    MarketOpportunityPayload,
+    MarketOpportunitySnapshot,
+    RecommendationCreatedPayload,
+    RecommendationSnapshot,
+    UrgencyScoreUpdatedPayload,
+)
+from app.websocket.socket_manager import get_socket_emitter, socket_manager
+from app.websocket.socket_rooms import seller_room
+from app.db.async_session import AsyncSessionLocal
 
 
 class RecommendationServiceError(Exception):
@@ -97,6 +112,8 @@ class RecommendationService:
         self._context_builder = RecommendationContextBuilder()
         self._ai_generator = RecommendationGenerator()
         self._event_emitter = event_emitter or socket_manager
+        self._realtime: RealtimeService | None = None
+        self._opportunity_calculator = OpportunityCalculator()
         self._stock_risk_threshold = (
             stock_risk_threshold
             if stock_risk_threshold is not None
@@ -156,6 +173,7 @@ class RecommendationService:
         await self._emit_recommendation_created(
             seller_id=str(seller_id),
             recommendation=recommendation,
+            product=product,
             analytics=analytics,
         )
         response = self.build_response(recommendation, analytics)
@@ -386,27 +404,162 @@ class RecommendationService:
         payload = " ".join(f"{key}={value}" for key, value in safe_fields.items())
         self._logger.log(level, f"{event} {payload}".strip())
 
+    def _resolve_realtime(self) -> RealtimeService | None:
+        if self._realtime is not None:
+            return self._realtime
+        try:
+            emitter = get_socket_emitter()
+        except RuntimeError:
+            self._logger.debug("socket_emitter_unavailable")
+            return None
+        self._realtime = RealtimeService(emitter, logging.getLogger("app.websocket.realtime"))
+        return self._realtime
+
+    async def _emit_urgency_score_updated(
+        self,
+        *,
+        realtime: RealtimeService,
+        seller_id: UUID,
+        recommendation: Recommendation,
+        urgency_score: float,
+    ) -> None:
+        previous_score = self._load_previous_urgency_score(
+            seller_id=seller_id,
+            recommendation_id=recommendation.id,
+            product_id=recommendation.product_id,
+        )
+        delta = int(round(urgency_score - previous_score)) if previous_score is not None else None
+        payload = UrgencyScoreUpdatedPayload(
+            urgency_score=int(round(urgency_score)),
+            previous_score=int(round(previous_score)) if previous_score is not None else None,
+            delta=delta,
+            updated_at=recommendation.created_at or datetime.now(timezone.utc),
+            reason="Recommendation generated.",
+        )
+        await realtime.emit_urgency_score_updated(
+            payload, seller_id=seller_id, rooms=[seller_room(str(seller_id))]
+        )
+
+    async def _emit_dashboard_summary_updated(
+        self,
+        *,
+        realtime: RealtimeService,
+        seller_id: UUID,
+    ) -> None:
+        async with AsyncSessionLocal() as session:
+            service = DashboardService(session, logger=self._logger)
+            summary = await service.get_summary(seller_id=str(seller_id))
+        payload = DashboardSummaryPayload(
+            summary=_build_dashboard_summary_snapshot(summary)
+        )
+        await realtime.emit_dashboard_summary_updated(
+            payload, seller_id=seller_id, rooms=[seller_room(str(seller_id))]
+        )
+
+    async def _emit_market_opportunity_detected(
+        self,
+        *,
+        realtime: RealtimeService,
+        seller_id: UUID,
+        recommendation: Recommendation,
+        product: Product,
+        analytics: Mapping[str, Any],
+    ) -> None:
+        if recommendation.revenue_opportunity <= 0:
+            return
+        snapshot = _build_market_opportunity_snapshot(
+            recommendation=recommendation,
+            product=product,
+            analytics=analytics,
+            calculator=self._opportunity_calculator,
+        )
+        if not snapshot:
+            return
+        payload = MarketOpportunityPayload(opportunity=snapshot)
+        await realtime.emit_market_opportunity_detected(
+            payload,
+            seller_id=seller_id,
+            product_id=recommendation.product_id,
+            rooms=[seller_room(str(seller_id))],
+        )
+
+    def _load_previous_urgency_score(
+        self,
+        *,
+        seller_id: UUID,
+        recommendation_id: UUID,
+        product_id: UUID,
+    ) -> float | None:
+        statement = (
+            select(Recommendation.recommendation_context)
+            .join(Product, Recommendation.product_id == Product.id)
+            .where(
+                Recommendation.product_id == product_id,
+                Recommendation.id != recommendation_id,
+                Product.seller_id == seller_id,
+            )
+            .order_by(Recommendation.created_at.desc(), Recommendation.id.desc())
+            .limit(1)
+        )
+        payload = self._db.execute(statement).scalar_one_or_none()
+        if not payload:
+            return None
+        _, analytics = self._split_context_snapshot(payload)
+        return _normalize_score(analytics.get("urgency_score"))
+
     async def _emit_recommendation_created(
         self,
         *,
         seller_id: str,
         recommendation: Recommendation,
+        product: Product,
         analytics: Mapping[str, Any],
     ) -> None:
-        payload = {
-            "recommendation_id": str(recommendation.id),
-            "product_id": str(recommendation.product_id),
-            "seller_id": seller_id,
-            "action": recommendation.action.value,
-            "confidence": recommendation.confidence.value,
-            "revenue_opportunity": float(recommendation.revenue_opportunity),
-            "urgency_score": analytics.get("urgency_score"),
-            "stock_risk_score": analytics.get("stock_risk_score"),
-            "created_at": recommendation.created_at.isoformat()
-            if recommendation.created_at
-            else None,
-        }
-        await self._event_emitter.emit(DashboardEvent.recommendation_created, payload)
+        realtime = self._resolve_realtime()
+        if not realtime:
+            self._logger.debug("realtime_emit_skipped reason=socket_unavailable")
+            return
+        seller_uuid = UUID(seller_id)
+        urgency_score = _normalize_score(analytics.get("urgency_score"))
+        recommendation_snapshot = RecommendationSnapshot(
+            id=recommendation.id,
+            title=_format_recommendation_title(recommendation.action),
+            summary=recommendation.reasoning_bn,
+            action=_map_action(recommendation.action),
+            status="new",
+            priority=_map_priority(urgency_score),
+            confidence=_map_confidence(recommendation.confidence),
+            expected_lift=_expected_lift(urgency_score),
+            product=product.title,
+            competitor=None,
+            created_at=recommendation.created_at or datetime.now(timezone.utc),
+        )
+        payload = RecommendationCreatedPayload(
+            recommendation=recommendation_snapshot,
+            urgency_score=int(round(urgency_score)),
+            confidence=recommendation.confidence.value,
+            opportunity_score=float(recommendation.revenue_opportunity),
+        )
+        await realtime.emit_recommendation_created(
+            payload,
+            seller_id=seller_uuid,
+            product_id=recommendation.product_id,
+            rooms=[seller_room(str(seller_uuid))],
+        )
+        await self._emit_urgency_score_updated(
+            realtime=realtime,
+            seller_id=seller_uuid,
+            recommendation=recommendation,
+            urgency_score=urgency_score,
+        )
+        await self._emit_dashboard_summary_updated(realtime=realtime, seller_id=seller_uuid)
+        await self._emit_market_opportunity_detected(
+            realtime=realtime,
+            seller_id=seller_uuid,
+            recommendation=recommendation,
+            product=product,
+            analytics=analytics,
+        )
 
     async def _emit_stock_risk_event(
         self,
@@ -420,14 +573,12 @@ class RecommendationService:
             return
         if stock_risk_score < self._stock_risk_threshold:
             return
-        payload = {
-            "product_id": str(product.id),
-            "seller_id": seller_id,
-            "stock_risk_score": stock_risk_score,
-            "estimated_days_of_stock_left": analytics.get("estimated_days_of_stock_left"),
-            "stock_quantity": product.stock_quantity,
-        }
-        await self._event_emitter.emit(DashboardEvent.stock_risk_detected, payload)
+        self._logger.info(
+            "stock_risk_detected seller_id=%s product_id=%s score=%s",
+            seller_id,
+            product.id,
+            stock_risk_score,
+        )
 
     def _build_analytics_response(
         self,
@@ -507,3 +658,210 @@ def _get_env_float(key: str, default: float) -> float:
         return float(value)
     except ValueError:
         return default
+
+
+def _normalize_score(value: Any) -> float:
+    if value is None:
+        return 0.0
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if 0 <= numeric <= 1:
+        return numeric * 100.0
+    return numeric
+
+
+def _map_action(action: RecommendationAction) -> str:
+    if action is RecommendationAction.LOWER:
+        return "undercut"
+    if action is RecommendationAction.RAISE:
+        return "raise_price"
+    if action is RecommendationAction.REORDER:
+        return "restock"
+    return "hold"
+
+
+def _format_recommendation_title(action: RecommendationAction) -> str:
+    if action is RecommendationAction.LOWER:
+        return "Lower price recommendation"
+    if action is RecommendationAction.RAISE:
+        return "Raise price recommendation"
+    if action is RecommendationAction.REORDER:
+        return "Restock recommendation"
+    return "Hold price recommendation"
+
+
+def _map_priority(urgency_score: float) -> str:
+    if urgency_score >= 80:
+        return "critical"
+    if urgency_score >= 60:
+        return "high"
+    if urgency_score >= 40:
+        return "medium"
+    return "low"
+
+
+def _map_confidence(confidence: RecommendationConfidence) -> float:
+    if confidence is RecommendationConfidence.HIGH:
+        return 0.9
+    if confidence is RecommendationConfidence.MEDIUM:
+        return 0.7
+    if confidence is RecommendationConfidence.LOW:
+        return 0.5
+    return 0.6
+
+
+def _expected_lift(urgency_score: float) -> float:
+    return min(max(urgency_score / 100.0, 0.0), 1.0)
+
+
+def _build_dashboard_summary_snapshot(summary: DashboardSummaryResponse) -> DashboardSummarySnapshot:
+    insights = []
+    if summary.market_trend_summary:
+        severity = "high" if summary.average_urgency_score >= 75 else "medium"
+        if summary.average_urgency_score < 55:
+            severity = "low"
+        insights.append(
+            {
+                "id": "market-trend",
+                "title": "Market trend",
+                "summary": summary.market_trend_summary,
+                "severity": severity,
+            }
+        )
+    activity = summary.realtime_activity
+    insights.append(
+        {
+            "id": "realtime-activity",
+            "title": "Last hour activity",
+            "summary": (
+                f"Recommendations {activity.recommendations_last_hour}, alerts "
+                f"{activity.alerts_last_hour}, competitor updates "
+                f"{activity.competitor_updates_last_hour}."
+            ),
+            "severity": "low",
+        }
+    )
+    system_status = "degraded" if summary.high_risk_stock_count > 0 or summary.active_alerts > 0 else "healthy"
+    return DashboardSummarySnapshot(
+        kpis=[],
+        insights=insights,
+        active_alerts=summary.active_alerts,
+        live_competitors=summary.total_monitored_products,
+        ai_recommendations=summary.realtime_activity.recommendations_last_hour,
+        revenue_opportunities=summary.opportunity_count,
+        urgency_score=int(round(summary.latest_urgency_score)),
+        system_status=system_status,
+        last_synced_at=summary.generated_at,
+    )
+
+
+def _to_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_market_opportunity_snapshot(
+    *,
+    recommendation: Recommendation,
+    product: Product,
+    analytics: Mapping[str, Any],
+    calculator: OpportunityCalculator,
+) -> MarketOpportunitySnapshot | None:
+    context, analytics_snapshot = RecommendationService._split_context_snapshot(
+        recommendation.recommendation_context
+    )
+    merged_analytics = {**analytics_snapshot, **dict(analytics)}
+    seller_price = _to_float(context.get("seller_price")) or float(product.selling_price)
+    recommended_price = _to_float(context.get("recommended_price"))
+    stock_quantity = _to_int(context.get("seller_stock")) or int(product.stock_quantity or 0)
+    margin_percent = _to_float(merged_analytics.get("estimated_margin_percent"))
+    if margin_percent is None:
+        margin_percent = _compute_margin_percent(
+            float(product.selling_price), float(product.cost_price)
+        )
+    opportunity_score = _to_float(merged_analytics.get("market_competitiveness_score")) or 0.0
+    demand_indicator = _to_float(merged_analytics.get("demand_indicator")) or 0.0
+    competitor_oos_ratio = _compute_oos_ratio(merged_analytics)
+    inventory_turnover_days = _to_float(context.get("inventory_turnover_days"))
+
+    try:
+        result = calculator.calculate(
+            OpportunityInput(
+                seller_price=seller_price,
+                recommended_price=recommended_price,
+                current_stock=stock_quantity,
+                margin_percent=margin_percent,
+                opportunity_score=opportunity_score,
+                demand_indicator=demand_indicator,
+                competitor_oos_ratio=competitor_oos_ratio,
+                inventory_turnover_days=inventory_turnover_days,
+            )
+        )
+    except Exception:
+        return None
+
+    description = _build_opportunity_description(result)
+    time_window = (
+        recommendation.created_at.date().isoformat()
+        if recommendation.created_at
+        else "Rolling"
+    )
+    category = _resolve_opportunity_category(
+        competitor_oos_ratio, result.projected_demand_shift
+    )
+    urgency_score = int(round(_normalize_score(merged_analytics.get("urgency_score"))))
+
+    return MarketOpportunitySnapshot(
+        id=recommendation.id,
+        title=product.title,
+        description=description,
+        potential_revenue=float(recommendation.revenue_opportunity),
+        probability=competitor_oos_ratio,
+        urgency_score=urgency_score,
+        time_window=time_window,
+        category=category,
+    )
+
+
+def _build_opportunity_description(result) -> str:
+    units = round(result.inventory_capture_units, 2)
+    profit = round(result.estimated_profit_impact, 2)
+    return f"Capture {units} units, est. profit impact {profit}"
+
+
+def _resolve_opportunity_category(competitor_oos_ratio: float, demand_shift: float) -> str:
+    if competitor_oos_ratio >= 0.5:
+        return "inventory"
+    if demand_shift >= 15:
+        return "promotion"
+    return "pricing"
+
+
+def _compute_oos_ratio(analytics: Mapping[str, Any]) -> float:
+    out_of_stock = _to_int(analytics.get("out_of_stock_competitor_count")) or 0
+    in_stock = _to_int(analytics.get("in_stock_competitor_count")) or 0
+    total = out_of_stock + in_stock
+    if total == 0:
+        return 0.0
+    return out_of_stock / total
+
+
+def _compute_margin_percent(selling_price: float, cost_price: float) -> float:
+    if selling_price <= 0:
+        return 0.0
+    return ((selling_price - cost_price) / selling_price) * 100.0

@@ -56,8 +56,10 @@ class ConnectionManager:
         async with self._lock:
             restored_rooms: set[str] = set()
             previous = self._sessions.pop(session_id, None)
-            if previous:
+            if previous and (seller_id is None or previous.seller_id == seller_id):
                 restored_rooms = set(previous.rooms)
+                if seller_id is None:
+                    seller_id = previous.seller_id
             self._connections[sid] = ConnectionState(
                 sid=sid,
                 session_id=session_id,
@@ -94,6 +96,13 @@ class ConnectionManager:
             if not state:
                 return set()
             return set(state.rooms)
+
+    async def get_seller_id(self, sid: str) -> str | None:
+        async with self._lock:
+            state = self._connections.get(sid)
+            if not state:
+                return None
+            return state.seller_id
 
     async def mark_disconnected(self, sid: str) -> SessionState | None:
         async with self._lock:

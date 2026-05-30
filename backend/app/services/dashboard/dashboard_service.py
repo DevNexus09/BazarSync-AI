@@ -95,6 +95,9 @@ class DashboardService:
             average_urgency_score = await self._session.scalar(
                 _avg_query(urgency_score_expr, seller_id=seller_id)
             )
+            latest_urgency_score = await self._session.scalar(
+                _latest_score_query(urgency_score_expr, seller_id=seller_id)
+            )
             average_price_gap = await self._session.scalar(
                 _avg_query(price_gap_expr, seller_id=seller_id)
             )
@@ -135,6 +138,7 @@ class DashboardService:
             raise DashboardDatabaseError("Failed to load dashboard summary.") from exc
 
         normalized_urgency = _normalize_score(average_urgency_score)
+        latest_urgency = _normalize_score(latest_urgency_score)
         normalized_gap = float(average_price_gap or 0.0)
         trend_summary = _build_market_trend_summary(normalized_urgency, normalized_gap)
 
@@ -152,6 +156,7 @@ class DashboardService:
             opportunity_count=opportunity_count or 0,
             high_risk_stock_count=high_risk_stock_count or 0,
             average_urgency_score=round(normalized_urgency, 2),
+            latest_urgency_score=round(latest_urgency, 2),
             average_competitor_price_gap=round(normalized_gap, 2),
             market_trend_summary=trend_summary,
             realtime_activity=RealtimeActivityCounters(
@@ -201,6 +206,16 @@ def _avg_query(expression, *, seller_id: str | None):
         stmt = stmt.join(Product, Recommendation.product_id == Product.id).where(
             Product.seller_id == seller_id
         )
+    return stmt
+
+
+def _latest_score_query(expression, *, seller_id: str | None):
+    stmt = select(expression).select_from(Recommendation)
+    if seller_id:
+        stmt = stmt.join(Product, Recommendation.product_id == Product.id).where(
+            Product.seller_id == seller_id
+        )
+    stmt = stmt.order_by(Recommendation.created_at.desc(), Recommendation.id.desc()).limit(1)
     return stmt
 
 
