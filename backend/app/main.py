@@ -23,6 +23,10 @@ from app.db.session import engine
 from app.scraper.browser import BrowserManager
 
 from app.websocket.socket_manager import init_socketio
+import os
+
+print("DEBUG DATABASE_URL:", os.environ.get("DATABASE_URL"))
+print("ALL ENV KEYS:", list(os.environ.keys()))
 
 
 @asynccontextmanager
