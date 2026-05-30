@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Loader2 } from "lucide-react"
 import { Navigate, useNavigate } from "react-router-dom"
 
 import { AuthField } from "@/components/auth/auth-field"
@@ -114,7 +115,7 @@ export default function RegisterPage() {
         />
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <AuthFormAlert message={formError} />
         <AuthField
           id="register-email"
@@ -156,7 +157,14 @@ export default function RegisterPage() {
           className="w-full"
           disabled={isAuthenticating}
         >
-          {isAuthenticating ? "Creating account..." : "Create account"}
+          {isAuthenticating ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Creating account...
+            </>
+          ) : (
+            "Create account"
+          )}
         </Button>
         <p className="text-xs text-muted-foreground">
           By signing up, you agree to BazarSync AI’s terms of service and privacy

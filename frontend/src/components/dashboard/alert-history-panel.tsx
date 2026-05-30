@@ -15,9 +15,9 @@ type AlertHistoryPanelProps = {
 }
 
 const statusStyles: Record<AlertStatus, string> = {
-  [AlertStatus.New]: "bg-rose-100 text-rose-700",
-  [AlertStatus.Acknowledged]: "bg-amber-100 text-amber-700",
-  [AlertStatus.Resolved]: "bg-emerald-100 text-emerald-700",
+  [AlertStatus.New]: "bg-rose-500/15 text-rose-300",
+  [AlertStatus.Acknowledged]: "bg-amber-500/15 text-amber-300",
+  [AlertStatus.Resolved]: "bg-emerald-500/15 text-emerald-300",
 }
 
 export function AlertHistoryPanel({
@@ -30,7 +30,7 @@ export function AlertHistoryPanel({
 }: AlertHistoryPanelProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
+      <div className="glass-panel p-4">
         <div className="h-5 w-32 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 space-y-2">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -61,9 +61,11 @@ export function AlertHistoryPanel({
   const history = alerts ?? []
 
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="glass-panel p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Alert history</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          Telegram alert feed
+        </h3>
         <span className="text-xs text-muted-foreground">
           {history.length} total
         </span>
@@ -77,7 +79,7 @@ export function AlertHistoryPanel({
           {history.map((alert) => (
             <div
               key={alert.id}
-              className="rounded-lg border bg-muted/10 p-3"
+              className="rounded-lg border border-border/60 bg-card/60 p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>

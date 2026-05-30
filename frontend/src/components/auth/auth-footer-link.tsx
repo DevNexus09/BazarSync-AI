@@ -10,7 +10,7 @@ export function AuthFooterLink({ prompt, to, label }: AuthFooterLinkProps) {
   return (
     <span>
       {prompt}{" "}
-      <Link className="font-medium text-foreground hover:underline" to={to}>
+      <Link className="font-medium text-primary hover:underline" to={to}>
         {label}
       </Link>
     </span>

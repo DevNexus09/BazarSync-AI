@@ -64,7 +64,7 @@ export function ProductSelector({
           type="button"
           variant="outline"
           className={cn(
-            "h-auto w-full items-start justify-between gap-3 border-dashed px-3 py-3 text-left",
+            "h-auto w-full items-start justify-between gap-3 border-border/60 bg-card/60 px-3 py-3 text-left",
             disabled && "cursor-not-allowed opacity-60"
           )}
           disabled={disabled}
@@ -87,8 +87,8 @@ export function ProductSelector({
         </Button>
 
         {isOpen ? (
-          <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-xl border bg-background shadow-lg">
-            <div className="border-b px-3 py-2">
+          <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-[0_0_0_1px_rgba(59,130,246,0.15),_0_24px_60px_rgba(4,8,16,0.6)]">
+            <div className="border-b border-border/60 px-3 py-2">
               <Input
                 placeholder="Search products"
                 value={query}
@@ -116,7 +116,7 @@ export function ProductSelector({
                   <span>{emptyLabel}</span>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="divide-y divide-border/60">
                   {filtered.map((product) => (
                     <button
                       key={product.id}

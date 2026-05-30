@@ -6,9 +6,9 @@ export default function NotFoundPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-6">
-      <div className="max-w-md rounded-xl border bg-background p-6 text-center shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="glass-panel max-w-md p-6 text-center">
+        <h1 className="heading-font text-2xl font-semibold text-foreground">
           Page not found
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react"
+import { motion } from "framer-motion"
+import { LayoutDashboard } from "lucide-react"
 
 type AuthLayoutProps = {
   title: string
@@ -16,19 +18,29 @@ export function AuthLayout({
   sideContent,
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-muted/40">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 py-12 lg:grid-cols-[1fr_0.9fr]">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-12 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-[0_0_16px_rgba(59,130,246,0.35)]">
+              <LayoutDashboard className="size-5" />
+            </div>
+            <div>
+              <p className="heading-font text-lg font-semibold text-foreground">
+                BazarSync AI
+              </p>
+              <p className="text-xs text-muted-foreground">
+                BazarSync AI for Bangladeshi sellers
+              </p>
+            </div>
+          </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              BazarSync AI
-            </p>
-            <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+            <h1 className="heading-font text-3xl font-semibold text-foreground">
+              {title}
+            </h1>
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
-          <div className="rounded-2xl border bg-background p-6 shadow-sm">
-            {children}
-          </div>
+          <div className="glass-panel p-6">{children}</div>
           {footer ? (
             <div className="text-center text-sm text-muted-foreground">
               {footer}
@@ -36,11 +48,18 @@ export function AuthLayout({
           ) : null}
         </div>
         {sideContent ? (
-          <div className="hidden lg:flex">
-            <div className="w-full rounded-3xl border bg-background p-6 shadow-sm">
-              {sideContent}
+          <motion.div
+            className="hidden lg:flex"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="glass-panel relative w-full overflow-hidden p-8">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.2),_transparent_55%)]" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,_transparent,_rgba(15,23,42,0.6))]" />
+              <div className="relative">{sideContent}</div>
             </div>
-          </div>
+          </motion.div>
         ) : null}
       </div>
     </div>

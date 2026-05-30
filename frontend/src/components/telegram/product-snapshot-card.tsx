@@ -86,25 +86,25 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
   }
 
   return (
-    <div className="rounded-xl border bg-background p-5 shadow-sm">
+    <div className="glass-panel p-5">
       <div className="flex items-start gap-3">
-        <div className="flex size-9 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+        <div className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary shadow-[0_0_12px_rgba(59,130,246,0.4)]">
           <Sparkles className="size-4" />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-foreground">
-            Product Intelligence Snapshot
+            Manual product alert
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Send an instant intelligence summary to your Telegram inbox.
+            Send a fresh intelligence snapshot directly to Telegram.
           </p>
         </div>
       </div>
 
       {!isConnected ? (
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           <ShieldAlert className="mt-0.5 size-4" />
-          Connect your Telegram account first to send product snapshots.
+          Connect your Telegram account first to send product alerts.
         </div>
       ) : null}
 
@@ -113,8 +113,8 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
           className={cn(
             "mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
             toast.tone === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-rose-200 bg-rose-50 text-rose-700"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+              : "border-rose-500/30 bg-rose-500/10 text-rose-200"
           )}
           role="status"
           aria-live="polite"
@@ -138,9 +138,9 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
           disabled={isDisabled}
         />
 
-        <div className="rounded-lg border bg-muted/20 p-3">
+        <div className="rounded-lg border border-border/60 bg-card/60 p-3">
           <p className="text-xs font-semibold text-muted-foreground">
-            Product quick preview
+            Alert payload preview
           </p>
           {productsQuery.isLoading ? (
             <div className="mt-3 space-y-2">
@@ -171,6 +171,26 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
                   {selectedProduct.supplierLeadTime} days
                 </span>
               </div>
+              <div className="flex items-center justify-between">
+                <span>Competitor median</span>
+                <span className="font-semibold text-foreground">Calculated on send</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Price gap</span>
+                <span className="font-semibold text-foreground">Calculated on send</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>AI recommendation</span>
+                <span className="font-semibold text-foreground">Generated on send</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Confidence</span>
+                <span className="font-semibold text-foreground">Generated on send</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Opportunity score</span>
+                <span className="font-semibold text-foreground">Generated on send</span>
+              </div>
             </div>
           ) : (
             <p className="mt-3 text-xs text-muted-foreground">
@@ -185,7 +205,7 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
           isLoading={sendSnapshot.isPending}
         />
 
-        <div className="rounded-lg border px-3 py-3 text-xs text-muted-foreground">
+        <div className="rounded-lg border border-border/60 px-3 py-3 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">Last snapshot status</p>
           {lastSnapshot ? (
             <div className="mt-2 space-y-1">
@@ -193,8 +213,8 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
                 className={cn(
                   "font-semibold",
                   lastSnapshot.tone === "success"
-                    ? "text-emerald-600"
-                    : "text-rose-600"
+                    ? "text-emerald-300"
+                    : "text-rose-300"
                 )}
               >
                 {lastSnapshot.message}

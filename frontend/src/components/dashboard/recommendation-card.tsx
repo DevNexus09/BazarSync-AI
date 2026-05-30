@@ -14,17 +14,17 @@ type RecommendationCardProps = {
 }
 
 const priorityStyles: Record<RecommendationPriority, string> = {
-  [RecommendationPriority.Low]: "bg-muted text-muted-foreground",
-  [RecommendationPriority.Medium]: "bg-amber-100 text-amber-700",
-  [RecommendationPriority.High]: "bg-rose-100 text-rose-700",
-  [RecommendationPriority.Critical]: "bg-rose-200 text-rose-800",
+  [RecommendationPriority.Low]: "bg-muted/60 text-muted-foreground",
+  [RecommendationPriority.Medium]: "bg-amber-500/15 text-amber-300",
+  [RecommendationPriority.High]: "bg-rose-500/15 text-rose-300",
+  [RecommendationPriority.Critical]: "bg-rose-500/25 text-rose-200",
 }
 
 const statusStyles: Record<RecommendationStatus, string> = {
-  [RecommendationStatus.New]: "bg-emerald-100 text-emerald-700",
-  [RecommendationStatus.Reviewed]: "bg-blue-100 text-blue-700",
-  [RecommendationStatus.Implemented]: "bg-indigo-100 text-indigo-700",
-  [RecommendationStatus.Dismissed]: "bg-muted text-muted-foreground",
+  [RecommendationStatus.New]: "bg-emerald-500/15 text-emerald-300",
+  [RecommendationStatus.Reviewed]: "bg-sky-500/15 text-sky-300",
+  [RecommendationStatus.Implemented]: "bg-indigo-500/15 text-indigo-300",
+  [RecommendationStatus.Dismissed]: "bg-muted/60 text-muted-foreground",
 }
 
 const actionLabels: Record<RecommendationAction, string> = {
@@ -47,7 +47,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       : recommendation.expectedLift
 
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.15)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground">
@@ -60,7 +60,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
             {recommendation.summary}
           </p>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Sparkles className="size-4" />
         </div>
       </div>

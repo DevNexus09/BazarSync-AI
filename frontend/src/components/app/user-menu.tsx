@@ -74,12 +74,12 @@ export default function UserMenu() {
       <Button
         variant="ghost"
         size="sm"
-        className="gap-2"
+        className="gap-2 rounded-xl border border-border/60 bg-card/40 px-2.5 py-1.5 hover:bg-card/70"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
       >
-        <span className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+        <span className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-xs font-semibold text-foreground">
           {initials || "U"}
         </span>
         <span className="hidden text-sm font-medium text-foreground sm:inline">
@@ -88,7 +88,7 @@ export default function UserMenu() {
       </Button>
       {isOpen ? (
         <div
-          className="absolute right-0 mt-2 w-72 rounded-lg border bg-background p-4 shadow-lg"
+          className="absolute right-0 mt-3 w-72 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12),_0_24px_60px_rgba(4,8,16,0.6)] backdrop-blur"
           role="menu"
         >
           <div className="space-y-1">

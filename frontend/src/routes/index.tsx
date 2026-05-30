@@ -7,6 +7,7 @@ import ProtectedRoute from "@/routes/protected-route"
 import LoginPage from "@/pages/auth/login-page"
 import RegisterPage from "@/pages/auth/register-page"
 import NotFoundPage from "@/pages/not-found"
+import LandingPage from "@/pages/landing/landing-page"
 
 const router = createBrowserRouter([
   {
@@ -16,7 +17,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        loader: () => redirect("/app/dashboard"),
+        Component: LandingPage,
       },
       { path: "login", Component: LoginPage },
       { path: "register", Component: RegisterPage },
@@ -82,6 +83,13 @@ const router = createBrowserRouter([
                   Component: (await import(
                     "@/pages/recommendations/recommendations-page"
                   )).default,
+                }),
+              },
+              {
+                path: "analytics",
+                lazy: async () => ({
+                  Component: (await import("@/pages/analytics/analytics-page"))
+                    .default,
                 }),
               },
               {
