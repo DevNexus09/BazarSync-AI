@@ -73,7 +73,7 @@ def create_app() -> FastAPI:
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://bazar-sync-ai.vercel.app/",
+        "https://bazar-sync-ai.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
