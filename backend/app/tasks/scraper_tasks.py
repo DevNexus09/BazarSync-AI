@@ -28,10 +28,9 @@ logger = logging.getLogger(__name__)
 
 def _run_async(coro):
     try:
+        asyncio.get_running_loop()
+    except RuntimeError:
         return asyncio.run(coro)
-    except RuntimeError as exc:
-        if "running event loop" not in str(exc):
-            raise
 
     result_container: dict[str, object] = {}
 
