@@ -10,6 +10,7 @@ async def scrape_daraz_competitors(
     product_title: str,
 ) -> ScrapeResponse:
     browser_manager = BrowserManager()
+    await browser_manager._ensure_browser()
     try:
         scraper = DarazScraper(browser_manager)
         return await scraper.scrape(product_title=product_title)
