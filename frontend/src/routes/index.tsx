@@ -40,12 +40,6 @@ const router = createBrowserRouter([
                 }),
               },
               {
-                path: "war-room",
-                lazy: async () => ({
-                  Component: (await import("@/pages/war-room-page")).default,
-                }),
-              },
-              {
                 path: "competitors",
                 lazy: async () => ({
                   Component: (await import(

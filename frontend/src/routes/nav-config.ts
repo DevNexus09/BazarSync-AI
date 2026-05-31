@@ -4,7 +4,6 @@ import {
   LineChart,
   MessageCircle,
   Package,
-  Shield,
   Sparkles,
   Settings,
   Users,
@@ -18,12 +17,6 @@ export const appNavItems: NavItem[] = [
     path: "/app/dashboard",
     icon: LayoutDashboard,
     description: "AI operations center",
-  },
-  {
-    label: "War Room",
-    path: "/app/war-room",
-    icon: Shield,
-    description: "Realtime competitor intelligence",
   },
   {
     label: "Products",
