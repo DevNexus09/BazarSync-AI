@@ -2,19 +2,19 @@ FROM mcr.microsoft.com/playwright/python:v1.60.0-noble
 
 WORKDIR /app
 
-# Install python deps first
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# FORCE Playwright browser install
-RUN python -m playwright install --with-deps chromium
-
-# Ensure browser path is consistent
+# 🔥 FORCE stable browser install location
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
-ENV PLAYWRIGHT_DISABLE_SANDBOX=1
-ENV PYTHONUNBUFFERED=1
+
+# 🔥 INSTALL browsers explicitly
+RUN python -m playwright install chromium
+
+# 🔥 VERIFY installation (IMPORTANT DEBUG STEP)
+RUN ls -la /ms-playwright
 
 COPY . .
 
-CMD ["celery","-A","app.core.celery_app","worker","--loglevel=info","--concurrency=2"]
+CMD ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "--concurrency=2"]

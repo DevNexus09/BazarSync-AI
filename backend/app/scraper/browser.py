@@ -65,15 +65,14 @@ class BrowserManager:
 
             try:
                 self._browser = await self._playwright.chromium.launch(
-                    headless=True,  # forced stable in containers
-                    proxy=self._config.proxy,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-blink-features=AutomationControlled",
-                    ],
-                )
+    headless=True,
+    executable_path=None,
+    args=[
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+    ],
+)
             except Error as exc:
                 logger.exception("Failed to launch Playwright browser.")
                 raise BrowserError("Failed to launch Playwright browser.") from exc
