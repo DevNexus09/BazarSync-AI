@@ -1,35 +1,19 @@
-FROM python:3.12-slim
+FROM mcr.microsoft.com/playwright/python:v1.60.0-noble
 
 WORKDIR /app
 
-# system deps for chromium
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    ca-certificates \
-    fonts-liberation \
-    libnss3 \
-    libxss1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libx11-xcb1 \
-    libdrm2 \
-    libgbm1 \
-    libu2f-udev \
-    libvulkan1 \
-    && rm -rf /var/lib/apt/lists/*
-
+# install python deps first (important for caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# IMPORTANT: install playwright + browser
-RUN pip install playwright
-RUN python -m playwright install chromium
-
-# force stable path
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# DO NOT run playwright install manually (IMPORTANT)
+# base image already includes browsers correctly
 
 COPY . .
 
-CMD ["celery","-A","app.core.celery_app","worker","--loglevel=info","--concurrency=2"]
+ENV PYTHONUNBUFFERED=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_DISABLE_SANDBOX=1
+
+CMD ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
