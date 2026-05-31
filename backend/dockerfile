@@ -5,12 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install only what you need
 RUN python -m playwright install chromium --with-deps
-
-# optional but safer for containers
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PLAYWRIGHT_DISABLE_SANDBOX=1
 
 COPY . .
 
