@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-from threading import Thread
 from uuid import UUID
 
 from celery.exceptions import Ignore
@@ -11,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.celery_app import celery_app
+from app.core.async_runner import run_async
 from app.db.session import SessionLocal
 from app.models.product import Product
 from app.models.seller import Seller
@@ -24,28 +23,6 @@ from app.services.scrape_service import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _run_async(coro):
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-
-    result_container: dict[str, object] = {}
-
-    def runner() -> None:
-        try:
-            result_container["result"] = asyncio.run(coro)
-        except Exception as error:
-            result_container["error"] = error
-
-    thread = Thread(target=runner, daemon=True)
-    thread.start()
-    thread.join()
-    if "error" in result_container:
-        raise result_container["error"]
-    return result_container.get("result")
 
 
 @celery_app.task(
@@ -103,7 +80,7 @@ def run_manual_scrape_task(
                 raise Ignore() from exc
 
         service = ScrapeService(session)
-        response = _run_async(
+        response = run_async(
             service.run_manual_scrape(
                 seller=seller,
                 product_id=product_uuid,

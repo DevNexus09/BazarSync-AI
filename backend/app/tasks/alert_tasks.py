@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from app.core.celery_app import celery_app
+from app.core.async_runner import run_async
 from app.db.async_session import AsyncSessionLocal
 from app.services.telegram.telegram_alert_service import (
     AlertDeliveryOutcome,
@@ -23,7 +23,7 @@ async def _deliver_alert(alert_id: str) -> AlertDeliveryOutcome:
 
 @celery_app.task(name="alerts.send_telegram_alert")
 def send_telegram_alert(alert_id: str) -> dict[str, str | None]:
-    outcome = asyncio.run(_deliver_alert(alert_id))
+    outcome = run_async(_deliver_alert(alert_id))
     return {
         "alert_id": outcome.alert_id,
         "status": outcome.status.value,

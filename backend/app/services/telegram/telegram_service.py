@@ -12,6 +12,7 @@ from typing import Any, Awaitable, Callable, Protocol, Sequence
 from pydantic import BaseModel, ConfigDict, Field
 from telegram.constants import ParseMode
 
+from app.core.async_runner import run_async as run_async_core
 from app.services.telegram.telegram_client import (
     TelegramApiError,
     TelegramClient,
@@ -343,11 +344,7 @@ class TelegramService:
 
 def run_async(coro: Awaitable[TelegramDeliveryResult]) -> TelegramDeliveryResult:
     """Run async Telegram delivery from sync contexts (e.g., Celery workers)."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    raise RuntimeError("run_async cannot be used inside a running event loop.")
+    return run_async_core(coro)
 
 
 async def example_usage() -> None:

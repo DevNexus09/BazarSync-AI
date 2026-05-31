@@ -41,15 +41,35 @@ class BrowserManager:
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._browser_lock = asyncio.Lock()
+        self._initialized_pid: int | None = None
 
     # -----------------------------
     # Browser lifecycle
     # -----------------------------
     async def _ensure_browser(self) -> None:
         async with self._browser_lock:
+            current_pid = os.getpid()
+
+            if self._initialized_pid is not None and self._initialized_pid != current_pid:
+                if self._browser:
+                    try:
+                        await self._browser.close()
+                    except Exception:
+                        pass
+                    self._browser = None
+
+                if self._playwright:
+                    try:
+                        await self._playwright.stop()
+                    except Exception:
+                        pass
+                    self._playwright = None
+
+                self._initialized_pid = None
 
             # Reuse healthy browser
             if self._browser and self._browser.is_connected():
+                self._initialized_pid = current_pid
                 return
 
             # Cleanup stale browser
@@ -79,6 +99,7 @@ class BrowserManager:
                         "--disable-blink-features=AutomationControlled",
                     ],
                 )
+                self._initialized_pid = current_pid
             except Error as exc:
                 logger.exception("Failed to launch Playwright browser")
                 raise BrowserError("Failed to launch Playwright browser") from exc

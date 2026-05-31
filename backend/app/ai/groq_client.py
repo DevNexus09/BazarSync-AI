@@ -26,7 +26,7 @@ FastAPI integration example:
         return await generate_json_completion(payload["messages"])
 
 Celery compatibility notes:
-    - Celery tasks can call `asyncio.run(generate_completion(...))`
+    - Celery tasks can call `run_async(generate_completion(...))`
       or use `generate_completion_sync` helper if you prefer sync tasks.
     - The Groq client is a singleton and safe for concurrent usage.
 """
@@ -57,6 +57,8 @@ from groq import (
 )
 from tenacity import AsyncRetrying, RetryCallState, retry_if_exception, stop_after_attempt
 from tenacity import wait_exponential_jitter
+
+from app.core.async_runner import run_async
 
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
@@ -280,7 +282,7 @@ def generate_completion_sync(
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Synchronous wrapper for Celery or CLI usage."""
-    return asyncio.run(
+    return run_async(
         generate_completion(
             messages,
             model=model,
@@ -301,7 +303,7 @@ def generate_json_completion_sync(
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Synchronous wrapper for JSON completions."""
-    return asyncio.run(
+    return run_async(
         generate_json_completion(
             messages,
             model=model,
