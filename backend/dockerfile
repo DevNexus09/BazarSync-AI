@@ -2,16 +2,16 @@ FROM mcr.microsoft.com/playwright/python:v1.60.0-noble
 
 WORKDIR /app
 
-# install python deps first (important for caching)
+# install python deps only
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# DO NOT run playwright install manually (IMPORTANT)
-# base image already includes browsers correctly
+# DO NOT install playwright again
+# DO NOT run playwright install again
 
 COPY . .
 
-ENV PYTHONUNBUFFERED=1
+# FORCE correct browser path (prevents cache confusion)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV PLAYWRIGHT_DISABLE_SANDBOX=1

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, ClassVar
+from typing import AsyncIterator
 
 from playwright.async_api import (
     APIRequestContext,
@@ -28,12 +28,12 @@ logger = logging.getLogger(__name__)
 
 class BrowserManager:
     """
-    Production-safe Playwright browser manager.
+    Production-safe Playwright browser manager for Celery workers.
 
-    IMPORTANT DESIGN CHANGES:
-    - NO shared singleton across Celery forks
-    - Each instance manages its own browser lifecycle
-    - Avoids stale driver + browser mismatch issues
+    Key design:
+    - No global singleton (Celery-safe)
+    - One browser per worker process
+    - Safe async lifecycle handling
     """
 
     def __init__(self, config: BrowserConfig | None = None) -> None:
@@ -47,7 +47,8 @@ class BrowserManager:
     # -----------------------------
     async def _ensure_browser(self) -> None:
         async with self._browser_lock:
-            # If browser exists and is healthy → reuse
+
+            # Reuse healthy browser
             if self._browser and self._browser.is_connected():
                 return
 
@@ -59,26 +60,31 @@ class BrowserManager:
                     pass
                 self._browser = None
 
-            # Start Playwright if needed
+            # Start Playwright once per process
             if self._playwright is None:
-                self._playwright = await async_playwright().start()
+                try:
+                    self._playwright = await async_playwright().start()
+                except Exception as exc:
+                    logger.exception("Failed to start Playwright runtime")
+                    raise BrowserError("Playwright initialization failed") from exc
 
+            # Launch Chromium (IMPORTANT: no executable_path)
             try:
                 self._browser = await self._playwright.chromium.launch(
-    headless=True,
-    executable_path=None,
-    args=[
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-    ],
-)
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
+                )
             except Error as exc:
-                logger.exception("Failed to launch Playwright browser.")
-                raise BrowserError("Failed to launch Playwright browser.") from exc
+                logger.exception("Failed to launch Playwright browser")
+                raise BrowserError("Failed to launch Playwright browser") from exc
 
     # -----------------------------
-    # Browser Context (for scraping)
+    # Browser Context (scraping)
     # -----------------------------
     async def new_context(
         self,
@@ -89,7 +95,7 @@ class BrowserManager:
         await self._ensure_browser()
 
         if not self._browser:
-            raise BrowserError("Playwright browser is unavailable.")
+            raise BrowserError("Browser is unavailable")
 
         context = await self._browser.new_context(
             user_agent=user_agent,
@@ -118,7 +124,7 @@ class BrowserManager:
         await self._ensure_browser()
 
         if not self._playwright:
-            raise BrowserError("Playwright is unavailable.")
+            raise BrowserError("Playwright not initialized")
 
         context = await self._playwright.request.new_context(
             user_agent=user_agent,
@@ -131,7 +137,7 @@ class BrowserManager:
             try:
                 await context.dispose()
             except Error as exc:
-                logger.warning("Failed to dispose request context cleanly: %s", exc)
+                logger.warning("Failed to dispose request context: %s", exc)
 
     # -----------------------------
     # Page helper
@@ -156,7 +162,7 @@ class BrowserManager:
             try:
                 await context.close()
             except Error as exc:
-                logger.warning("Failed to close browser context cleanly: %s", exc)
+                logger.warning("Failed to close context: %s", exc)
 
     # -----------------------------
     # Shutdown
