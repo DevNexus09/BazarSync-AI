@@ -46,7 +46,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # -----------------------------
 # Install Playwright + browsers (CRITICAL FIX)
 # -----------------------------
-ENV PLAYWRIGHT_BROWSERS_PATH=/usr/local/lib/python3.12/site-packages/playwright/driver/package/.local-browsers
+ENV PLAYWRIGHT_BROWSERS_PATH=0
 RUN pip install playwright \
     && playwright install --with-deps chromium
 
