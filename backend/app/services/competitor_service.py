@@ -14,10 +14,17 @@ from app.models.product import Product
 from app.models.scrape_run import ScrapeRun
 
 
+class ProductNotFoundError(Exception):
+    pass
+
+
 class CompetitorService:
     def __init__(self, db: Session) -> None:
         self._db = db
 
+    # -----------------------------
+    # Store competitors
+    # -----------------------------
     def store_competitors(
         self,
         *,
@@ -28,11 +35,17 @@ class CompetitorService:
         observed_at: datetime | None = None,
     ) -> list[Competitor]:
         observed_timestamp = observed_at or datetime.now(timezone.utc)
+
         competitor_rows: list[Competitor] = []
         price_rows: list[PriceHistory] = []
 
         for item in competitors:
-            title = item.get("competitor_title") or item.get("product_title") or ""
+            title = (
+                item.get("competitor_title")
+                or item.get("product_title")
+                or ""
+            ).strip()
+
             if not title:
                 continue
 
@@ -48,10 +61,14 @@ class CompetitorService:
                 or item.get("competitor_brand"),
                 competitor_attributes=item.get("product_attributes")
                 or item.get("competitor_attributes"),
-                competitor_price=self._to_decimal(item.get("competitor_price") or item.get("product_price")),
+                competitor_price=self._to_decimal(
+                    item.get("competitor_price") or item.get("product_price")
+                ),
                 original_price=self._to_decimal(item.get("original_price")),
                 discount_percentage=self._to_int(item.get("discount_percentage")),
-                competitor_rating=self._to_float(item.get("competitor_rating") or item.get("rating")),
+                competitor_rating=self._to_float(
+                    item.get("competitor_rating") or item.get("rating")
+                ),
                 rating_count=self._to_int(item.get("rating_count")),
                 competitor_sold=item.get("competitor_sold") or item.get("sold_count"),
                 competitor_store=item.get("competitor_store") or item.get("store_name"),
@@ -70,17 +87,19 @@ class CompetitorService:
                 image_url=item.get("image_url") or item.get("product_image_url"),
                 search_position=self._to_int(item.get("search_position")),
             )
+
             competitor_rows.append(competitor)
 
         if not competitor_rows:
             return []
 
         self._db.add_all(competitor_rows)
-        self._db.flush()
+        self._db.flush()  # ensures IDs are generated
 
         for competitor in competitor_rows:
             if competitor.competitor_price is None:
                 continue
+
             price_rows.append(
                 PriceHistory(
                     competitor_id=competitor.id,
@@ -94,6 +113,9 @@ class CompetitorService:
 
         return competitor_rows
 
+    # -----------------------------
+    # Fetch latest competitors
+    # -----------------------------
     def list_latest_competitors(
         self,
         seller_id: UUID,
@@ -102,9 +124,10 @@ class CompetitorService:
         limit: int,
         offset: int,
     ) -> tuple[list[Competitor], int, ScrapeRun | None]:
+
         product = self._get_product(seller_id, product_id)
         if not product:
-            raise ProductNotFoundError
+            raise ProductNotFoundError("Product not found")
 
         run_statement = (
             select(ScrapeRun)
@@ -113,10 +136,15 @@ class CompetitorService:
                 ScrapeRun.seller_id == seller_id,
                 ScrapeRun.status == "completed",
             )
-            .order_by(ScrapeRun.finished_at.desc().nullslast(), ScrapeRun.created_at.desc())
+            .order_by(
+                ScrapeRun.finished_at.desc().nullslast(),
+                ScrapeRun.created_at.desc(),
+            )
             .limit(1)
         )
+
         scrape_run = self._db.execute(run_statement).scalar_one_or_none()
+
         if not scrape_run:
             return [], 0, None
 
@@ -133,6 +161,7 @@ class CompetitorService:
             .limit(limit)
             .offset(offset)
         )
+
         items = self._db.execute(statement).scalars().all()
 
         total_statement = (
@@ -143,18 +172,21 @@ class CompetitorService:
                 Competitor.scrape_run_id == scrape_run.id,
             )
         )
+
         total = self._db.execute(total_statement).scalar_one()
+
         return items, total, scrape_run
 
+    # -----------------------------
+    # Type converters
+    # -----------------------------
     @staticmethod
     def _to_decimal(value: Any) -> Decimal | None:
         if value is None or value == "":
             return None
-        if isinstance(value, Decimal):
-            return value
         try:
             return Decimal(str(value))
-        except (InvalidOperation, ValueError):
+        except (InvalidOperation, ValueError, TypeError):
             return None
 
     @staticmethod
@@ -163,7 +195,7 @@ class CompetitorService:
             return None
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except (ValueError, TypeError):
             return None
 
     @staticmethod
@@ -172,16 +204,15 @@ class CompetitorService:
             return None
         try:
             return float(value)
-        except (TypeError, ValueError):
+        except (ValueError, TypeError):
             return None
 
+    # -----------------------------
+    # Internal helper
+    # -----------------------------
     def _get_product(self, seller_id: UUID, product_id: UUID) -> Product | None:
         statement = select(Product).where(
             Product.id == product_id,
             Product.seller_id == seller_id,
         )
         return self._db.execute(statement).scalar_one_or_none()
-
-
-class ProductNotFoundError(Exception):
-    pass
