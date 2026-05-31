@@ -9,6 +9,9 @@ async def scrape_daraz_competitors(
     *,
     product_title: str,
 ) -> ScrapeResponse:
-    browser_manager = await BrowserManager.get_shared()
-    scraper = DarazScraper(browser_manager)
-    return await scraper.scrape(product_title=product_title)
+    browser_manager = BrowserManager()
+    try:
+        scraper = DarazScraper(browser_manager)
+        return await scraper.scrape(product_title=product_title)
+    finally:
+        await browser_manager.close()

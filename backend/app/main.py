@@ -20,8 +20,6 @@ from app.db.bootstrap import (
 
 from app.db.session import engine
 
-from app.scraper.browser import BrowserManager
-
 from app.websocket.socket_manager import init_socketio
 import os
 
@@ -56,9 +54,6 @@ async def lifespan(app: FastAPI):
         # Shutdown websocket manager
         if socket_manager:
             await socket_manager.shutdown()
-
-        # Shutdown shared Playwright browser
-        await BrowserManager.shutdown_shared()
 
 
 def create_app() -> FastAPI:

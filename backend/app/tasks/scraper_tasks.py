@@ -28,22 +28,25 @@ logger = logging.getLogger(__name__)
 
 def _run_async(coro):
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
         return asyncio.run(coro)
+    except RuntimeError as exc:
+        if "running event loop" not in str(exc):
+            raise
 
-    if loop.is_running():
-        result_container: dict[str, object] = {}
+    result_container: dict[str, object] = {}
 
-        def runner() -> None:
+    def runner() -> None:
+        try:
             result_container["result"] = asyncio.run(coro)
+        except Exception as error:
+            result_container["error"] = error
 
-        thread = Thread(target=runner, daemon=True)
-        thread.start()
-        thread.join()
-        return result_container.get("result")
-
-    return loop.run_until_complete(coro)
+    thread = Thread(target=runner, daemon=True)
+    thread.start()
+    thread.join()
+    if "error" in result_container:
+        raise result_container["error"]
+    return result_container.get("result")
 
 
 @celery_app.task(
