@@ -28,17 +28,27 @@ class SafeSocketIOApp:
         self._logger = logger or logging.getLogger(__name__)
         cleaned_socket_path = socketio_path.strip("/") if socketio_path else ""
         socket_prefix = f"/{cleaned_socket_path}" if cleaned_socket_path else "/"
+        self._socket_prefix = socket_prefix
+        self._mount_prefix = None
+        self._mount_socket_prefix = None
         prefixes = {socket_prefix}
         if mount_path:
             cleaned_mount = "/" + mount_path.strip("/")
             if cleaned_mount != "/":
+                self._mount_prefix = cleaned_mount
+                self._mount_socket_prefix = f"{cleaned_mount}{socket_prefix}"
                 prefixes.add(f"{cleaned_mount}{socket_prefix}")
         self._socketio_prefixes = tuple(sorted(prefixes, key=len, reverse=True))
 
     async def __call__(self, scope, receive, send):
+        path = scope.get("path", "")
+        if self._mount_socket_prefix and path.startswith(self._mount_socket_prefix):
+            scope = dict(scope)
+            scope["path"] = path[len(self._mount_prefix or "") :] or "/"
+            path = scope["path"]
+
         if scope["type"] == "websocket":
-            path = scope.get("path", "")
-            if not any(path.startswith(prefix) for prefix in self._socketio_prefixes):
+            if not path.startswith(self._socket_prefix):
                 self._logger.warning(
                     "socket_path_mismatch expected_prefixes=%s path=%s",
                     ",".join(self._socketio_prefixes),
