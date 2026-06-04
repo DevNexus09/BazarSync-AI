@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 DEFAULT_CORS_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://bazarsync.vercel.app",
+    "https://bazar-sync-ai.vercel.app",
 ]
 
 
