@@ -66,6 +66,26 @@ class RecommendationGenerateResponse(BaseModel):
     )
 
 
+class RecommendationQueuedResponse(BaseModel):
+    success: bool = True
+    status: Literal["processing"] = "processing"
+    product_id: UUID
+    task_id: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "success": True,
+                    "status": "processing",
+                    "product_id": "1b244d3b-1fbe-4e8c-aea6-47ad97527ac7",
+                    "task_id": "3aa4b1c1-1e7f-4c5e-9f6a-2b7c4b0b6d8a",
+                }
+            ]
+        }
+    )
+
+
 class RecommendationErrorResponse(BaseModel):
     success: bool = False
     detail: str

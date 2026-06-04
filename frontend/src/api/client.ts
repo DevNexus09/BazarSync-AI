@@ -5,7 +5,7 @@ import { env } from "@/utils/env"
 
 const apiClient = axios.create({
   baseURL: env.apiBaseUrl,
-  timeout: 15000,
+  timeout: 30000,
 })
 
 apiClient.interceptors.request.use((config) => {

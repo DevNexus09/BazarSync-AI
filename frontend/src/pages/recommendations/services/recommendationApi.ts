@@ -5,6 +5,9 @@ import apiClient from "@/api/client"
 import type {
   RecommendationApiResponse,
   RecommendationData,
+  RecommendationGenerateApiResponse,
+  RecommendationGenerateResult,
+  RecommendationQueuedResponse,
 } from "../types/recommendation"
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -15,9 +18,7 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-const mapRecommendation = (
-  data: RecommendationApiResponse
-): RecommendationData => ({
+const mapRecommendation = (data: RecommendationApiResponse): RecommendationData => ({
   success: data.success,
   productId: String(data.product_id),
   recommendation: {
@@ -39,16 +40,29 @@ const mapRecommendation = (
   createdAt: data.created_at,
 })
 
+const isQueuedResponse = (
+  data: RecommendationGenerateApiResponse
+): data is RecommendationQueuedResponse =>
+  "status" in data && data.status === "processing"
+
 export async function generateRecommendation(
   productId: string
-): Promise<RecommendationData> {
+): Promise<RecommendationGenerateResult> {
   if (!productId) {
     throw new Error("Product id is required to generate a recommendation.")
   }
 
-  const { data } = await apiClient.post<RecommendationApiResponse>(
+  const { data } = await apiClient.post<RecommendationGenerateApiResponse>(
     `/recommendations/generate/${encodeURIComponent(productId)}`
   )
+
+  if (isQueuedResponse(data)) {
+    return {
+      queued: true,
+      taskId: data.task_id,
+      productId: String(data.product_id),
+    }
+  }
 
   return mapRecommendation(data)
 }

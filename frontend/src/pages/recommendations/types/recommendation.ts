@@ -45,6 +45,27 @@ export type RecommendationApiResponse = {
   created_at: string
 }
 
+export type RecommendationQueuedResponse = {
+  success: true
+  status: "processing"
+  product_id: string
+  task_id: string
+}
+
+export type RecommendationGenerateApiResponse =
+  | RecommendationApiResponse
+  | RecommendationQueuedResponse
+
+export type RecommendationQueuedResult = {
+  queued: true
+  taskId: string
+  productId: string
+}
+
+export type RecommendationGenerateResult =
+  | RecommendationData
+  | RecommendationQueuedResult
+
 export type RecommendationErrorResponse = {
   success: false
   detail: string

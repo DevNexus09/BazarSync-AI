@@ -34,6 +34,7 @@ export default function RecommendationDashboardPage() {
     isLoading,
     isGenerating,
     isFetching,
+    isQueued,
     errorMessage,
     generateRecommendation,
   } = useRecommendation(activeProductId || null)
@@ -137,6 +138,12 @@ export default function RecommendationDashboardPage() {
         <InlineAlert
           variant="error"
           message={errorMessage}
+        />
+      ) : null}
+      {isQueued ? (
+        <InlineAlert
+          variant="info"
+          message="Recommendation generation queued. We'll update this view once it's ready."
         />
       ) : null}
 

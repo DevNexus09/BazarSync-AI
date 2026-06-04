@@ -21,19 +21,27 @@ class SafeSocketIOApp:
         app: socketio.ASGIApp,
         *,
         socketio_path: str,
+        mount_path: str | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         self._app = app
         self._logger = logger or logging.getLogger(__name__)
-        self._socketio_prefix = f"/{socketio_path}" if socketio_path else "/"
+        cleaned_socket_path = socketio_path.strip("/") if socketio_path else ""
+        socket_prefix = f"/{cleaned_socket_path}" if cleaned_socket_path else "/"
+        prefixes = {socket_prefix}
+        if mount_path:
+            cleaned_mount = "/" + mount_path.strip("/")
+            if cleaned_mount != "/":
+                prefixes.add(f"{cleaned_mount}{socket_prefix}")
+        self._socketio_prefixes = tuple(sorted(prefixes, key=len, reverse=True))
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "websocket":
             path = scope.get("path", "")
-            if not path.startswith(self._socketio_prefix):
+            if not any(path.startswith(prefix) for prefix in self._socketio_prefixes):
                 self._logger.warning(
-                    "socket_path_mismatch expected_prefix=%s path=%s",
-                    self._socketio_prefix,
+                    "socket_path_mismatch expected_prefixes=%s path=%s",
+                    ",".join(self._socketio_prefixes),
                     path,
                 )
                 await send({"type": "websocket.accept"})
@@ -71,5 +79,10 @@ def build_socketio_resources(
         engineio_logger=logger,
     )
     raw_app = socketio.ASGIApp(server, socketio_path=socketio_path)
-    app = SafeSocketIOApp(raw_app, socketio_path=socketio_path, logger=logger)
+    app = SafeSocketIOApp(
+        raw_app,
+        socketio_path=socketio_path,
+        mount_path=settings.socketio_mount_path,
+        logger=logger,
+    )
     return SocketIOResources(server=server, app=app)
