@@ -80,6 +80,12 @@ def run_manual_scrape_task(
                 raise Ignore() from exc
 
         service = ScrapeService(session)
+        logger.info(
+            "Starting scrape task product=%s seller=%s run=%s",
+            product_id,
+            seller_id,
+            run_uuid,
+        )
         response = run_async(
             service.run_manual_scrape(
                 seller=seller,
@@ -107,7 +113,12 @@ def run_manual_scrape_task(
         logger.warning("Non-retriable scrape error: %s", exc)
         raise Ignore() from exc
     except ScrapePipelineError as exc:
-        logger.exception("Scrape pipeline failed: %s", exc)
+        logger.exception(
+            "Scrape pipeline failed product=%s run=%s error=%s",
+            product_id,
+            scrape_run_id,
+            exc,
+        )
         raise
     finally:
         session.close()
