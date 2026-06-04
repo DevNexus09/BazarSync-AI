@@ -339,7 +339,7 @@ class TelegramService:
     async def _emit_event(self, event: str, result: TelegramDeliveryResult) -> None:
         if not self._event_emitter:
             return
-        await self._event_emitter(event, result.model_dump())
+        await self._event_emitter(event, result.model_dump(mode="json"))
 
 
 def run_async(coro: Awaitable[TelegramDeliveryResult]) -> TelegramDeliveryResult:
