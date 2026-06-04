@@ -3,23 +3,40 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
+BCRYPT_ROUNDS = 12
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
     except ValueError:
         return False
+
+
+def needs_password_rehash(hashed_password: str) -> bool:
+    parts = hashed_password.split("$")
+    if len(parts) < 4:
+        return True
+    cost_str = parts[2]
+    if not cost_str.isdigit():
+        return True
+    cost = int(cost_str)
+    return cost < BCRYPT_ROUNDS
 
 
 def create_access_token(subject: str, expires_minutes: int | None = None) -> str:

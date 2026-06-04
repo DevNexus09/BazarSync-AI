@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.security import get_password_hash, verify_password
+from app.core.security import get_password_hash, needs_password_rehash, verify_password
 from app.models.seller import Seller
 from app.schemas.auth import SellerCreate, SellerLogin, SellerProfileUpdate
 
@@ -54,6 +54,11 @@ class AuthService:
         seller = self.get_seller_by_email(payload.email)
         if not seller or not verify_password(payload.password, seller.password_hash):
             raise InvalidCredentialsError
+        if needs_password_rehash(seller.password_hash):
+            seller.password_hash = get_password_hash(payload.password)
+            self._db.add(seller)
+            self._db.commit()
+            self._db.refresh(seller)
         return seller
 
     def update_seller_profile(self, seller: Seller, payload: SellerProfileUpdate) -> Seller:
