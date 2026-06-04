@@ -52,6 +52,16 @@ class BrowserManager:
             "--disable-dev-shm-usage",
             "--disable-gpu",
             "--disable-blink-features=AutomationControlled",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-extensions",
+            "--disable-component-extensions-with-background-pages",
+            "--disable-background-networking",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-ipc-flooding-protection",
+            "--disable-renderer-backgrounding",
+            "--js-flags=--max-old-space-size=128",
         ]
 
     # -----------------------------
