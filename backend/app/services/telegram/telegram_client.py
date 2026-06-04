@@ -215,6 +215,28 @@ class TelegramClient:
         except TelegramError as exc:
             raise TelegramApiError(str(exc)) from exc
 
+    async def set_webhook(self, *, url: str, secret_token: str | None = None) -> None:
+        cleaned = url.strip() if url else ""
+        if not cleaned:
+            raise TelegramConfigError("Telegram webhook url is required.")
+        try:
+            await asyncio.wait_for(
+                self._bot.set_webhook(url=cleaned, secret_token=secret_token),
+                timeout=self._settings.timeout_seconds,
+            )
+        except RetryAfter as exc:
+            raise TelegramRateLimitError(
+                "Telegram rate limit exceeded.", retry_after=exc.retry_after
+            ) from exc
+        except TimedOut as exc:
+            raise TelegramTimeoutError("Telegram request timed out.") from exc
+        except NetworkError as exc:
+            raise TelegramNetworkError("Telegram network failure.") from exc
+        except InvalidToken as exc:
+            raise TelegramUnauthorizedError("Telegram bot token is invalid.") from exc
+        except TelegramError as exc:
+            raise TelegramApiError(str(exc)) from exc
+
 
 def _is_invalid_chat_message(detail: str) -> bool:
     lowered = detail.lower()

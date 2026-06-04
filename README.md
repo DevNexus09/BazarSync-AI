@@ -64,3 +64,13 @@ HIGH
 ⏰ Updated:
 2026-05-28 10:45 PM
 ```
+
+## Telegram bot setup (webhook)
+
+Set these environment variables in production so Telegram can reach your webhook:
+
+1. `TELEGRAM_BOT_TOKEN` — Bot API token from BotFather.
+2. `TELEGRAM_WEBHOOK_URL` — Public HTTPS URL ending in `/api/v1/telegram/webhook`.
+3. `TELEGRAM_WEBHOOK_SECRET` (optional) — Secret token Telegram will echo in `X-Telegram-Bot-Api-Secret-Token`.
+
+When `TELEGRAM_WEBHOOK_URL` is set, the backend registers the webhook on startup.

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.router import register_routers
-from app.api.v1.telegram import router as telegram_router
 
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
@@ -20,7 +20,25 @@ from app.db.bootstrap import (
 
 from app.db.session import engine
 
+from app.services.telegram.telegram_client import TelegramClient
+from app.services.telegram.telegram_connection_service import TelegramConnectionSettings
 from app.websocket.socket_manager import init_socketio
+
+logger = logging.getLogger(__name__)
+
+
+async def _setup_telegram_webhook() -> None:
+    telegram_settings = TelegramConnectionSettings()
+    webhook_url = telegram_settings.webhook_url
+    if not webhook_url:
+        logger.warning("telegram_webhook_not_configured reason=missing TELEGRAM_WEBHOOK_URL")
+        return
+    client = TelegramClient()
+    await client.set_webhook(
+        url=webhook_url,
+        secret_token=telegram_settings.webhook_secret,
+    )
+    logger.info("telegram_webhook_configured url=%s", webhook_url)
 
 
 @asynccontextmanager
@@ -35,6 +53,8 @@ async def lifespan(app: FastAPI):
         ensure_sellers_profile_columns(engine)
         ensure_products_table(engine)
         ensure_snapshot_logs_table(engine)
+
+    await _setup_telegram_webhook()
 
     # Start websocket/socket manager
     socket_manager = getattr(app.state, "socket_manager", None)
@@ -79,13 +99,6 @@ def create_app() -> FastAPI:
 
     # Main API routers
     register_routers(app)
-
-    # Telegram webhook router
-    app.include_router(
-        telegram_router,
-        prefix="/api/v1/telegram",
-        tags=["Telegram"],
-    )
 
     # Initialize Socket.IO manager
     app.state.socket_manager = init_socketio(app)

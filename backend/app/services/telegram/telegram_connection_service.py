@@ -43,6 +43,7 @@ class TelegramConnectionSettings(BaseSettings):
     connect_token_ttl_minutes: int = Field(default=10, ge=1)
     connect_token_secret: str | None = None
     webhook_secret: str | None = None
+    webhook_url: str | None = None
     alert_cooldown_seconds: int = Field(default=7200, ge=0)
     bot_username: str | None = None
 
