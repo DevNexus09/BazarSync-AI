@@ -10,6 +10,7 @@ from playwright.async_api import Error, TimeoutError as PlaywrightTimeoutError
 from app.scraper.browser import BrowserManager
 from app.scraper.constants import (
     AJAX_TIMEOUT_MS,
+    DETAILS_CONCURRENCY,
     DEFAULT_MAX_RESULTS,
     DEFAULT_TIMEOUT_MS,
     MARKETPLACE_NAME,
@@ -177,7 +178,7 @@ class DarazScraper:
         if not products:
             return []
 
-        semaphore = asyncio.Semaphore(3)
+        semaphore = asyncio.Semaphore(DETAILS_CONCURRENCY)
 
         async def _fetch_details(product: dict[str, Any]) -> dict[str, Any]:
             url = product.get("daraz_product_url")

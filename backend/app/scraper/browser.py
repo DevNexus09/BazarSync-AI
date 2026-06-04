@@ -45,6 +45,15 @@ class BrowserManager:
         self._browser_lock = asyncio.Lock()
         self._initialized_pid: int | None = None
 
+    def _chromium_launch_args(self) -> list[str]:
+        return [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--disable-blink-features=AutomationControlled",
+        ]
+
     # -----------------------------
     # Browser lifecycle
     # -----------------------------
@@ -56,15 +65,15 @@ class BrowserManager:
                 if self._browser:
                     try:
                         await self._browser.close()
-                    except Exception:
-                        pass
+                    except Error as exc:
+                        logger.warning("Failed to close forked browser: %s", exc)
                     self._browser = None
 
                 if self._playwright:
                     try:
                         await self._playwright.stop()
-                    except Exception:
-                        pass
+                    except Error as exc:
+                        logger.warning("Failed to stop Playwright after fork: %s", exc)
                     self._playwright = None
 
                 self._initialized_pid = None
@@ -78,8 +87,8 @@ class BrowserManager:
             if self._browser:
                 try:
                     await self._browser.close()
-                except Exception:
-                    pass
+                except Error as exc:
+                    logger.warning("Failed to close stale browser: %s", exc)
                 self._browser = None
 
             # Start Playwright once per process
@@ -92,15 +101,14 @@ class BrowserManager:
 
             # Launch Chromium (IMPORTANT: no executable_path)
             try:
-                self._browser = await self._playwright.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-blink-features=AutomationControlled",
-                    ],
-                )
+                launch_options: dict[str, object] = {
+                    "headless": self._config.headless,
+                    "args": self._chromium_launch_args(),
+                }
+                if self._config.proxy:
+                    launch_options["proxy"] = self._config.proxy
+
+                self._browser = await self._playwright.chromium.launch(**launch_options)
                 self._initialized_pid = current_pid
             except Error as exc:
                 logger.exception("Failed to launch Playwright browser")
@@ -183,6 +191,10 @@ class BrowserManager:
             yield page
         finally:
             try:
+                await page.close()
+            except Error as exc:
+                logger.warning("Failed to close page: %s", exc)
+            try:
                 await context.close()
             except Error as exc:
                 logger.warning("Failed to close context: %s", exc)
@@ -194,13 +206,13 @@ class BrowserManager:
         if self._browser:
             try:
                 await self._browser.close()
-            except Exception:
-                pass
+            except Error as exc:
+                logger.warning("Failed to close browser: %s", exc)
             self._browser = None
 
         if self._playwright:
             try:
                 await self._playwright.stop()
-            except Exception:
-                pass
+            except Error as exc:
+                logger.warning("Failed to stop Playwright: %s", exc)
             self._playwright = None

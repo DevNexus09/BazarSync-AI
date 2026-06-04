@@ -14,6 +14,13 @@ def _read_float_env(name: str, default: float) -> float:
         return default
 
 
+def _read_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _read_int_env(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None:
@@ -29,6 +36,7 @@ DARAZ_BASE_URL: Final = "https://www.daraz.com.bd"
 DARAZ_SEARCH_PATH: Final = "/catalog/"
 
 DEFAULT_MAX_RESULTS: Final = _read_int_env("SCRAPER_MAX_RESULTS", 25)
+DETAILS_CONCURRENCY: Final = _read_int_env("SCRAPER_DETAIL_CONCURRENCY", 3)
 WEIGHTED_RATING_C: Final = 75
 WEIGHTS: Final = {
     "sold": 0.30,
@@ -68,7 +76,7 @@ USER_AGENT_FALLBACKS: Final = [
 
 @dataclass(frozen=True)
 class BrowserConfig:
-    headless: bool = True
+    headless: bool = _read_bool_env("SCRAPER_HEADLESS", True)
     timeout_ms: int = DEFAULT_TIMEOUT_MS
     navigation_timeout_ms: int = NAVIGATION_TIMEOUT_MS
     proxy: dict[str, str] | None = None
