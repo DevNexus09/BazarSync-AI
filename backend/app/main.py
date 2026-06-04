@@ -60,12 +60,18 @@ def create_app() -> FastAPI:
     )
 
     # CORS configuration
+    origins = settings.cors_origins
+    if "*" in origins:
+        raise RuntimeError(
+            "CORS_ORIGINS cannot include '*' when allow_credentials=True. "
+            "Use an explicit comma-separated list of origins."
+        )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     )
 
     # Global exception handlers

@@ -4,6 +4,13 @@ import os
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://bazarsync.vercel.app",
+]
+
+
 def _split_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
@@ -55,7 +62,9 @@ class Settings(BaseModel):
             "app_name": os.getenv("APP_NAME", "BazarSync AI"),
             "env": env,
             "api_v1_prefix": os.getenv("API_V1_PREFIX", "/api/v1"),
-            "cors_origins": _split_csv(os.getenv("CORS_ORIGINS", "http://localhost:5173")),
+            "cors_origins": _split_csv(
+                os.getenv("CORS_ORIGINS", ",".join(DEFAULT_CORS_ORIGINS))
+            ),
             "database_url": _require_env("DATABASE_URL"),
             "jwt_secret_key": _require_env("JWT_SECRET_KEY"),
             "jwt_algorithm": os.getenv("JWT_ALGORITHM", "HS256"),
