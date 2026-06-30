@@ -8,6 +8,7 @@ import type { User } from "@/types/auth"
 const requiredProfileFields: Array<keyof User> = [
   "fullName",
   "businessName",
+  "profileImageUrl",
   "industry",
   "website",
   "addressLine",
@@ -23,6 +24,7 @@ export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false)
 
   const displayName = user?.fullName || user?.businessName || user?.email || "Account"
+  const profileImageUrl = user?.profileImageUrl?.trim()
   const initials = displayName
     .split(" ")
     .filter(Boolean)
@@ -73,32 +75,53 @@ export default function UserMenu() {
     <div className="relative" ref={menuRef}>
       <Button
         variant="ghost"
-        size="sm"
-        className="gap-2 rounded-xl border border-border/60 bg-card/40 px-2.5 py-1.5 hover:bg-card/70"
+        size="icon"
+        className="size-11 rounded-full border border-border/60 bg-card/40 p-1 hover:bg-card/70"
         aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-label="Open account menu"
         onClick={() => setIsOpen((open) => !open)}
       >
-        <span className="flex size-8 items-center justify-center rounded-full bg-muted/60 text-xs font-semibold text-foreground">
-          {initials || "U"}
-        </span>
-        <span className="hidden text-sm font-medium text-foreground sm:inline">
-          {displayName}
-        </span>
+        {profileImageUrl ? (
+          <img
+            src={profileImageUrl}
+            alt=""
+            className="size-9 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex size-9 items-center justify-center rounded-full bg-muted/60 text-xs font-semibold text-foreground">
+            {initials || "U"}
+          </span>
+        )}
       </Button>
       {isOpen ? (
         <div
           className="absolute right-0 mt-3 w-72 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12),_0_24px_60px_rgba(4,8,16,0.6)] backdrop-blur"
           role="menu"
         >
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">{displayName}</p>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
-            <p className="text-xs text-muted-foreground">
-              {missingCount === 0
-                ? "Profile complete"
-                : `Profile missing ${missingCount} fields`}
-            </p>
+          <div className="flex items-center gap-3">
+            {profileImageUrl ? (
+              <img
+                src={profileImageUrl}
+                alt=""
+                className="size-11 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex size-11 items-center justify-center rounded-full bg-muted/60 text-sm font-semibold text-foreground">
+                {initials || "U"}
+              </span>
+            )}
+            <div className="min-w-0 space-y-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {displayName}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+              <p className="text-xs text-muted-foreground">
+                {missingCount === 0
+                  ? "Profile complete"
+                  : `Profile missing ${missingCount} fields`}
+              </p>
+            </div>
           </div>
           <div className="mt-4 space-y-2 border-t pt-3">
             <Button asChild variant="outline" size="sm" className="w-full">

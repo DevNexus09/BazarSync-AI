@@ -10,6 +10,7 @@ _SELLERS_OPTIONAL_COLUMNS: dict[str, str] = {
     "business_name": "VARCHAR(255)",
     "industry": "VARCHAR(120)",
     "website": "VARCHAR(255)",
+    "profile_image_url": "TEXT",
     "address_line": "VARCHAR(255)",
     "city": "VARCHAR(120)",
     "country": "VARCHAR(120)",

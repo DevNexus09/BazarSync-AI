@@ -41,6 +41,11 @@ class RealtimeEventType(str, Enum):
     TELEGRAM_CONNECTED = "telegram_connected"
     TELEGRAM_DISCONNECTED = "telegram_disconnected"
     ALERT_FAILED = "alert_failed"
+    COMPETITOR_SNAPSHOT_CREATED = "competitor.snapshot.created"
+    COMPETITOR_EVENT_CREATED = "competitor.event.created"
+    COMPETITOR_RANKINGS_UPDATED = "competitor.rankings.updated"
+    MARKET_OPPORTUNITY_CREATED = "market.opportunity.created"
+    COMPETITOR_SUMMARY_UPDATED = "competitor.summary.updated"
 
 
 class RealtimeEventBase(CamelModel):
@@ -51,8 +56,17 @@ class RealtimeEventBase(CamelModel):
     seller_id: UUID | None = None
     product_id: UUID | None = None
 
+
+class DashboardRealtimeEnvelope(CamelModel):
+    version: int = 1
+    event: RealtimeEventType
+    seller_id: UUID
+    product_id: UUID
+    occurred_at: datetime
+    data: dict
+
     model_config = ConfigDict(
-        alias_generator=_to_camel,
+        alias_generator=None,
         populate_by_name=True,
         use_enum_values=True,
         extra="forbid",
@@ -319,4 +333,5 @@ RealtimeEvent = (
     | TelegramConnectedEvent
     | TelegramDisconnectedEvent
     | AlertFailedEvent
+    | DashboardRealtimeEnvelope
 )

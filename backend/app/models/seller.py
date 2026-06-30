@@ -4,7 +4,7 @@ from datetime import datetime
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,7 +15,17 @@ if TYPE_CHECKING:
     from app.models.product import Product
     from app.models.alert import Alert
     from app.models.alert_delivery_log import AlertDeliveryLog
+    from app.models.competitor_event import CompetitorEvent
+    from app.models.competitor_ranking import CompetitorRanking
+    from app.models.inventory_history import InventoryHistory
+    from app.models.inventory_risk import InventoryRiskAssessment
+    from app.models.market_opportunity import MarketOpportunity
+    from app.models.sales_record import SalesRecord
+    from app.models.sales_velocity import SalesVelocity
+    from app.models.reorder_recommendation import ReorderRecommendation
+    from app.models.stockout_prediction import StockoutPrediction
     from app.models.telegram_connection import SellerTelegramConnection
+    from app.models.telegram_inventory_alert import TelegramInventoryAlert
     from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
 
 
@@ -35,6 +45,7 @@ class Seller(Base):
     business_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     industry: Mapped[str | None] = mapped_column(String(120), nullable=True)
     website: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    profile_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     address_line: Mapped[str | None] = mapped_column(String(255), nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -52,6 +63,46 @@ class Seller(Base):
         cascade="all, delete-orphan",
     )
     alerts: Mapped[list["Alert"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    competitor_events: Mapped[list["CompetitorEvent"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    competitor_rankings: Mapped[list["CompetitorRanking"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    market_opportunities: Mapped[list["MarketOpportunity"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    inventory_history: Mapped[list["InventoryHistory"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    sales_records: Mapped[list["SalesRecord"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    sales_velocity: Mapped[list["SalesVelocity"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    stockout_predictions: Mapped[list["StockoutPrediction"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    reorder_recommendations: Mapped[list["ReorderRecommendation"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    inventory_risk_assessments: Mapped[list["InventoryRiskAssessment"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    telegram_inventory_alerts: Mapped[list["TelegramInventoryAlert"]] = relationship(
         back_populates="seller",
         cascade="all, delete-orphan",
     )

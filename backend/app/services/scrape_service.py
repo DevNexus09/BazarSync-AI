@@ -18,8 +18,10 @@ from app.scraper.exceptions import ScraperError, SimilarityError
 from app.scraper.services.competitor_service import scrape_daraz_competitors
 from app.scraper.similarity import filter_similar_products
 from app.scraper.constants import SIMILARITY_THRESHOLD
+from app.scraper.constants import MARKETPLACE_NAME
 from app.schemas.scrape import ScrapeRunResponse
 from app.schemas.competitor import CompetitorSnapshot
+from app.services.competitor_snapshot_service import CompetitorSnapshotService, InvalidScrapeRunTransitionError
 from app.services.competitor_service import CompetitorService
 from app.services.dashboard.events import DashboardEventEmitter
 from app.services.realtime import RealtimeService
@@ -64,6 +66,8 @@ class ScrapeService:
         product_id: UUID,
         threshold: float | None = None,
         scrape_run_id: UUID | None = None,
+        run_key: str | None = None,
+        task_id: str | None = None,
     ) -> ScrapeRunResponse:
         product = self._get_product(product_id)
         if not product:
@@ -77,11 +81,25 @@ class ScrapeService:
                 raise ScrapeRunNotFoundError("Scrape run not found.")
             if scrape_run.product_id != product.id or scrape_run.seller_id != seller.id:
                 raise ProductAccessError("Scrape run does not belong to this product.")
-            scrape_run.status = "running"
-            scrape_run.started_at = datetime.now(timezone.utc)
+            if scrape_run.status == "COMPLETED":
+                return self._completed_response(scrape_run=scrape_run, product=product, start=0.0)
+            snapshot_service = CompetitorSnapshotService(self._db)
+            snapshot_service.transition_to_running(scrape_run, task_id=task_id)
             self._db.commit()
         else:
-            scrape_run = self._create_scrape_run(seller.id, product.id)
+            resolved_run_key = run_key or self._default_run_key(seller.id, product.id)
+            snapshot_service = CompetitorSnapshotService(self._db)
+            result = snapshot_service.start_scrape_run(
+                seller_id=seller.id,
+                product_id=product.id,
+                marketplace=MARKETPLACE_NAME,
+                run_key=resolved_run_key,
+                task_id=task_id,
+            )
+            self._db.commit()
+            scrape_run = result.scrape_run
+            if result.already_completed:
+                return self._completed_response(scrape_run=scrape_run, product=product, start=0.0)
         start = time.monotonic()
 
         try:
@@ -109,10 +127,14 @@ class ScrapeService:
                 observed_at=scrape_response.scraped_at,
             )
 
-            scrape_run.status = "completed"
-            scrape_run.finished_at = datetime.now(timezone.utc)
-            scrape_run.total_results = competitors_found
-            scrape_run.successful_matches = matched_results
+            snapshot_service = CompetitorSnapshotService(self._db)
+            snapshot_service.record_successful_scrape(
+                scrape_run=scrape_run,
+                competitors=competitor_rows,
+                captured_at=scrape_response.scraped_at,
+                discovered_count=competitors_found,
+                matched_count=matched_results,
+            )
 
             self._db.commit()
             self._db.refresh(scrape_run)
@@ -161,9 +183,13 @@ class ScrapeService:
         scrape_run = ScrapeRun(
             seller_id=seller.id,
             product_id=product.id,
-            status="pending",
+            marketplace=MARKETPLACE_NAME,
+            run_key=self._default_run_key(seller.id, product.id),
+            status="PENDING",
         )
         self._db.add(scrape_run)
+        self._db.flush()
+        scrape_run.run_key = f"manual:{scrape_run.id}"
         self._db.commit()
         self._db.refresh(scrape_run)
         return scrape_run, product
@@ -198,25 +224,58 @@ class ScrapeService:
         scrape_run = ScrapeRun(
             seller_id=seller_id,
             product_id=product_id,
-            status="running",
+            marketplace=MARKETPLACE_NAME,
+            run_key=self._default_run_key(seller_id, product_id),
+            status="RUNNING",
             started_at=datetime.now(timezone.utc),
         )
         self._db.add(scrape_run)
+        self._db.flush()
+        scrape_run.run_key = f"manual:{scrape_run.id}"
         self._db.commit()
         self._db.refresh(scrape_run)
         return scrape_run
 
     def _mark_run_failed(self, scrape_run_id: UUID, message: str) -> None:
-        scrape_run = self._db.get(ScrapeRun, scrape_run_id)
-        if not scrape_run:
-            return
-        scrape_run.status = "failed"
-        scrape_run.error_message = message[:1000]
-        scrape_run.finished_at = datetime.now(timezone.utc)
-        self._db.commit()
+        try:
+            CompetitorSnapshotService(self._db).record_failed_scrape(
+                scrape_run_id=scrape_run_id,
+                reason=message,
+            )
+        except InvalidScrapeRunTransitionError:
+            self._db.rollback()
 
     def mark_run_failed(self, scrape_run_id: UUID, message: str) -> None:
         self._mark_run_failed(scrape_run_id, message)
+
+    @staticmethod
+    def _default_run_key(seller_id: UUID, product_id: UUID) -> str:
+        return f"manual:{seller_id}:{product_id}:{datetime.now(timezone.utc).isoformat()}"
+
+    def _completed_response(
+        self,
+        *,
+        scrape_run: ScrapeRun,
+        product: Product,
+        start: float,
+    ) -> ScrapeRunResponse:
+        processing_time = 0.0 if start == 0.0 else round(time.monotonic() - start, 2)
+        return ScrapeRunResponse(
+            success=True,
+            product_id=product.id,
+            product_title=product.title,
+            scrape_run_id=scrape_run.id,
+            competitors_found=scrape_run.total_results or scrape_run.discovered_competitor_count or 0,
+            matched_results=scrape_run.successful_matches or 0,
+            filtered_results=max(
+                0,
+                (scrape_run.total_results or scrape_run.discovered_competitor_count or 0)
+                - (scrape_run.successful_matches or 0),
+            ),
+            processing_time_seconds=processing_time,
+            scraped_at=scrape_run.completed_at or scrape_run.finished_at or scrape_run.created_at,
+            competitors=[],
+        )
 
     @staticmethod
     def _to_snapshot(item: dict) -> CompetitorSnapshot:

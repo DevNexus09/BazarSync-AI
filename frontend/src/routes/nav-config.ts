@@ -1,5 +1,6 @@
 import {
   Activity,
+  ClipboardList,
   LayoutDashboard,
   LineChart,
   MessageCircle,
@@ -37,17 +38,16 @@ export const appNavItems: NavItem[] = [
     description: "Next-best actions",
   },
   {
+    label: "Inventory Intelligence",
+    path: "/app/inventory-intelligence",
+    icon: ClipboardList,
+    description: "Stockout risk and reorder planning",
+  },
+  {
     label: "Telegram Alerts",
     path: "/app/telegram-alerts",
     icon: MessageCircle,
     description: "BazarSync AI Telegram alerts",
-  },
-  {
-    label: "Analytics",
-    path: "/app/analytics",
-    icon: LineChart,
-    description: "Market analytics suite",
-    comingSoon: true,
   },
   {
     label: "Pricing Analytics",

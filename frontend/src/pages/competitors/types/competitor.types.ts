@@ -15,6 +15,8 @@ export type ApiCompetitor = {
   attribute_similarity?: number | string | null
   keyword_score?: number | string | null
   ranking_score?: number | string | null
+  market_rank?: number | string | null
+  market_score?: number | string | null
   match_confidence?: number | string | null
   category_match?: boolean | null
   matched_attributes?: string[] | null
@@ -40,6 +42,8 @@ export type Competitor = {
   attributeSimilarity?: number | null
   keywordScore?: number | null
   rankingScore?: number | null
+  marketRank?: number | null
+  marketScore?: number | null
   matchConfidence?: number | null
   categoryMatch?: boolean | null
   matchedAttributes?: string[]

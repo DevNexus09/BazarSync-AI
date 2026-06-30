@@ -39,17 +39,27 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["app.tasks"])
 
-celery_app.conf.beat_schedule = (
-    {
-        "scraper_every_6_hours": {
-            "task": "scraper.run_periodic_scrape",
-            "schedule": crontab(minute=0, hour="*/6"),
-        },
-        "scraper_nightly_refresh": {
-            "task": "scraper.run_nightly_refresh",
-            "schedule": crontab(minute=0, hour=2),
-        },
+beat_schedule = {}
+if settings.scraper_schedule_enabled:
+    beat_schedule.update(
+        {
+            "scraper_every_6_hours": {
+                "task": "scraper.run_periodic_scrape",
+                "schedule": crontab(minute=0, hour="*/6"),
+            },
+            "scraper_nightly_refresh": {
+                "task": "scraper.run_nightly_refresh",
+                "schedule": crontab(minute=0, hour=2),
+            },
+        }
+    )
+if settings.inventory_intelligence_schedule_enabled:
+    beat_schedule["inventory_intelligence_daily"] = {
+        "task": "inventory_intelligence.daily_workflow",
+        "schedule": crontab(
+            minute=settings.inventory_intelligence_daily_minute_utc,
+            hour=settings.inventory_intelligence_daily_hour_utc,
+        ),
     }
-    if settings.scraper_schedule_enabled
-    else {}
-)
+
+celery_app.conf.beat_schedule = beat_schedule

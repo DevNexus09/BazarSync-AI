@@ -52,6 +52,14 @@ export function CompetitorRow({ competitor, variant = "table" }: CompetitorRowPr
   const [isExpanded, setIsExpanded] = useState(false)
   const similarityValue = competitor.matchConfidence ?? competitor.similarityScore
   const similarityTone = getSimilarityTone(similarityValue ?? null)
+  const scoreLabel =
+    competitor.marketScore === null || competitor.marketScore === undefined
+      ? "—"
+      : `${Math.round(competitor.marketScore)}`
+  const rankLabel =
+    competitor.marketRank === null || competitor.marketRank === undefined
+      ? null
+      : `#${competitor.marketRank}`
   const stockBadgeStyle = getStockBadgeStyle(competitor.stockStatus)
   const attributes = competitor.attributes ?? {}
   const matchedKeys =
@@ -89,6 +97,17 @@ export function CompetitorRow({ competitor, variant = "table" }: CompetitorRowPr
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Score
+            </p>
+            <p className="font-medium text-foreground">
+              {scoreLabel}
+              {rankLabel ? (
+                <span className="ml-1 text-xs text-muted-foreground">{rankLabel}</span>
+              ) : null}
+            </p>
+          </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Price
@@ -170,6 +189,12 @@ export function CompetitorRow({ competitor, variant = "table" }: CompetitorRowPr
             {competitor.storeName}
           </div>
         </td>
+        <td className="px-4 py-3">
+          <div className="font-semibold text-foreground">{scoreLabel}</div>
+          {rankLabel ? (
+            <div className="text-xs text-muted-foreground">Rank {rankLabel}</div>
+          ) : null}
+        </td>
         <td className="px-4 py-3 text-muted-foreground">
           {formatMetric(competitor.price, formatCurrency)}
         </td>
@@ -211,7 +236,7 @@ export function CompetitorRow({ competitor, variant = "table" }: CompetitorRowPr
       </tr>
       {isExpanded ? (
         <tr className="bg-muted/20">
-          <td colSpan={8} className="px-4 py-3 text-xs text-muted-foreground">
+          <td colSpan={9} className="px-4 py-3 text-xs text-muted-foreground">
             <div className="grid gap-2 md:grid-cols-2">
               <div>
                 <p className="font-semibold text-foreground">Matched attributes</p>

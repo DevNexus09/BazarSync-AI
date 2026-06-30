@@ -15,6 +15,7 @@ class SellerBase(BaseModel):
     )
     industry: str | None = Field(None, max_length=120, description="Business industry")
     website: str | None = Field(None, max_length=255, description="Business website")
+    profile_image_url: str | None = Field(None, description="Seller profile image URL or data URL")
     address_line: str | None = Field(
         None, max_length=255, description="Business address line"
     )
@@ -39,6 +40,7 @@ class SellerProfileUpdate(BaseModel):
     )
     industry: str | None = Field(None, max_length=120, description="Business industry")
     website: str | None = Field(None, max_length=255, description="Business website")
+    profile_image_url: str | None = Field(None, description="Seller profile image URL or data URL")
     address_line: str | None = Field(
         None, max_length=255, description="Business address line"
     )

@@ -21,6 +21,7 @@ export default function ProfilePage() {
   const [formValues, setFormValues] = React.useState<ProfileInput>(() => ({
     fullName: user?.fullName ?? "",
     businessName: user?.businessName ?? "",
+    profileImageUrl: user?.profileImageUrl ?? "",
     industry: user?.industry ?? "",
     website: user?.website ?? "",
     addressLine: user?.addressLine ?? "",
@@ -80,6 +81,13 @@ export default function ProfilePage() {
     if (values.website.trim() && !/^https?:\/\//i.test(values.website.trim())) {
       errors.website = "Website must start with http:// or https://."
     }
+    if (
+      values.profileImageUrl.trim() &&
+      !/^https?:\/\//i.test(values.profileImageUrl.trim()) &&
+      !/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(values.profileImageUrl.trim())
+    ) {
+      errors.profileImageUrl = "Use an image URL or upload a PNG, JPG, WEBP, or GIF."
+    }
 
     return errors
   }
@@ -90,6 +98,44 @@ export default function ProfilePage() {
     setFieldErrors((prev) => ({ ...prev, [name]: undefined }))
     setFormError(null)
     setSuccessMessage(null)
+  }
+
+  const handleProfilePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    setFieldErrors((prev) => ({ ...prev, profileImageUrl: undefined }))
+    setFormError(null)
+    setSuccessMessage(null)
+
+    if (!file) {
+      return
+    }
+    if (!file.type.startsWith("image/")) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        profileImageUrl: "Choose an image file.",
+      }))
+      return
+    }
+    if (file.size > 750_000) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        profileImageUrl: "Choose an image smaller than 750 KB.",
+      }))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : ""
+      setFormValues((prev) => ({ ...prev, profileImageUrl: result }))
+    }
+    reader.onerror = () => {
+      setFieldErrors((prev) => ({
+        ...prev,
+        profileImageUrl: "Could not read this image.",
+      }))
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -185,6 +231,50 @@ export default function ProfilePage() {
                   {successMessage}
                 </div>
               ) : null}
+              <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 sm:flex-row sm:items-center">
+                {formValues.profileImageUrl.trim() ? (
+                  <img
+                    src={formValues.profileImageUrl.trim()}
+                    alt=""
+                    className="size-20 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex size-20 items-center justify-center rounded-full bg-muted/60 text-lg font-semibold text-foreground">
+                    {(formValues.fullName || user?.email || "U")
+                      .split(" ")
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((chunk) => chunk[0]?.toUpperCase())
+                      .join("") || "U"}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label className="mb-3 block">
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      Upload profile photo
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleProfilePhotoChange}
+                      className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground"
+                    />
+                  </label>
+                  <AuthField
+                    id="profile-image-url"
+                    name="profileImageUrl"
+                    label="Or paste image URL"
+                    value={formValues.profileImageUrl}
+                    onChange={handleChange}
+                    placeholder="https://example.com/profile-photo.jpg"
+                    error={fieldErrors.profileImageUrl}
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Paste an image URL to show your photo in the top-right account
+                    circle.
+                  </p>
+                </div>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <AuthField
                   id="profile-full-name"

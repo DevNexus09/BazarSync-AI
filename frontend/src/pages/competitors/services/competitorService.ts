@@ -57,6 +57,8 @@ const mapCompetitor = (competitor: ApiCompetitor): Competitor => ({
   attributeSimilarity: toNullableNumber(competitor.attribute_similarity),
   keywordScore: toNullableNumber(competitor.keyword_score),
   rankingScore: toNullableNumber(competitor.ranking_score),
+  marketRank: toNullableNumber(competitor.market_rank),
+  marketScore: toNullableNumber(competitor.market_score),
   matchConfidence: toNullableNumber(competitor.match_confidence),
   categoryMatch:
     typeof competitor.category_match === "boolean"

@@ -19,6 +19,11 @@ export const RealtimeEventName = {
   RoomsUpdated: "rooms_updated",
   ServerPong: "server_pong",
   RealtimeError: "realtime_error",
+  CompetitorSnapshotCreated: "competitor.snapshot.created",
+  CompetitorEventCreated: "competitor.event.created",
+  CompetitorRankingsUpdated: "competitor.rankings.updated",
+  MarketOpportunityCreated: "market.opportunity.created",
+  CompetitorSummaryUpdated: "competitor.summary.updated",
 } as const
 
 export type RealtimeEventName =
@@ -184,6 +189,20 @@ export type RealtimeErrorEvent = RealtimeEventEnvelope<
   RealtimeErrorPayload
 >
 
+export type Phase5RealtimeEvent = {
+  version: 1
+  event:
+    | typeof RealtimeEventName.CompetitorSnapshotCreated
+    | typeof RealtimeEventName.CompetitorEventCreated
+    | typeof RealtimeEventName.CompetitorRankingsUpdated
+    | typeof RealtimeEventName.MarketOpportunityCreated
+    | typeof RealtimeEventName.CompetitorSummaryUpdated
+  seller_id: string
+  product_id: string
+  occurred_at: string
+  data: Record<string, unknown>
+}
+
 export type RealtimeRoomScope =
   | "seller"
   | "product"
@@ -235,6 +254,21 @@ export type RealtimeServerEvents = {
   [RealtimeEventName.RoomsUpdated]: (payload: RoomsUpdatedEvent) => void
   [RealtimeEventName.ServerPong]: (payload: ServerPongEvent) => void
   [RealtimeEventName.RealtimeError]: (payload: RealtimeErrorEvent) => void
+  [RealtimeEventName.CompetitorSnapshotCreated]: (
+    payload: Phase5RealtimeEvent
+  ) => void
+  [RealtimeEventName.CompetitorEventCreated]: (
+    payload: Phase5RealtimeEvent
+  ) => void
+  [RealtimeEventName.CompetitorRankingsUpdated]: (
+    payload: Phase5RealtimeEvent
+  ) => void
+  [RealtimeEventName.MarketOpportunityCreated]: (
+    payload: Phase5RealtimeEvent
+  ) => void
+  [RealtimeEventName.CompetitorSummaryUpdated]: (
+    payload: Phase5RealtimeEvent
+  ) => void
 }
 
 export type RealtimeClientEvents = {
