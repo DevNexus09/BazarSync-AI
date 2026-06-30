@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 
 import { InlineAlert } from "@/components/common/inline-alert"
 import { PageHeader } from "@/components/common/page-header"
+import { Phase5Dashboard } from "@/components/dashboard/phase5-dashboard"
 import { Input } from "@/components/ui/input"
 import { useProducts } from "@/hooks/use-products"
 import { formatCurrency, formatNumber, formatPercent } from "@/utils/formatters"
@@ -31,9 +32,13 @@ const isInStock = (status: string) => {
   return !normalized.includes("out") && !normalized.includes("unavailable")
 }
 
+const normalizeStatus = (status?: string | null) => status?.toLowerCase()
+
 export default function CompetitorDashboardPage() {
   const [selectedProductId, setSelectedProductId] = useState("")
   const [activeScrapeRunId, setActiveScrapeRunId] = useState<string | null>(null)
+  const [scrapeStarted, setScrapeStarted] = useState(false)
+  const [showScrapeSuccess, setShowScrapeSuccess] = useState(false)
   const queryClient = useQueryClient()
 
   const {
@@ -74,25 +79,42 @@ export default function CompetitorDashboardPage() {
   )
 
   useEffect(() => {
-    runScraper.reset()
-  }, [activeProductId, runScraper])
-
-  useEffect(() => {
     if (!activeProductId) {
       return
     }
 
-    if (scrapeRunStatus.data?.status === "completed") {
+    if (normalizeStatus(scrapeRunStatus.data?.status) === "completed") {
       queryClient.invalidateQueries({
         queryKey: competitorsQueryKey(activeProductId),
       })
+      const showTimeout = window.setTimeout(() => {
+        setShowScrapeSuccess(true)
+      }, 0)
+      const resetTimeout = window.setTimeout(() => {
+        setShowScrapeSuccess(false)
+        setScrapeStarted(false)
+        setActiveScrapeRunId(null)
+      }, 2500)
+      return () => {
+        window.clearTimeout(showTimeout)
+        window.clearTimeout(resetTimeout)
+      }
     }
   }, [activeProductId, queryClient, scrapeRunStatus.data?.status])
 
   const scraperRunFailure =
-    scrapeRunStatus.data?.status === "failed"
+    normalizeStatus(scrapeRunStatus.data?.status) === "failed"
       ? scrapeRunStatus.data?.error_message || "Scraper failed. Please try again."
       : null
+
+  useEffect(() => {
+    if (scraperRunFailure) {
+      const timeout = window.setTimeout(() => {
+        setScrapeStarted(false)
+      }, 0)
+      return () => window.clearTimeout(timeout)
+    }
+  }, [scraperRunFailure])
 
   const scraperError = runScraper.isError
     ? getAuthAwareMessage(
@@ -101,13 +123,7 @@ export default function CompetitorDashboardPage() {
       )
     : scraperRunFailure
 
-  const scraperSuccess = scrapeRunStatus.data?.status === "running"
-    ? "Scraper running. Fetching fresh competitor data..."
-    : scrapeRunStatus.data?.status === "completed"
-      ? "Scraper completed. Refreshing results..."
-      : runScraper.isSuccess
-        ? `Scraper queued for ${runScraper.data?.product_title ?? "selected product"}.`
-        : null
+  const scrapeStatus = normalizeStatus(scrapeRunStatus.data?.status)
 
   const competitorSummary = useMemo(() => {
     if (!competitors || competitors.length === 0) {
@@ -165,7 +181,11 @@ export default function CompetitorDashboardPage() {
   const hasProducts = (products?.length ?? 0) > 0
   const hasCompetitors = (competitors?.length ?? 0) > 0
   const canRunScraper = Boolean(activeProductId)
-  const isScraperBusy = runScraper.isPending || scrapeRunStatus.data?.status === "running"
+  const isScraperBusy =
+    runScraper.isPending ||
+    scrapeStarted ||
+    scrapeStatus === "pending" ||
+    scrapeStatus === "running"
 
   return (
     <div className="space-y-6">
@@ -186,16 +206,22 @@ export default function CompetitorDashboardPage() {
               </p>
             </div>
             <RunScraperButton
-              onRun={() =>
+              onRun={() => {
+                runScraper.reset()
+                setScrapeStarted(true)
+                setShowScrapeSuccess(false)
                 runScraper.mutate(undefined, {
                   onSuccess: (data) => {
                     setActiveScrapeRunId(data.scrape_run_id)
                   },
+                  onError: () => {
+                    setScrapeStarted(false)
+                  },
                 })
-              }
+              }}
               isRunning={isScraperBusy}
+              isSuccess={showScrapeSuccess}
               disabled={!canRunScraper}
-              statusMessage={scraperSuccess}
               errorMessage={scraperError}
             />
           </div>
@@ -215,6 +241,9 @@ export default function CompetitorDashboardPage() {
                   onChange={(event) => {
                     setSelectedProductId(event.target.value)
                     setActiveScrapeRunId(null)
+                    setScrapeStarted(false)
+                    setShowScrapeSuccess(false)
+                    runScraper.reset()
                   }}
                   className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   disabled={isProductsLoading}
@@ -237,6 +266,9 @@ export default function CompetitorDashboardPage() {
                   onChange={(event) => {
                     setSelectedProductId(event.target.value)
                     setActiveScrapeRunId(null)
+                    setScrapeStarted(false)
+                    setShowScrapeSuccess(false)
+                    runScraper.reset()
                   }}
                   placeholder="Enter product id"
                   disabled={isProductsLoading}
@@ -312,6 +344,8 @@ export default function CompetitorDashboardPage() {
         </div>
       </div>
 
+      <Phase5Dashboard />
+
       {!activeProductId ? (
         <EmptyState
           title="Select a product to begin"
@@ -324,14 +358,9 @@ export default function CompetitorDashboardPage() {
           message={competitorsErrorMessage ?? undefined}
           onRetry={() => refetchCompetitors()}
         />
-      ) : competitors.length === 0 ? (
-        <EmptyState
-          message="No competitor data yet. Run the scraper to populate this dashboard."
-          onAction={() => runScraper.mutate()}
-        />
-      ) : (
+      ) : competitors.length > 0 ? (
         <CompetitorTable competitors={competitors} />
-      )}
+      ) : null}
     </div>
   )
 }

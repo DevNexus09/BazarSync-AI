@@ -5,24 +5,40 @@ from fastapi import APIRouter, FastAPI
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.competitors import router as competitors_router
+from app.api.v1.competitor_events import router as competitor_events_router
+from app.api.v1.competitor_dashboard import router as competitor_dashboard_router
+from app.api.v1.competitor_rankings import router as competitor_rankings_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.health import router as health_router
+from app.api.v1.inventory_risks import router as inventory_risks_router
+from app.api.v1.inventory_intelligence import router as inventory_intelligence_router
+from app.api.v1.market_opportunities import router as market_opportunities_router
 from app.api.v1.products import router as products_router
 from app.api.v1.recommendations import router as recommendations_router
+from app.api.v1.reorder_recommendations import router as reorder_recommendations_router
 from app.api.v1.scraper import router as scraper_router
+from app.api.v1.scrape_runs import router as scrape_runs_router
 from app.core.config import settings
 from app.services.telegram.telegram_router import router as telegram_router
 from app.api.v1.telegram_snapshot import router as telegram_snapshot_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["health"])
+api_router.include_router(inventory_risks_router)
+api_router.include_router(inventory_intelligence_router)
+api_router.include_router(market_opportunities_router)
 api_router.include_router(alerts_router)
 api_router.include_router(auth_router)
 api_router.include_router(competitors_router)
+api_router.include_router(competitor_dashboard_router)
+api_router.include_router(competitor_events_router)
+api_router.include_router(competitor_rankings_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(products_router)
 api_router.include_router(recommendations_router)
+api_router.include_router(reorder_recommendations_router)
 api_router.include_router(scraper_router)
+api_router.include_router(scrape_runs_router)
 api_router.include_router(telegram_router)
 api_router.include_router(telegram_snapshot_router)
 

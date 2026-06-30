@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.security import get_password_hash, needs_password_rehash, verify_password
 from app.models.seller import Seller
 from app.schemas.auth import SellerCreate, SellerLogin, SellerProfileUpdate
 
@@ -23,7 +22,8 @@ class AuthService:
         self._db = db
 
     def get_seller_by_email(self, email: str) -> Seller | None:
-        statement = select(Seller).where(Seller.email == email)
+        normalized_email = _normalize_email(email)
+        statement = select(Seller).where(func.lower(Seller.email) == normalized_email)
         return self._db.execute(statement).scalar_one_or_none()
 
     def get_seller_by_id(self, seller_id: UUID) -> Seller | None:
@@ -34,13 +34,14 @@ class AuthService:
             raise DuplicateSellerError
 
         seller = Seller(
-            email=payload.email,
-            password_hash=get_password_hash(payload.password),
+            email=_normalize_email(payload.email),
+            password_hash=payload.password,
             phone=payload.phone,
             full_name=payload.full_name,
             business_name=payload.business_name,
             industry=payload.industry,
             website=payload.website,
+            profile_image_url=payload.profile_image_url,
             address_line=payload.address_line,
             city=payload.city,
             country=payload.country,
@@ -52,13 +53,8 @@ class AuthService:
 
     def authenticate_seller(self, payload: SellerLogin) -> Seller:
         seller = self.get_seller_by_email(payload.email)
-        if not seller or not verify_password(payload.password, seller.password_hash):
+        if not seller or payload.password != seller.password_hash:
             raise InvalidCredentialsError
-        if needs_password_rehash(seller.password_hash):
-            seller.password_hash = get_password_hash(payload.password)
-            self._db.add(seller)
-            self._db.commit()
-            self._db.refresh(seller)
         return seller
 
     def update_seller_profile(self, seller: Seller, payload: SellerProfileUpdate) -> Seller:
@@ -71,7 +67,11 @@ class AuthService:
         return seller
 
     def delete_seller_account(self, seller: Seller, password: str) -> None:
-        if not verify_password(password, seller.password_hash):
+        if password != seller.password_hash:
             raise InvalidCredentialsError
         self._db.delete(seller)
         self._db.commit()
+
+
+def _normalize_email(email: str) -> str:
+    return str(email).strip().lower()

@@ -63,6 +63,8 @@ class CompetitorResponse(BaseModel):
     )
     keyword_score: float | None = Field(None, ge=0, le=1, description="Keyword overlap score")
     ranking_score: float | None = Field(None, ge=0, le=1, description="Ranking score")
+    market_rank: int | None = Field(None, ge=1, description="Phase 5 market rank")
+    market_score: float | None = Field(None, ge=0, le=100, description="Phase 5 total market score")
     match_confidence: float | None = Field(None, ge=0, le=1, description="Match confidence")
     category_match: bool | None = Field(None, description="Category match flag")
     matched_attributes: list[str] | None = Field(

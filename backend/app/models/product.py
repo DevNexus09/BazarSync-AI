@@ -14,10 +14,21 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
+    from app.models.competitor_event import CompetitorEvent
+    from app.models.competitor_ranking import CompetitorRanking
+    from app.models.market_opportunity import MarketOpportunity
+    from app.models.competitor_snapshot import CompetitorSnapshot
+    from app.models.inventory_history import InventoryHistory
+    from app.models.inventory_risk import InventoryRiskAssessment
     from app.models.scrape_run import ScrapeRun
     from app.models.recommendation import Recommendation
+    from app.models.reorder_recommendation import ReorderRecommendation
+    from app.models.sales_record import SalesRecord
+    from app.models.sales_velocity import SalesVelocity
+    from app.models.stockout_prediction import StockoutPrediction
     from app.models.alert import Alert
     from app.models.seller import Seller
+    from app.models.telegram_inventory_alert import TelegramInventoryAlert
 
 
 class Product(Base):
@@ -64,11 +75,55 @@ class Product(Base):
         back_populates="product",
         cascade="all, delete-orphan",
     )
+    competitor_snapshots: Mapped[list["CompetitorSnapshot"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
     recommendations: Mapped[list["Recommendation"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )
     alerts: Mapped[list["Alert"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    competitor_events: Mapped[list["CompetitorEvent"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    competitor_rankings: Mapped[list["CompetitorRanking"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    market_opportunities: Mapped[list["MarketOpportunity"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    inventory_history: Mapped[list["InventoryHistory"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    sales_records: Mapped[list["SalesRecord"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    sales_velocity: Mapped[list["SalesVelocity"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    stockout_predictions: Mapped[list["StockoutPrediction"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    reorder_recommendations: Mapped[list["ReorderRecommendation"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    inventory_risk_assessments: Mapped[list["InventoryRiskAssessment"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    telegram_inventory_alerts: Mapped[list["TelegramInventoryAlert"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )

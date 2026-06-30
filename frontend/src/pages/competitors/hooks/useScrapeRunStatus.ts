@@ -7,6 +7,9 @@ export const scrapeRunStatusQueryKey = (scrapeRunId: string) => [
   scrapeRunId,
 ]
 
+const normalizeStatus = (status?: string | null) => status?.toLowerCase()
+const terminalStatuses = new Set(["completed", "failed", "partial"])
+
 export function useScrapeRunStatus(scrapeRunId?: string | null) {
   return useQuery({
     queryKey: scrapeRunId
@@ -15,8 +18,11 @@ export function useScrapeRunStatus(scrapeRunId?: string | null) {
     queryFn: () => getScrapeRunStatus(scrapeRunId ?? ""),
     enabled: Boolean(scrapeRunId),
     refetchInterval: (query) => {
-      const status = query.state.data?.status
-      return status === "pending" || status === "running" ? 5000 : false
+      const status = normalizeStatus(query.state.data?.status)
+      if (!scrapeRunId) {
+        return false
+      }
+      return status && terminalStatuses.has(status) ? false : 2000
     },
     staleTime: 0,
   })

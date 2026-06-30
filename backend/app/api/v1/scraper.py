@@ -14,7 +14,7 @@ from app.scraper.schemas import ScrapeResponse
 from app.scraper.services.competitor_service import scrape_daraz_competitors
 from app.core.celery_app import celery_app
 from app.scraper.constants import SIMILARITY_THRESHOLD
-from app.schemas.scrape import ScrapeRunStatusResponse, ScrapeTaskResponse
+from app.schemas.scrape import ScrapeRunDetailResponse, ScrapeRunStatusResponse, ScrapeTaskResponse
 from app.services.scrape_service import (
     ProductAccessError,
     ScrapeProductNotFoundError,
@@ -60,6 +60,8 @@ async def run_scrape(
                 "scraper.run_manual_scrape",
                 args=[str(product.id), str(current_seller.id), str(scrape_run.id), threshold],
             )
+            scrape_run.celery_task_id = task.id
+            db.commit()
             return ScrapeTaskResponse(
                 success=True,
                 task_id=task.id,
@@ -108,4 +110,36 @@ def get_scrape_run_status(
         total_results=scrape_run.total_results,
         successful_matches=scrape_run.successful_matches,
         error_message=scrape_run.error_message,
+    )
+
+
+@router.get("/scrape-runs/{scrape_run_id}", response_model=ScrapeRunDetailResponse)
+def get_scrape_run_detail(
+    scrape_run_id: UUID,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> ScrapeRunDetailResponse:
+    service = ScrapeService(db)
+    try:
+        scrape_run, _product = service.get_scrape_run_status(
+            seller=current_seller,
+            scrape_run_id=scrape_run_id,
+        )
+    except (ScrapeRunNotFoundError, ScrapeProductNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return ScrapeRunDetailResponse(
+        id=scrape_run.id,
+        product_id=scrape_run.product_id,
+        marketplace=scrape_run.marketplace,
+        status=scrape_run.status,
+        started_at=scrape_run.started_at,
+        completed_at=scrape_run.completed_at,
+        failed_at=scrape_run.failed_at,
+        discovered_competitor_count=scrape_run.discovered_competitor_count,
+        snapshot_count=scrape_run.snapshot_count,
+        created_at=scrape_run.created_at,
+        updated_at=scrape_run.updated_at,
+        failure_code=scrape_run.failure_code,
+        failure_message="Scrape failed." if scrape_run.status == "FAILED" else None,
     )

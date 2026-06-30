@@ -23,6 +23,7 @@ type ApiSeller = {
   business_name: string | null
   industry: string | null
   website: string | null
+  profile_image_url: string | null
   address_line: string | null
   city: string | null
   country: string | null
@@ -37,6 +38,7 @@ const mapUser = (seller: ApiSeller): User => ({
   businessName: seller.business_name ?? null,
   industry: seller.industry ?? null,
   website: seller.website ?? null,
+  profileImageUrl: seller.profile_image_url ?? null,
   addressLine: seller.address_line ?? null,
   city: seller.city ?? null,
   country: seller.country ?? null,
@@ -67,6 +69,7 @@ type ApiProfileUpdate = {
   business_name?: string | null
   industry?: string | null
   website?: string | null
+  profile_image_url?: string | null
   address_line?: string | null
   city?: string | null
   country?: string | null
@@ -89,6 +92,7 @@ export async function updateProfile(input: ProfileInput): Promise<User> {
     business_name: normalizeOptional(input.businessName),
     industry: normalizeOptional(input.industry),
     website: normalizeOptional(input.website),
+    profile_image_url: normalizeOptional(input.profileImageUrl),
     address_line: normalizeOptional(input.addressLine),
     city: normalizeOptional(input.city),
     country: normalizeOptional(input.country),

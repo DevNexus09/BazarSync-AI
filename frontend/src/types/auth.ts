@@ -8,6 +8,7 @@ export type User = {
   businessName: string | null
   industry: string | null
   website: string | null
+  profileImageUrl: string | null
   addressLine: string | null
   city: string | null
   country: string | null
@@ -39,6 +40,7 @@ export type ProfileInput = {
   businessName: string
   industry: string
   website: string
+  profileImageUrl: string
   addressLine: string
   city: string
   country: string

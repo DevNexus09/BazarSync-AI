@@ -79,6 +79,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    @app.get("/", include_in_schema=False)
+    def root() -> dict[str, str]:
+        return {
+            "service": settings.app_name,
+            "status": "ok",
+            "api": settings.api_v1_prefix,
+            "health": f"{settings.api_v1_prefix}/health",
+            "docs": "/docs",
+        }
+
     # CORS configuration
     origins = settings.cors_origins
     if "*" in origins:

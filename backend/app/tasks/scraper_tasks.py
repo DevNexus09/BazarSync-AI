@@ -92,10 +92,17 @@ def run_manual_scrape_task(
                 product_id=product_uuid,
                 threshold=threshold,
                 scrape_run_id=run_uuid,
+                run_key=f"celery:{self.request.id}",
+                task_id=self.request.id,
             )
         )
 
         duration = round(time.monotonic() - start, 2)
+        if getattr(response, "scrape_run_id", None):
+            celery_app.send_task(
+                "phase5.run_analysis_workflow",
+                args=[str(response.scrape_run_id)],
+            )
         logger.info(
             "Scrape task completed product=%s run=%s matched=%s duration=%.2fs",
             product_id,

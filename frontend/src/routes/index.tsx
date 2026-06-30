@@ -80,10 +80,11 @@ const router = createBrowserRouter([
                 }),
               },
               {
-                path: "analytics",
+                path: "inventory-intelligence",
                 lazy: async () => ({
-                  Component: (await import("@/pages/analytics/analytics-page"))
-                    .default,
+                  Component: (await import(
+                    "@/pages/inventory-intelligence/inventory-intelligence-page"
+                  )).default,
                 }),
               },
               {

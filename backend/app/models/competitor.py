@@ -13,6 +13,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.competitor_snapshot import CompetitorSnapshot
+    from app.models.competitor_event import CompetitorEvent
+    from app.models.competitor_ranking import CompetitorRanking
+    from app.models.market_opportunity import MarketOpportunity
     from app.models.price_history import PriceHistory
     from app.models.product import Product
     from app.models.scrape_run import ScrapeRun
@@ -88,4 +92,16 @@ class Competitor(Base):
     price_history: Mapped[list["PriceHistory"]] = relationship(
         back_populates="competitor",
         cascade="all, delete-orphan",
+    )
+    snapshots: Mapped[list["CompetitorSnapshot"]] = relationship(
+        back_populates="competitor",
+    )
+    events: Mapped[list["CompetitorEvent"]] = relationship(
+        back_populates="competitor",
+    )
+    rankings: Mapped[list["CompetitorRanking"]] = relationship(
+        back_populates="competitor",
+    )
+    market_opportunities: Mapped[list["MarketOpportunity"]] = relationship(
+        back_populates="competitor",
     )

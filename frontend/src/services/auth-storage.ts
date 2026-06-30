@@ -39,6 +39,10 @@ export function getStoredUser(): User | null {
       (parsed.industry as string | null | undefined) ?? null
     const website =
       (parsed.website as string | null | undefined) ?? null
+    const profileImageUrl =
+      (parsed.profileImageUrl as string | null | undefined) ??
+      (parsed.profile_image_url as string | null | undefined) ??
+      null
     const addressLine =
       (parsed.addressLine as string | null | undefined) ??
       (parsed.address_line as string | null | undefined) ??
@@ -58,6 +62,7 @@ export function getStoredUser(): User | null {
       businessName,
       industry,
       website,
+      profileImageUrl,
       addressLine,
       city,
       country,

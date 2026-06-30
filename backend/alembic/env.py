@@ -18,6 +18,7 @@ from app.models.recommendation import Recommendation
 from app.models.scrape_run import ScrapeRun
 from app.models.seller import Seller
 from app.models.telegram_connection import SellerTelegramConnection
+from app.models.telegram_inventory_alert import TelegramInventoryAlert
 from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
 
 # Alembic Config object

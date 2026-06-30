@@ -74,3 +74,71 @@ Set these environment variables in production so Telegram can reach your webhook
 3. `TELEGRAM_WEBHOOK_SECRET` (optional) — Secret token Telegram will echo in `X-Telegram-Bot-Api-Secret-Token`.
 
 When `TELEGRAM_WEBHOOK_URL` is set, the backend registers the webhook on startup.
+
+## Local development startup
+
+Start services in this order.
+
+1. Start Redis. Celery requires Redis before workers, purge commands, or scheduled tasks can run.
+
+```bash
+redis-server
+```
+
+Or with Docker:
+
+```bash
+docker compose up -d redis
+```
+
+2. Check Redis and database connectivity.
+
+```bash
+cd backend
+source venv/bin/activate
+python scripts/check_local_setup.py
+```
+
+If Redis is not running, Celery commands can fail with:
+
+```text
+Error 61 connecting to localhost:6379. Connection refused.
+```
+
+That means nothing is listening on port `6379`; start Redis and rerun the command.
+
+3. Run database migrations.
+
+```bash
+python -m alembic upgrade head
+```
+
+4. Start the backend API.
+
+```bash
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Useful backend URLs:
+
+- `http://127.0.0.1:8000`
+- `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/api/v1/health`
+
+5. Start Celery in another terminal.
+
+```bash
+cd backend
+source venv/bin/activate
+celery -A app.core.celery_app:celery_app worker --loglevel=info
+```
+
+6. Start the frontend in another terminal.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`.

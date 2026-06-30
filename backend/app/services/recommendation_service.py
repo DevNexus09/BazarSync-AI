@@ -238,7 +238,7 @@ class RecommendationService:
             .where(
                 ScrapeRun.product_id == product_id,
                 ScrapeRun.seller_id == seller_id,
-                ScrapeRun.status == "completed",
+                ScrapeRun.status.in_(("COMPLETED", "completed")),
             )
             .order_by(
                 ScrapeRun.finished_at.desc().nullslast(),

@@ -8,6 +8,19 @@ from sqlalchemy.orm import Session
 from app.models.product import Product
 from app.schemas.products import ProductCreate, ProductUpdate
 
+INVENTORY_RECALC_SPEC_KEYS = {
+    "incoming_quantity",
+    "confirmed_incoming_quantity",
+    "purchase_order_quantity",
+    "supplier_lead_time",
+    "safety_buffer_days",
+    "review_period_days",
+    "minimum_order_quantity",
+    "moq",
+    "pack_size",
+    "case_size",
+}
+
 
 class ProductNotFoundError(Exception):
     pass
@@ -68,6 +81,9 @@ class ProductService:
         if not product:
             raise ProductNotFoundError
 
+        old_stock_quantity = product.stock_quantity
+        old_supplier_lead_time = product.supplier_lead_time
+        old_specifications = dict(product.specifications or {})
         updates = payload.model_dump(exclude_unset=True)
         for field, value in updates.items():
             setattr(product, field, value)
@@ -85,6 +101,20 @@ class ProductService:
 
         self._db.commit()
         self._db.refresh(product)
+        if _requires_inventory_recalculation(
+            updates=updates,
+            old_stock_quantity=old_stock_quantity,
+            old_supplier_lead_time=old_supplier_lead_time,
+            old_specifications=old_specifications,
+            product=product,
+        ):
+            from app.tasks.inventory_intelligence_workflow_tasks import enqueue_product_recalculation
+
+            enqueue_product_recalculation(
+                seller_id=seller_id,
+                product_id=product_id,
+                reason="product_inventory_inputs_changed",
+            )
         return product
 
     @staticmethod
@@ -111,3 +141,24 @@ class ProductService:
             raise ProductNotFoundError
         self._db.delete(product)
         self._db.commit()
+
+
+def _requires_inventory_recalculation(
+    *,
+    updates: dict,
+    old_stock_quantity: int,
+    old_supplier_lead_time: int,
+    old_specifications: dict[str, str],
+    product: Product,
+) -> bool:
+    if "stock_quantity" in updates and product.stock_quantity != old_stock_quantity:
+        return True
+    if "supplier_lead_time" in updates and product.supplier_lead_time != old_supplier_lead_time:
+        return True
+    if "specifications" not in updates:
+        return False
+    new_specifications = product.specifications or {}
+    for key in INVENTORY_RECALC_SPEC_KEYS:
+        if old_specifications.get(key) != new_specifications.get(key):
+            return True
+    return False

@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.competitor import Competitor
+from app.models.competitor_ranking import CompetitorRanking
 from app.models.price_history import PriceHistory
 from app.models.product import Product
 from app.models.scrape_run import ScrapeRun
@@ -49,45 +50,45 @@ class CompetitorService:
             if not title:
                 continue
 
-            competitor = Competitor(
-                scrape_run_id=scrape_run.id,
+            product_url = item.get("product_url") or item.get("daraz_product_url")
+            competitor = self._find_existing_competitor(
                 product_id=product.id,
-                competitor_title=title,
-                competitor_description=item.get("product_description")
-                or item.get("competitor_description"),
-                competitor_category=item.get("product_category")
-                or item.get("competitor_category"),
-                competitor_brand=item.get("product_brand")
-                or item.get("competitor_brand"),
-                competitor_attributes=item.get("product_attributes")
-                or item.get("competitor_attributes"),
-                competitor_price=self._to_decimal(
-                    item.get("competitor_price") or item.get("product_price")
-                ),
-                original_price=self._to_decimal(item.get("original_price")),
-                discount_percentage=self._to_int(item.get("discount_percentage")),
-                competitor_rating=self._to_float(
-                    item.get("competitor_rating") or item.get("rating")
-                ),
-                rating_count=self._to_int(item.get("rating_count")),
-                competitor_sold=item.get("competitor_sold") or item.get("sold_count"),
-                competitor_store=item.get("competitor_store") or item.get("store_name"),
-                stock_status=item.get("stock_status"),
-                similarity_score=self._to_float(item.get("similarity_score")),
-                title_similarity=self._to_float(item.get("title_similarity")),
-                description_similarity=self._to_float(item.get("description_similarity")),
-                attribute_similarity=self._to_float(item.get("attribute_similarity")),
-                keyword_score=self._to_float(item.get("keyword_score")),
-                ranking_score=self._to_float(item.get("ranking_score")),
-                match_confidence=self._to_float(item.get("match_confidence")),
-                category_match=item.get("category_match"),
-                matched_attributes=item.get("matched_attributes"),
                 marketplace=marketplace,
-                product_url=item.get("product_url") or item.get("daraz_product_url"),
-                image_url=item.get("image_url") or item.get("product_image_url"),
-                search_position=self._to_int(item.get("search_position")),
+                product_url=product_url,
+                title=title,
+                store=item.get("competitor_store") or item.get("store_name"),
             )
+            if competitor is None:
+                competitor = Competitor(product_id=product.id)
+                self._db.add(competitor)
 
+            competitor.scrape_run_id = scrape_run.id
+            competitor.competitor_title = title
+            competitor.competitor_description = item.get("product_description") or item.get("competitor_description")
+            competitor.competitor_category = item.get("product_category") or item.get("competitor_category")
+            competitor.competitor_brand = item.get("product_brand") or item.get("competitor_brand")
+            competitor.competitor_attributes = item.get("product_attributes") or item.get("competitor_attributes")
+            competitor.competitor_price = self._to_decimal(item.get("competitor_price") or item.get("product_price"))
+            competitor.original_price = self._to_decimal(item.get("original_price"))
+            competitor.discount_percentage = self._to_int(item.get("discount_percentage"))
+            competitor.competitor_rating = self._to_float(item.get("competitor_rating") or item.get("rating"))
+            competitor.rating_count = self._to_int(item.get("rating_count"))
+            competitor.competitor_sold = item.get("competitor_sold") or item.get("sold_count")
+            competitor.competitor_store = item.get("competitor_store") or item.get("store_name")
+            competitor.stock_status = item.get("stock_status")
+            competitor.similarity_score = self._to_float(item.get("similarity_score"))
+            competitor.title_similarity = self._to_float(item.get("title_similarity"))
+            competitor.description_similarity = self._to_float(item.get("description_similarity"))
+            competitor.attribute_similarity = self._to_float(item.get("attribute_similarity"))
+            competitor.keyword_score = self._to_float(item.get("keyword_score"))
+            competitor.ranking_score = self._to_float(item.get("ranking_score"))
+            competitor.match_confidence = self._to_float(item.get("match_confidence"))
+            competitor.category_match = item.get("category_match")
+            competitor.matched_attributes = item.get("matched_attributes")
+            competitor.marketplace = marketplace
+            competitor.product_url = product_url
+            competitor.image_url = item.get("image_url") or item.get("product_image_url")
+            competitor.search_position = self._to_int(item.get("search_position"))
             competitor_rows.append(competitor)
 
         if not competitor_rows:
@@ -134,7 +135,7 @@ class CompetitorService:
             .where(
                 ScrapeRun.product_id == product_id,
                 ScrapeRun.seller_id == seller_id,
-                ScrapeRun.status == "completed",
+                ScrapeRun.status.in_(("COMPLETED", "completed")),
             )
             .order_by(
                 ScrapeRun.finished_at.desc().nullslast(),
@@ -150,11 +151,19 @@ class CompetitorService:
 
         statement = (
             select(Competitor)
+            .outerjoin(
+                CompetitorRanking,
+                (CompetitorRanking.scrape_run_id == Competitor.scrape_run_id)
+                & (CompetitorRanking.competitor_id == Competitor.id)
+                & (CompetitorRanking.product_id == Competitor.product_id),
+            )
             .where(
                 Competitor.product_id == product_id,
                 Competitor.scrape_run_id == scrape_run.id,
             )
             .order_by(
+                CompetitorRanking.market_rank.asc().nullslast(),
+                CompetitorRanking.total_score.desc().nullslast(),
                 Competitor.similarity_score.desc().nullslast(),
                 Competitor.created_at.desc(),
             )
@@ -216,3 +225,30 @@ class CompetitorService:
             Product.seller_id == seller_id,
         )
         return self._db.execute(statement).scalar_one_or_none()
+
+    def _find_existing_competitor(
+        self,
+        *,
+        product_id: UUID,
+        marketplace: str,
+        product_url: str | None,
+        title: str,
+        store: str | None,
+    ) -> Competitor | None:
+        if product_url:
+            statement = select(Competitor).where(
+                Competitor.product_id == product_id,
+                Competitor.marketplace == marketplace,
+                Competitor.product_url == product_url,
+            )
+            existing = self._db.execute(statement.limit(1)).scalar_one_or_none()
+            if existing:
+                return existing
+
+        statement = select(Competitor).where(
+            Competitor.product_id == product_id,
+            Competitor.marketplace == marketplace,
+            Competitor.competitor_title == title,
+            Competitor.competitor_store == store,
+        )
+        return self._db.execute(statement.limit(1)).scalar_one_or_none()

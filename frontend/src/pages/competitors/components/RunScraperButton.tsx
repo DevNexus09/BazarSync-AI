@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 type RunScraperButtonProps = {
   onRun: () => void
   isRunning?: boolean
+  isSuccess?: boolean
   disabled?: boolean
-  statusMessage?: string | null
   errorMessage?: string | null
   className?: string
 }
@@ -13,18 +13,35 @@ type RunScraperButtonProps = {
 export function RunScraperButton({
   onRun,
   isRunning = false,
+  isSuccess = false,
   disabled = false,
-  statusMessage,
   errorMessage,
   className,
 }: RunScraperButtonProps) {
+  if (isSuccess) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <div className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-300 shadow-sm">
+          Success
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={cn("space-y-2", className)}>
-      <Button onClick={onRun} disabled={disabled || isRunning}>
+      <Button
+        onClick={onRun}
+        disabled={disabled || isRunning}
+        className="min-w-[122px]"
+      >
         {isRunning ? (
-          <span className="flex items-center gap-2">
-            <span className="size-3 animate-spin rounded-full border border-primary/30 border-t-primary" />
-            Running scraper
+          <span className="flex items-center justify-center gap-2">
+            <span
+              className="size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+              aria-hidden="true"
+            />
+            <span>Scraping...</span>
           </span>
         ) : (
           "Run Scraper"
@@ -32,8 +49,6 @@ export function RunScraperButton({
       </Button>
       {errorMessage ? (
         <p className="text-xs text-destructive">{errorMessage}</p>
-      ) : statusMessage ? (
-        <p className="text-xs text-emerald-600">{statusMessage}</p>
       ) : null}
     </div>
   )
