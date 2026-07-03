@@ -54,7 +54,6 @@ export const appNavItems: NavItem[] = [
     path: "/app/pricing",
     icon: LineChart,
     description: "Price elasticity insights",
-    comingSoon: true,
   },
   {
     label: "Realtime Monitoring",

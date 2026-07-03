@@ -75,6 +75,28 @@ Set these environment variables in production so Telegram can reach your webhook
 
 When `TELEGRAM_WEBHOOK_URL` is set, the backend registers the webhook on startup.
 
+## Pricing simulator deployment
+
+The Revenue Simulator is embedded in the Pricing Analytics page:
+
+- `/app/pricing`
+
+The simulator uses these backend endpoints:
+
+- `POST /api/pricing/simulate`
+- `POST /api/pricing/explain`
+
+Environment variables:
+
+- `GROQ_API_KEY` — backend-only key used by the Groq explanation endpoint. Do not create any `VITE_GROQ_*` variable and do not expose this key in frontend hosting settings.
+- `GROQ_MODEL` — optional Groq model override. Default simulator model is `llama-3.1-8b-instant`.
+- `VITE_API_BASE_URL` — frontend API base URL, for example `https://api.example.com/api/v1`. The simulator derives `/api/pricing/...` from the same backend origin.
+
+Deployment note:
+
+- The frontend is a Vite static app. On Vercel or similar static hosting, deploy the FastAPI backend separately and set `VITE_API_BASE_URL` to the public backend `/api/v1` URL.
+- If `GROQ_API_KEY` is missing or Groq is unavailable, the explanation endpoint returns a safe Bangla fallback instead of breaking the page.
+
 ## Local development startup
 
 Start services in this order.

@@ -14,10 +14,15 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
+    from app.models.demand_elasticity_estimate import DemandElasticityEstimate
+    from app.models.dynamic_pricing_recommendation import DynamicPricingRecommendation
     from app.models.competitor_event import CompetitorEvent
     from app.models.competitor_ranking import CompetitorRanking
     from app.models.market_opportunity import MarketOpportunity
+    from app.models.marketplace_fee_policy import MarketplaceFeePolicy
     from app.models.competitor_snapshot import CompetitorSnapshot
+    from app.models.pricing_policy import PricingPolicy
+    from app.models.pricing_analytics_snapshot import PricingAnalyticsSnapshot
     from app.models.inventory_history import InventoryHistory
     from app.models.inventory_risk import InventoryRiskAssessment
     from app.models.scrape_run import ScrapeRun
@@ -124,6 +129,26 @@ class Product(Base):
         cascade="all, delete-orphan",
     )
     telegram_inventory_alerts: Mapped[list["TelegramInventoryAlert"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    pricing_policies: Mapped[list["PricingPolicy"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    marketplace_fee_policies: Mapped[list["MarketplaceFeePolicy"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    pricing_analytics_snapshots: Mapped[list["PricingAnalyticsSnapshot"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    demand_elasticity_estimates: Mapped[list["DemandElasticityEstimate"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    dynamic_pricing_recommendations: Mapped[list["DynamicPricingRecommendation"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )

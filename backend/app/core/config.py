@@ -91,6 +91,32 @@ class Settings(BaseModel):
     inventory_intelligence_schedule_enabled: bool = False
     inventory_intelligence_daily_hour_utc: int = 1
     inventory_intelligence_daily_minute_utc: int = 15
+    pricing_analytics_max_competitor_data_age_hours: int = 24
+    pricing_analytics_max_inventory_data_age_hours: int = 48
+    pricing_analytics_max_velocity_data_age_hours: int = 48
+    pricing_analytics_demand_velocity_weight: float = 45.0
+    pricing_analytics_demand_recent_sales_weight: float = 25.0
+    pricing_analytics_demand_competitor_availability_weight: float = 15.0
+    pricing_analytics_demand_product_maturity_weight: float = 15.0
+    pricing_analytics_demand_velocity_reference_units_per_day: float = 10.0
+    pricing_analytics_demand_recent_sales_reference_units: int = 100
+    pricing_analytics_formula_version: str = "v1"
+    demand_response_min_observations: int = 6
+    demand_response_min_price_variation_rate: float = 0.05
+    demand_response_min_coverage_days: int = 14
+    demand_response_max_data_age_days: int = 45
+    demand_response_zero_unit_adjustment: float = 1.0
+    demand_response_min_elasticity: float = -5.0
+    demand_response_max_elasticity: float = -0.1
+    demand_response_conservative_elasticity_prior: float = -0.8
+    demand_response_allow_heuristic_fallback: bool = True
+    demand_response_max_forecast_multiplier: float = 3.0
+    demand_response_formula_version: str = "v1"
+    dynamic_pricing_formula_version: str = "v1"
+    dynamic_pricing_min_improvement_rate: float = 0.02
+    dynamic_pricing_min_actionable_change_rate: float = 0.01
+    dynamic_pricing_max_change_rate: float = 0.15
+    dynamic_pricing_expiration_hours: int = 72
 
     @classmethod
     def load(cls) -> "Settings":
@@ -198,6 +224,35 @@ class Settings(BaseModel):
             ),
             "inventory_intelligence_daily_hour_utc": int(os.getenv("INVENTORY_INTELLIGENCE_DAILY_HOUR_UTC", "1")),
             "inventory_intelligence_daily_minute_utc": int(os.getenv("INVENTORY_INTELLIGENCE_DAILY_MINUTE_UTC", "15")),
+            "pricing_analytics_max_competitor_data_age_hours": int(os.getenv("PRICING_ANALYTICS_MAX_COMPETITOR_DATA_AGE_HOURS", "24")),
+            "pricing_analytics_max_inventory_data_age_hours": int(os.getenv("PRICING_ANALYTICS_MAX_INVENTORY_DATA_AGE_HOURS", "48")),
+            "pricing_analytics_max_velocity_data_age_hours": int(os.getenv("PRICING_ANALYTICS_MAX_VELOCITY_DATA_AGE_HOURS", "48")),
+            "pricing_analytics_demand_velocity_weight": float(os.getenv("PRICING_ANALYTICS_DEMAND_VELOCITY_WEIGHT", "45.0")),
+            "pricing_analytics_demand_recent_sales_weight": float(os.getenv("PRICING_ANALYTICS_DEMAND_RECENT_SALES_WEIGHT", "25.0")),
+            "pricing_analytics_demand_competitor_availability_weight": float(os.getenv("PRICING_ANALYTICS_DEMAND_COMPETITOR_AVAILABILITY_WEIGHT", "15.0")),
+            "pricing_analytics_demand_product_maturity_weight": float(os.getenv("PRICING_ANALYTICS_DEMAND_PRODUCT_MATURITY_WEIGHT", "15.0")),
+            "pricing_analytics_demand_velocity_reference_units_per_day": float(os.getenv("PRICING_ANALYTICS_DEMAND_VELOCITY_REFERENCE_UNITS_PER_DAY", "10.0")),
+            "pricing_analytics_demand_recent_sales_reference_units": int(os.getenv("PRICING_ANALYTICS_DEMAND_RECENT_SALES_REFERENCE_UNITS", "100")),
+            "pricing_analytics_formula_version": os.getenv("PRICING_ANALYTICS_FORMULA_VERSION", "v1"),
+            "demand_response_min_observations": int(os.getenv("DEMAND_RESPONSE_MIN_OBSERVATIONS", "6")),
+            "demand_response_min_price_variation_rate": float(os.getenv("DEMAND_RESPONSE_MIN_PRICE_VARIATION_RATE", "0.05")),
+            "demand_response_min_coverage_days": int(os.getenv("DEMAND_RESPONSE_MIN_COVERAGE_DAYS", "14")),
+            "demand_response_max_data_age_days": int(os.getenv("DEMAND_RESPONSE_MAX_DATA_AGE_DAYS", "45")),
+            "demand_response_zero_unit_adjustment": float(os.getenv("DEMAND_RESPONSE_ZERO_UNIT_ADJUSTMENT", "1.0")),
+            "demand_response_min_elasticity": float(os.getenv("DEMAND_RESPONSE_MIN_ELASTICITY", "-5.0")),
+            "demand_response_max_elasticity": float(os.getenv("DEMAND_RESPONSE_MAX_ELASTICITY", "-0.1")),
+            "demand_response_conservative_elasticity_prior": float(os.getenv("DEMAND_RESPONSE_CONSERVATIVE_ELASTICITY_PRIOR", "-0.8")),
+            "demand_response_allow_heuristic_fallback": _parse_bool(
+                os.getenv("DEMAND_RESPONSE_ALLOW_HEURISTIC_FALLBACK"),
+                default=True,
+            ),
+            "demand_response_max_forecast_multiplier": float(os.getenv("DEMAND_RESPONSE_MAX_FORECAST_MULTIPLIER", "3.0")),
+            "demand_response_formula_version": os.getenv("DEMAND_RESPONSE_FORMULA_VERSION", "v1"),
+            "dynamic_pricing_formula_version": os.getenv("DYNAMIC_PRICING_FORMULA_VERSION", "v1"),
+            "dynamic_pricing_min_improvement_rate": float(os.getenv("DYNAMIC_PRICING_MIN_IMPROVEMENT_RATE", "0.02")),
+            "dynamic_pricing_min_actionable_change_rate": float(os.getenv("DYNAMIC_PRICING_MIN_ACTIONABLE_CHANGE_RATE", "0.01")),
+            "dynamic_pricing_max_change_rate": float(os.getenv("DYNAMIC_PRICING_MAX_CHANGE_RATE", "0.15")),
+            "dynamic_pricing_expiration_hours": int(os.getenv("DYNAMIC_PRICING_EXPIRATION_HOURS", "72")),
         }
         return cls.model_validate(data)
 

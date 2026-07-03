@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.api.pricing_simulator_public import router as public_pricing_simulator_router
 from app.api.router import register_routers
 
 from app.core.config import settings
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
 
     # Main API routers
     register_routers(app)
+    app.include_router(public_pricing_simulator_router)
 
     # Initialize Socket.IO manager
     app.state.socket_manager = init_socketio(app)

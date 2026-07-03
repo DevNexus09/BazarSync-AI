@@ -95,6 +95,22 @@ const router = createBrowserRouter([
                 }),
               },
               {
+                path: "pricing/fee-setup",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/pricing/marketplace-fee-setup-page"
+                  )).default,
+                }),
+              },
+              {
+                path: "pricing/fee-policies",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/pricing/marketplace-fee-management-page"
+                  )).default,
+                }),
+              },
+              {
                 path: "telegram-alerts",
                 lazy: async () => ({
                   Component: (await import("@/pages/telegram-alerts-page")).default,

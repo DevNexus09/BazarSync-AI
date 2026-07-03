@@ -34,6 +34,7 @@ from app.schemas.recommendation import (
 from app.schemas.dashboard.summary_schema import DashboardSummaryResponse
 from app.services.dashboard.events import DashboardEventEmitter
 from app.services.dashboard.dashboard_service import DashboardService
+from app.services.margin_guard import MarginGuard
 from app.services.realtime import RealtimeService
 from app.websocket.socket_events import (
     DashboardSummaryPayload,
@@ -306,6 +307,7 @@ class RecommendationService:
                 "in_stock_competitor_count": stock_metrics.in_stock_competitor_count,
             }
         )
+        self._apply_margin_guard(product=product, analytics=analytics)
         return analytics
 
     def build_context(
@@ -355,18 +357,32 @@ class RecommendationService:
         context: dict[str, Any],
         analytics: Mapping[str, Any],
     ) -> Recommendation:
+        guarded_action, guarded_confidence, guard_evidence = self._guard_final_recommendation(
+            product=product,
+            requested_action=str(ai_response.recommendation.action),
+            requested_confidence=str(ai_response.recommendation.confidence),
+            analytics=analytics,
+        )
         context_snapshot = {
             "context": context,
             "analytics": dict(analytics),
+            "margin_guard": guard_evidence,
         }
         recommendation = Recommendation(
             product_id=product.id,
-            action=RecommendationAction(ai_response.recommendation.action),
-            confidence=RecommendationConfidence(ai_response.recommendation.confidence),
-            reasoning_bn=ai_response.recommendation.reasoning_bn,
+            action=RecommendationAction(guarded_action),
+            confidence=RecommendationConfidence(guarded_confidence),
+            reasoning_bn=_guarded_reasoning(
+                ai_response.recommendation.reasoning_bn,
+                guard_evidence,
+            ),
             suggested_price_min=None,
             suggested_price_max=None,
-            revenue_opportunity=Decimal(str(ai_response.recommendation.revenue_opportunity)),
+            revenue_opportunity=(
+                Decimal("0.00")
+                if guarded_action == RecommendationAction.HOLD.value
+                else Decimal(str(ai_response.recommendation.revenue_opportunity))
+            ),
             recommendation_context=context_snapshot,
         )
 
@@ -378,6 +394,54 @@ class RecommendationService:
             self._db.rollback()
             raise RecommendationPersistenceError("Failed to store recommendation.") from exc
         return recommendation
+
+    def _apply_margin_guard(self, *, product: Product, analytics: dict[str, Any]) -> None:
+        requested_action = str(analytics.get("action", "HOLD")).upper()
+        candidate_price = _candidate_price_for_action(
+            action=requested_action,
+            product=product,
+            analytics=analytics,
+        )
+        guard = MarginGuard(self._db).validate_candidate(
+            seller_id=product.seller_id,
+            product=product,
+            candidate_price=candidate_price,
+        )
+        analytics["margin_guard"] = guard.to_evidence()
+        analytics["candidate_price"] = float(guard.candidate_price)
+        if requested_action in {"LOWER", "RAISE"} and not guard.is_allowed:
+            analytics["action"] = "HOLD"
+            analytics["confidence"] = min(float(analytics.get("confidence", 0.0)), 0.45)
+            analytics.setdefault("reason_codes", []).append("MARGIN_GUARD_BLOCKED_PRICE_RECOMMENDATION")
+
+    def _guard_final_recommendation(
+        self,
+        *,
+        product: Product,
+        requested_action: str,
+        requested_confidence: str,
+        analytics: Mapping[str, Any],
+    ) -> tuple[str, str, dict[str, Any]]:
+        action = requested_action.upper()
+        candidate_price = _candidate_price_for_action(
+            action=action,
+            product=product,
+            analytics=analytics,
+        )
+        guard = MarginGuard(self._db).validate_candidate(
+            seller_id=product.seller_id,
+            product=product,
+            candidate_price=candidate_price,
+        )
+        evidence = guard.to_evidence()
+        evidence["requested_action"] = action
+        if action in {"LOWER", "RAISE"} and not guard.is_allowed:
+            evidence["final_action"] = "HOLD"
+            evidence["fail_closed"] = True
+            return "HOLD", "LOW", evidence
+        evidence["final_action"] = action
+        evidence["fail_closed"] = False
+        return action, requested_confidence.upper(), evidence
 
     def build_response(
         self,
@@ -755,6 +819,26 @@ def _build_dashboard_summary_snapshot(summary: DashboardSummaryResponse) -> Dash
         system_status=system_status,
         last_synced_at=summary.generated_at,
     )
+
+
+def _candidate_price_for_action(
+    *,
+    action: str,
+    product: Product,
+    analytics: Mapping[str, Any],
+) -> Decimal:
+    if action.upper() == "LOWER":
+        candidate = analytics.get("candidate_price") or analytics.get("competitor_median_price")
+        if candidate is not None:
+            return Decimal(str(candidate))
+    return Decimal(str(product.selling_price))
+
+
+def _guarded_reasoning(reasoning: str, guard_evidence: Mapping[str, Any]) -> str:
+    if guard_evidence.get("fail_closed"):
+        reasons = ", ".join(guard_evidence.get("rejection_reasons", []))
+        return f"{reasoning.strip()} Margin guard blocked price lowering: {reasons}."
+    return reasoning
 
 
 def _to_float(value: Any) -> float | None:

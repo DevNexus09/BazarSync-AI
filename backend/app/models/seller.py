@@ -13,7 +13,10 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.scrape_run import ScrapeRun
     from app.models.product import Product
+    from app.models.pricing_analytics_snapshot import PricingAnalyticsSnapshot
     from app.models.alert import Alert
+    from app.models.demand_elasticity_estimate import DemandElasticityEstimate
+    from app.models.dynamic_pricing_recommendation import DynamicPricingRecommendation
     from app.models.alert_delivery_log import AlertDeliveryLog
     from app.models.competitor_event import CompetitorEvent
     from app.models.competitor_ranking import CompetitorRanking
@@ -118,4 +121,16 @@ class Seller(Base):
         back_populates="seller",
         cascade="all, delete-orphan",
         uselist=False,
+    )
+    pricing_analytics_snapshots: Mapped[list["PricingAnalyticsSnapshot"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    demand_elasticity_estimates: Mapped[list["DemandElasticityEstimate"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    dynamic_pricing_recommendations: Mapped[list["DynamicPricingRecommendation"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
     )

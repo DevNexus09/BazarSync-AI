@@ -9,11 +9,15 @@ from app.api.v1.competitor_events import router as competitor_events_router
 from app.api.v1.competitor_dashboard import router as competitor_dashboard_router
 from app.api.v1.competitor_rankings import router as competitor_rankings_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.dynamic_pricing import router as dynamic_pricing_router
 from app.api.v1.health import router as health_router
 from app.api.v1.inventory_risks import router as inventory_risks_router
 from app.api.v1.inventory_intelligence import router as inventory_intelligence_router
 from app.api.v1.market_opportunities import router as market_opportunities_router
 from app.api.v1.products import router as products_router
+from app.api.v1.pricing_analytics import router as pricing_analytics_router
+from app.api.v1.pricing_policies import router as pricing_policies_router
+from app.api.v1.revenue_simulator import router as revenue_simulator_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.reorder_recommendations import router as reorder_recommendations_router
 from app.api.v1.scraper import router as scraper_router
@@ -34,7 +38,11 @@ api_router.include_router(competitor_dashboard_router)
 api_router.include_router(competitor_events_router)
 api_router.include_router(competitor_rankings_router)
 api_router.include_router(dashboard_router)
+api_router.include_router(dynamic_pricing_router)
 api_router.include_router(products_router)
+api_router.include_router(pricing_analytics_router)
+api_router.include_router(pricing_policies_router)
+api_router.include_router(revenue_simulator_router)
 api_router.include_router(recommendations_router)
 api_router.include_router(reorder_recommendations_router)
 api_router.include_router(scraper_router)
