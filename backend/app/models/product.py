@@ -15,6 +15,9 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.competitor import Competitor
     from app.models.demand_elasticity_estimate import DemandElasticityEstimate
+    from app.models.dead_stock_assessment import DeadStockAssessment
+    from app.models.dead_stock_capital_recovery import DeadStockCapitalRecoveryEstimate
+    from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryRecommendation
     from app.models.dynamic_pricing_recommendation import DynamicPricingRecommendation
     from app.models.competitor_event import CompetitorEvent
     from app.models.competitor_ranking import CompetitorRanking
@@ -22,8 +25,11 @@ if TYPE_CHECKING:
     from app.models.marketplace_fee_policy import MarketplaceFeePolicy
     from app.models.competitor_snapshot import CompetitorSnapshot
     from app.models.pricing_policy import PricingPolicy
+    from app.models.product_visibility_metric import ProductVisibilityMetric
     from app.models.pricing_analytics_snapshot import PricingAnalyticsSnapshot
     from app.models.inventory_history import InventoryHistory
+    from app.models.inventory_stock_in import InventoryStockIn
+    from app.models.inventory_aging import InventoryAgingSnapshot
     from app.models.inventory_risk import InventoryRiskAssessment
     from app.models.scrape_run import ScrapeRun
     from app.models.recommendation import Recommendation
@@ -108,6 +114,26 @@ class Product(Base):
         back_populates="product",
         cascade="all, delete-orphan",
     )
+    inventory_stock_ins: Mapped[list["InventoryStockIn"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    inventory_aging_snapshots: Mapped[list["InventoryAgingSnapshot"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    dead_stock_assessments: Mapped[list["DeadStockAssessment"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    dead_stock_recovery_recommendations: Mapped[list["DeadStockRecoveryRecommendation"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    dead_stock_capital_recovery_estimates: Mapped[list["DeadStockCapitalRecoveryEstimate"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
     sales_records: Mapped[list["SalesRecord"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
@@ -133,6 +159,10 @@ class Product(Base):
         cascade="all, delete-orphan",
     )
     pricing_policies: Mapped[list["PricingPolicy"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    visibility_metrics: Mapped[list["ProductVisibilityMetric"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
     )

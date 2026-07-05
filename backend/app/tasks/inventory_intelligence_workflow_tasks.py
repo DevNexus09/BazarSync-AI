@@ -11,6 +11,8 @@ from app.core.celery_app import celery_app
 from app.db.session import SessionLocal
 from app.services.inventory_intelligence_service import InventoryIntelligenceService
 from app.tasks.inventory_history_tasks import capture_daily_inventory_snapshots_task
+from app.tasks.inventory_aging_tasks import calculate_inventory_aging_task
+from app.tasks.dead_stock_tasks import assess_dead_stock_task
 from app.tasks.sales_velocity_tasks import calculate_daily_sales_velocity_task
 from app.tasks.stockout_prediction_tasks import calculate_stockout_predictions_task
 from app.tasks.reorder_recommendation_tasks import calculate_reorder_recommendations_task
@@ -154,7 +156,9 @@ def _workflow_chain(
     dated_kwargs = {**kwargs, "as_of_date": as_of_date}
     return chain(
         capture_daily_inventory_snapshots_task.si(**kwargs),
+        calculate_inventory_aging_task.si(**dated_kwargs),
         calculate_daily_sales_velocity_task.si(**dated_kwargs),
+        assess_dead_stock_task.si(**dated_kwargs),
         calculate_stockout_predictions_task.si(**dated_kwargs),
         calculate_reorder_recommendations_task.si(**dated_kwargs),
         calculate_inventory_risks_task.si(**dated_kwargs),

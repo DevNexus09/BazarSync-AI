@@ -97,6 +97,11 @@ class PricingPolicyService:
             policy.effective_to = _ensure_utc(payload.effective_to) if payload.effective_to else None
         self._db.commit()
         self._db.refresh(policy)
+        _enqueue_dead_stock_recalculations_for_products(
+            seller_id=seller_id,
+            product_ids=[product_id],
+            reason="pricing_policy_update",
+        )
         return PricingPolicyResponse.model_validate(policy)
 
     def create_marketplace_fee_policy(
@@ -132,6 +137,11 @@ class PricingPolicyService:
         self._db.add(fee)
         self._db.commit()
         self._db.refresh(fee)
+        _enqueue_dead_stock_recalculations_for_products(
+            seller_id=seller_id,
+            product_ids=_affected_fee_product_ids(self._db, seller_id=seller_id, fee=fee),
+            reason="marketplace_fee_update",
+        )
         return _fee_response(fee, is_default=False, scope=_fee_scope(fee))
 
     def list_marketplace_fee_policies(
@@ -187,6 +197,11 @@ class PricingPolicyService:
         policy.effective_to = expires_at
         self._db.commit()
         self._db.refresh(policy)
+        _enqueue_dead_stock_recalculations_for_products(
+            seller_id=seller_id,
+            product_ids=_affected_fee_product_ids(self._db, seller_id=seller_id, fee=policy),
+            reason="marketplace_fee_update",
+        )
         return _fee_response(policy, is_default=False, scope=_fee_scope(policy))
 
     def effective_fee_policy(
@@ -470,3 +485,30 @@ def _ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _affected_fee_product_ids(db: Session, *, seller_id: UUID, fee: MarketplaceFeePolicy) -> list[UUID]:
+    statement = select(Product.id).where(Product.seller_id == seller_id)
+    if fee.product_id:
+        statement = statement.where(Product.id == fee.product_id)
+    elif fee.category:
+        statement = statement.where(Product.category == fee.category)
+    return [row.id for row in db.execute(statement).all()]
+
+
+def _enqueue_dead_stock_recalculations_for_products(
+    *,
+    seller_id: UUID,
+    product_ids: list[UUID],
+    reason: str,
+) -> None:
+    if not product_ids:
+        return
+    from app.tasks.dead_stock_workflow_tasks import enqueue_dead_stock_recalculation
+
+    for product_id in product_ids:
+        enqueue_dead_stock_recalculation(
+            seller_id=seller_id,
+            product_id=product_id,
+            reason=reason,
+        )

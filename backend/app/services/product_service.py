@@ -82,6 +82,7 @@ class ProductService:
             raise ProductNotFoundError
 
         old_stock_quantity = product.stock_quantity
+        old_cost_price = product.cost_price
         old_supplier_lead_time = product.supplier_lead_time
         old_specifications = dict(product.specifications or {})
         updates = payload.model_dump(exclude_unset=True)
@@ -114,6 +115,20 @@ class ProductService:
                 seller_id=seller_id,
                 product_id=product_id,
                 reason="product_inventory_inputs_changed",
+            )
+        if _requires_dead_stock_recalculation(
+            updates=updates,
+            old_stock_quantity=old_stock_quantity,
+            old_cost_price=old_cost_price,
+            product=product,
+        ):
+            from app.tasks.dead_stock_workflow_tasks import enqueue_dead_stock_recalculation
+
+            reason = "product_cost_update" if "cost_price" in updates and product.cost_price != old_cost_price else "inventory_adjustment"
+            enqueue_dead_stock_recalculation(
+                seller_id=seller_id,
+                product_id=product_id,
+                reason=reason,
             )
         return product
 
@@ -161,4 +176,18 @@ def _requires_inventory_recalculation(
     for key in INVENTORY_RECALC_SPEC_KEYS:
         if old_specifications.get(key) != new_specifications.get(key):
             return True
+    return False
+
+
+def _requires_dead_stock_recalculation(
+    *,
+    updates: dict,
+    old_stock_quantity: int,
+    old_cost_price,
+    product: Product,
+) -> bool:
+    if "stock_quantity" in updates and product.stock_quantity != old_stock_quantity:
+        return True
+    if "cost_price" in updates and product.cost_price != old_cost_price:
+        return True
     return False

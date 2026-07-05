@@ -7,8 +7,13 @@ from app.models.competitor_event import CompetitorEvent, CompetitorEventSeverity
 from app.models.competitor_ranking import CompetitorRanking
 from app.models.competitor_snapshot import CompetitorSnapshot
 from app.models.demand_elasticity_estimate import DemandElasticityEstimate, DemandEstimateDataStatus, DemandEstimationMethod
+from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockDataStatus, DeadStockInventoryAgeState, DeadStockNoSalesState, DeadStockVisibilityStatus
+from app.models.dead_stock_capital_recovery import CapitalRecoveryEstimationMethod, CapitalRecoveryEstimateStatus, DeadStockCapitalRecoveryEstimate
+from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction, DeadStockRecoveryRecommendation, DeadStockRecoveryRecommendationStatus
 from app.models.dynamic_pricing_recommendation import DynamicPricingAction, DynamicPricingRecommendation, DynamicPricingRecommendationStatus
 from app.models.inventory_history import InventoryHistory, InventorySnapshotSource
+from app.models.inventory_aging import InventoryAgeSource, InventoryAgingSnapshot
+from app.models.inventory_stock_in import InventoryStockIn
 from app.models.inventory_risk import InventoryRiskAssessment, InventoryRiskDataStatus, InventoryRiskLevel
 from app.models.market_opportunity import MarketOpportunity
 from app.models.marketplace_fee_policy import MarketplaceFeePolicy
@@ -16,6 +21,7 @@ from app.models.price_history import PriceHistory
 from app.models.pricing_policy import PricingObjective, PricingPolicy
 from app.models.pricing_analytics_snapshot import PricingAnalyticsDataStatus, PricingAnalyticsSnapshot
 from app.models.product import Product
+from app.models.product_visibility_metric import ProductVisibilityMetric
 from app.models.recommendation import Recommendation
 from app.models.reorder_recommendation import ReorderRecommendation, ReorderRecommendationAction, ReorderRecommendationStatus
 from app.models.scrape_run import ScrapeRun
@@ -39,10 +45,25 @@ __all__ = [
     "DemandElasticityEstimate",
     "DemandEstimateDataStatus",
     "DemandEstimationMethod",
+    "DeadStockAssessment",
+    "DeadStockClassification",
+    "DeadStockDataStatus",
+    "DeadStockInventoryAgeState",
+    "DeadStockNoSalesState",
+    "DeadStockVisibilityStatus",
+    "CapitalRecoveryEstimationMethod",
+    "CapitalRecoveryEstimateStatus",
+    "DeadStockCapitalRecoveryEstimate",
+    "DeadStockRecoveryAction",
+    "DeadStockRecoveryRecommendation",
+    "DeadStockRecoveryRecommendationStatus",
     "DynamicPricingAction",
     "DynamicPricingRecommendation",
     "DynamicPricingRecommendationStatus",
     "InventoryHistory",
+    "InventoryAgeSource",
+    "InventoryAgingSnapshot",
+    "InventoryStockIn",
     "InventoryRiskAssessment",
     "InventoryRiskDataStatus",
     "InventoryRiskLevel",
@@ -55,6 +76,7 @@ __all__ = [
     "PricingAnalyticsSnapshot",
     "PricingPolicy",
     "Product",
+    "ProductVisibilityMetric",
     "Recommendation",
     "ReorderRecommendation",
     "ReorderRecommendationAction",

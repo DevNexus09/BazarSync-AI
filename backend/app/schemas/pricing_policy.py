@@ -30,6 +30,10 @@ class PricingPolicyUpsert(BaseModel):
     effective_to: datetime | None = None
 
 
+class PricingPolicyCreate(PricingPolicyUpsert):
+    product_id: UUID
+
+
 class PricingPolicyResponse(PricingPolicyUpsert):
     id: UUID | None
     seller_id: UUID

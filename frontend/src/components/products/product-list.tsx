@@ -71,6 +71,9 @@ export function ProductList({ products, onDelete, deletingId }: ProductListProps
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" asChild>
+                        <Link to={`/app/products/${product.id}`}>Details</Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
                         <Link to={`/app/products/${product.id}/edit`}>Edit</Link>
                       </Button>
                       <Button
@@ -143,6 +146,9 @@ export function ProductList({ products, onDelete, deletingId }: ProductListProps
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/app/products/${product.id}`}>Details</Link>
+                </Button>
                 <Button variant="outline" size="sm" asChild>
                   <Link to={`/app/products/${product.id}/edit`}>Edit</Link>
                 </Button>

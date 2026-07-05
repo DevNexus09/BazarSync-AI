@@ -56,6 +56,14 @@ const router = createBrowserRouter([
                 }),
               },
               {
+                path: "products/:productId",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/products/product-detail-page"
+                  )).default,
+                }),
+              },
+              {
                 path: "products/new",
                 lazy: async () => ({
                   Component: (await import(
@@ -68,6 +76,30 @@ const router = createBrowserRouter([
                 lazy: async () => ({
                   Component: (await import(
                     "@/pages/products/product-edit-page"
+                  )).default,
+                }),
+              },
+              {
+                path: "products/:productId/visibility",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/products/product-visibility-page"
+                  )).default,
+                }),
+              },
+              {
+                path: "inventory/receipts/new",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/inventory/inventory-receipt-page"
+                  )).default,
+                }),
+              },
+              {
+                path: "sales/import",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/sales/sales-import-page"
                   )).default,
                 }),
               },
@@ -99,6 +131,14 @@ const router = createBrowserRouter([
                 lazy: async () => ({
                   Component: (await import(
                     "@/pages/pricing/marketplace-fee-setup-page"
+                  )).default,
+                }),
+              },
+              {
+                path: "pricing/policy-setup",
+                lazy: async () => ({
+                  Component: (await import(
+                    "@/pages/pricing/pricing-policy-setup-page"
                   )).default,
                 }),
               },

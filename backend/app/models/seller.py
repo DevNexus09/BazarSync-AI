@@ -16,11 +16,15 @@ if TYPE_CHECKING:
     from app.models.pricing_analytics_snapshot import PricingAnalyticsSnapshot
     from app.models.alert import Alert
     from app.models.demand_elasticity_estimate import DemandElasticityEstimate
+    from app.models.dead_stock_assessment import DeadStockAssessment
+    from app.models.dead_stock_capital_recovery import DeadStockCapitalRecoveryEstimate
+    from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryRecommendation
     from app.models.dynamic_pricing_recommendation import DynamicPricingRecommendation
     from app.models.alert_delivery_log import AlertDeliveryLog
     from app.models.competitor_event import CompetitorEvent
     from app.models.competitor_ranking import CompetitorRanking
     from app.models.inventory_history import InventoryHistory
+    from app.models.inventory_aging import InventoryAgingSnapshot
     from app.models.inventory_risk import InventoryRiskAssessment
     from app.models.market_opportunity import MarketOpportunity
     from app.models.sales_record import SalesRecord
@@ -82,6 +86,22 @@ class Seller(Base):
         cascade="all, delete-orphan",
     )
     inventory_history: Mapped[list["InventoryHistory"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    inventory_aging_snapshots: Mapped[list["InventoryAgingSnapshot"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    dead_stock_assessments: Mapped[list["DeadStockAssessment"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    dead_stock_recovery_recommendations: Mapped[list["DeadStockRecoveryRecommendation"]] = relationship(
+        back_populates="seller",
+        cascade="all, delete-orphan",
+    )
+    dead_stock_capital_recovery_estimates: Mapped[list["DeadStockCapitalRecoveryEstimate"]] = relationship(
         back_populates="seller",
         cascade="all, delete-orphan",
     )

@@ -17,6 +17,7 @@ from app.schemas.pricing_policy import (
     MarketplaceFeePolicyUpsert,
     MinimumSafePricePreviewRequest,
     MinimumSafePricePreviewResponse,
+    PricingPolicyCreate,
     PricingPolicyResponse,
     PricingPolicyUpsert,
 )
@@ -24,6 +25,25 @@ from app.services.pricing_calculator import PricingCalculationError
 from app.services.pricing_policy_service import PricingPolicyNotFoundError, ProductOwnershipError, PricingPolicyService
 
 router = APIRouter(prefix="/pricing-policies", tags=["pricing-policies"])
+
+
+@router.post("", response_model=PricingPolicyResponse, status_code=status.HTTP_201_CREATED)
+def create_pricing_policy(
+    payload: PricingPolicyCreate,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> PricingPolicyResponse:
+    try:
+        return PricingPolicyService(db).upsert_product_policy(
+            seller_id=current_seller.id,
+            product_id=payload.product_id,
+            payload=PricingPolicyUpsert(**payload.model_dump(exclude={"product_id"})),
+        )
+    except ProductOwnershipError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.") from exc
+    except (ValueError, IntegrityError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.get("/products/{product_id}", response_model=PricingPolicyResponse)

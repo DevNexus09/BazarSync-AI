@@ -3,7 +3,11 @@ from __future__ import annotations
 from app.tasks import alert_tasks  # noqa: F401
 from app.tasks import competitor_event_tasks  # noqa: F401
 from app.tasks import competitor_ranking_tasks  # noqa: F401
+from app.tasks import dead_stock_tasks  # noqa: F401
+from app.tasks import dead_stock_workflow_tasks  # noqa: F401
+from app.tasks import dead_stock_recovery_tasks  # noqa: F401
 from app.tasks import inventory_history_tasks  # noqa: F401
+from app.tasks import inventory_aging_tasks  # noqa: F401
 from app.tasks import inventory_intelligence_workflow_tasks  # noqa: F401
 from app.tasks import inventory_risk_tasks  # noqa: F401
 from app.tasks import market_opportunity_tasks  # noqa: F401

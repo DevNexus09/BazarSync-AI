@@ -25,6 +25,11 @@ class TelegramInventoryAlertType(str, Enum):
     REORDER_DEADLINE = "REORDER_DEADLINE"
     DAYS_REMAINING_DROP = "DAYS_REMAINING_DROP"
     OUT_OF_STOCK = "OUT_OF_STOCK"
+    DEAD_STOCK_CLASSIFIED = "DEAD_STOCK_CLASSIFIED"
+    DEAD_STOCK_CRITICAL_RISK = "DEAD_STOCK_CRITICAL_RISK"
+    DEAD_STOCK_LOCKED_CAPITAL = "DEAD_STOCK_LOCKED_CAPITAL"
+    DEAD_STOCK_RECOVERY_AVAILABLE = "DEAD_STOCK_RECOVERY_AVAILABLE"
+    DEAD_STOCK_AGED = "DEAD_STOCK_AGED"
 
 
 class TelegramInventoryAlertStatus(str, Enum):
@@ -49,7 +54,7 @@ class TelegramInventoryAlert(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     seller_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sellers.id", ondelete="CASCADE"), nullable=False)
     product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    risk_assessment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("inventory_risk_assessments.id", ondelete="CASCADE"), nullable=False)
+    risk_assessment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("inventory_risk_assessments.id", ondelete="CASCADE"), nullable=True)
     reorder_recommendation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("reorder_recommendations.id", ondelete="SET NULL"), nullable=True)
     alert_type: Mapped[TelegramInventoryAlertType] = mapped_column(
         SAEnum(TelegramInventoryAlertType, name="telegram_inventory_alert_type"),
@@ -72,5 +77,5 @@ class TelegramInventoryAlert(Base):
 
     seller: Mapped["Seller"] = relationship(back_populates="telegram_inventory_alerts")
     product: Mapped["Product"] = relationship(back_populates="telegram_inventory_alerts")
-    risk_assessment: Mapped["InventoryRiskAssessment"] = relationship()
+    risk_assessment: Mapped["InventoryRiskAssessment | None"] = relationship()
     reorder_recommendation: Mapped["ReorderRecommendation | None"] = relationship()

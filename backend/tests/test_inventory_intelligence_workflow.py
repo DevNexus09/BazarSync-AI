@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from app.models.product import Product
 from app.schemas.products import ProductUpdate
-from app.services.product_service import _requires_inventory_recalculation
+from app.services.product_service import _requires_dead_stock_recalculation, _requires_inventory_recalculation
 from app.tasks.inventory_intelligence_workflow_tasks import _workflow_chain
 
 
@@ -25,7 +25,9 @@ class InventoryIntelligenceWorkflowTests(unittest.TestCase):
         self.assertEqual(
             [
                 "inventory_history.capture_daily_inventory_snapshots",
+                "inventory_aging.calculate_inventory_aging",
                 "sales_velocity.calculate_daily_sales_velocity",
+                "dead_stock.assess_dead_stock",
                 "stockout_predictions.calculate_stockout_predictions",
                 "reorder_recommendations.calculate_reorder_recommendations",
                 "inventory_risks.calculate_inventory_risks",
@@ -97,6 +99,34 @@ class InventoryIntelligenceWorkflowTests(unittest.TestCase):
                 old_stock_quantity=15,
                 old_supplier_lead_time=8,
                 old_specifications={"confirmed_incoming_quantity": "0"},
+                product=product,
+            )
+        )
+
+    def test_dead_stock_cost_and_stock_changes_trigger_recalculation(self):
+        product = SimpleNamespace(stock_quantity=12, cost_price=Decimal("20.00"))
+
+        self.assertTrue(
+            _requires_dead_stock_recalculation(
+                updates={"stock_quantity": 12},
+                old_stock_quantity=10,
+                old_cost_price=Decimal("20.00"),
+                product=product,
+            )
+        )
+        self.assertTrue(
+            _requires_dead_stock_recalculation(
+                updates={"cost_price": Decimal("20.00")},
+                old_stock_quantity=12,
+                old_cost_price=Decimal("15.00"),
+                product=product,
+            )
+        )
+        self.assertFalse(
+            _requires_dead_stock_recalculation(
+                updates={"description": "metadata"},
+                old_stock_quantity=12,
+                old_cost_price=Decimal("20.00"),
                 product=product,
             )
         )

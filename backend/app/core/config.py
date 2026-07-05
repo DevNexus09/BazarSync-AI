@@ -91,6 +91,47 @@ class Settings(BaseModel):
     inventory_intelligence_schedule_enabled: bool = False
     inventory_intelligence_daily_hour_utc: int = 1
     inventory_intelligence_daily_minute_utc: int = 15
+    inventory_aging_calculation_version: str = "v1"
+    inventory_aging_bucket_edges_days: list[int] = Field(default_factory=lambda: [30, 45, 60, 90, 180])
+    dead_stock_calculation_version: str = "v1"
+    dead_stock_no_sales_threshold_days: int = 45
+    dead_stock_inventory_age_threshold_days: int = 60
+    dead_stock_product_age_grace_period_days: int = 30
+    dead_stock_slow_velocity_units_per_day: float = 0.25
+    dead_stock_strong_velocity_units_per_day: float = 1.0
+    dead_stock_excess_coverage_days: int = 90
+    dead_stock_age_warning_ratio: float = 0.80
+    dead_stock_no_sales_warning_ratio: float = 0.80
+    dead_stock_excess_coverage_warning_ratio: float = 0.80
+    dead_stock_extreme_age_multiplier: float = 2.0
+    dead_stock_extreme_no_sales_multiplier: float = 2.0
+    dead_stock_extreme_coverage_multiplier: float = 2.0
+    dead_stock_low_visibility_threshold: float = 35.0
+    dead_stock_inventory_age_weight: float = 30.0
+    dead_stock_no_sales_weight: float = 30.0
+    dead_stock_sales_velocity_weight: float = 15.0
+    dead_stock_excess_coverage_weight: float = 15.0
+    dead_stock_visibility_weight: float = 10.0
+    dead_stock_recovery_formula_version: str = "v1"
+    dead_stock_recovery_discount_rates: list[float] = Field(default_factory=lambda: [0.05, 0.10, 0.15, 0.20])
+    dead_stock_recovery_bundle_min_quantity: int = 5
+    dead_stock_recovery_flash_sale_min_quantity: int = 10
+    dead_stock_recovery_flash_sale_duration_days: int = 3
+    dead_stock_recovery_expiration_days: int = 7
+    dead_stock_capital_recovery_formula_version: str = "v1"
+    dead_stock_capital_recovery_currency: str = "BDT"
+    dead_stock_capital_recovery_default_duration_days: int = 14
+    dead_stock_capital_recovery_heuristic_low_sell_through_rate: float = 0.25
+    dead_stock_capital_recovery_heuristic_central_sell_through_rate: float = 0.40
+    dead_stock_capital_recovery_heuristic_high_sell_through_rate: float = 0.55
+    dead_stock_workflow_schedule_enabled: bool = False
+    dead_stock_workflow_daily_hour_utc: int = 2
+    dead_stock_workflow_daily_minute_utc: int = 15
+    dead_stock_workflow_debounce_seconds: int = 300
+    dead_stock_alerts_enabled: bool = False
+    dead_stock_alert_locked_capital_threshold: float = 10000.0
+    dead_stock_alert_additional_age_days: int = 30
+    dead_stock_alert_cooldown_hours: int = 24
     pricing_analytics_max_competitor_data_age_hours: int = 24
     pricing_analytics_max_inventory_data_age_hours: int = 48
     pricing_analytics_max_velocity_data_age_hours: int = 48
@@ -224,6 +265,59 @@ class Settings(BaseModel):
             ),
             "inventory_intelligence_daily_hour_utc": int(os.getenv("INVENTORY_INTELLIGENCE_DAILY_HOUR_UTC", "1")),
             "inventory_intelligence_daily_minute_utc": int(os.getenv("INVENTORY_INTELLIGENCE_DAILY_MINUTE_UTC", "15")),
+            "inventory_aging_calculation_version": os.getenv("INVENTORY_AGING_CALCULATION_VERSION", "v1"),
+            "inventory_aging_bucket_edges_days": [
+                int(item)
+                for item in _split_csv(os.getenv("INVENTORY_AGING_BUCKET_EDGES_DAYS", "30,45,60,90,180"))
+            ],
+            "dead_stock_calculation_version": os.getenv("DEAD_STOCK_CALCULATION_VERSION", "v1"),
+            "dead_stock_no_sales_threshold_days": int(os.getenv("DEAD_STOCK_NO_SALES_THRESHOLD_DAYS", "45")),
+            "dead_stock_inventory_age_threshold_days": int(os.getenv("DEAD_STOCK_INVENTORY_AGE_THRESHOLD_DAYS", "60")),
+            "dead_stock_product_age_grace_period_days": int(os.getenv("DEAD_STOCK_PRODUCT_AGE_GRACE_PERIOD_DAYS", "30")),
+            "dead_stock_slow_velocity_units_per_day": float(os.getenv("DEAD_STOCK_SLOW_VELOCITY_UNITS_PER_DAY", "0.25")),
+            "dead_stock_strong_velocity_units_per_day": float(os.getenv("DEAD_STOCK_STRONG_VELOCITY_UNITS_PER_DAY", "1.0")),
+            "dead_stock_excess_coverage_days": int(os.getenv("DEAD_STOCK_EXCESS_COVERAGE_DAYS", "90")),
+            "dead_stock_age_warning_ratio": float(os.getenv("DEAD_STOCK_AGE_WARNING_RATIO", "0.80")),
+            "dead_stock_no_sales_warning_ratio": float(os.getenv("DEAD_STOCK_NO_SALES_WARNING_RATIO", "0.80")),
+            "dead_stock_excess_coverage_warning_ratio": float(os.getenv("DEAD_STOCK_EXCESS_COVERAGE_WARNING_RATIO", "0.80")),
+            "dead_stock_extreme_age_multiplier": float(os.getenv("DEAD_STOCK_EXTREME_AGE_MULTIPLIER", "2.0")),
+            "dead_stock_extreme_no_sales_multiplier": float(os.getenv("DEAD_STOCK_EXTREME_NO_SALES_MULTIPLIER", "2.0")),
+            "dead_stock_extreme_coverage_multiplier": float(os.getenv("DEAD_STOCK_EXTREME_COVERAGE_MULTIPLIER", "2.0")),
+            "dead_stock_low_visibility_threshold": float(os.getenv("DEAD_STOCK_LOW_VISIBILITY_THRESHOLD", "35.0")),
+            "dead_stock_inventory_age_weight": float(os.getenv("DEAD_STOCK_INVENTORY_AGE_WEIGHT", "30.0")),
+            "dead_stock_no_sales_weight": float(os.getenv("DEAD_STOCK_NO_SALES_WEIGHT", "30.0")),
+            "dead_stock_sales_velocity_weight": float(os.getenv("DEAD_STOCK_SALES_VELOCITY_WEIGHT", "15.0")),
+            "dead_stock_excess_coverage_weight": float(os.getenv("DEAD_STOCK_EXCESS_COVERAGE_WEIGHT", "15.0")),
+            "dead_stock_visibility_weight": float(os.getenv("DEAD_STOCK_VISIBILITY_WEIGHT", "10.0")),
+            "dead_stock_recovery_formula_version": os.getenv("DEAD_STOCK_RECOVERY_FORMULA_VERSION", "v1"),
+            "dead_stock_recovery_discount_rates": [
+                float(item)
+                for item in _split_csv(os.getenv("DEAD_STOCK_RECOVERY_DISCOUNT_RATES", "0.05,0.10,0.15,0.20"))
+            ],
+            "dead_stock_recovery_bundle_min_quantity": int(os.getenv("DEAD_STOCK_RECOVERY_BUNDLE_MIN_QUANTITY", "5")),
+            "dead_stock_recovery_flash_sale_min_quantity": int(os.getenv("DEAD_STOCK_RECOVERY_FLASH_SALE_MIN_QUANTITY", "10")),
+            "dead_stock_recovery_flash_sale_duration_days": int(os.getenv("DEAD_STOCK_RECOVERY_FLASH_SALE_DURATION_DAYS", "3")),
+            "dead_stock_recovery_expiration_days": int(os.getenv("DEAD_STOCK_RECOVERY_EXPIRATION_DAYS", "7")),
+            "dead_stock_capital_recovery_formula_version": os.getenv("DEAD_STOCK_CAPITAL_RECOVERY_FORMULA_VERSION", "v1"),
+            "dead_stock_capital_recovery_currency": os.getenv("DEAD_STOCK_CAPITAL_RECOVERY_CURRENCY", "BDT"),
+            "dead_stock_capital_recovery_default_duration_days": int(os.getenv("DEAD_STOCK_CAPITAL_RECOVERY_DEFAULT_DURATION_DAYS", "14")),
+            "dead_stock_capital_recovery_heuristic_low_sell_through_rate": float(os.getenv("DEAD_STOCK_CAPITAL_RECOVERY_HEURISTIC_LOW_SELL_THROUGH_RATE", "0.25")),
+            "dead_stock_capital_recovery_heuristic_central_sell_through_rate": float(os.getenv("DEAD_STOCK_CAPITAL_RECOVERY_HEURISTIC_CENTRAL_SELL_THROUGH_RATE", "0.40")),
+            "dead_stock_capital_recovery_heuristic_high_sell_through_rate": float(os.getenv("DEAD_STOCK_CAPITAL_RECOVERY_HEURISTIC_HIGH_SELL_THROUGH_RATE", "0.55")),
+            "dead_stock_workflow_schedule_enabled": _parse_bool(
+                os.getenv("DEAD_STOCK_WORKFLOW_SCHEDULE_ENABLED"),
+                default=False,
+            ),
+            "dead_stock_workflow_daily_hour_utc": int(os.getenv("DEAD_STOCK_WORKFLOW_DAILY_HOUR_UTC", "2")),
+            "dead_stock_workflow_daily_minute_utc": int(os.getenv("DEAD_STOCK_WORKFLOW_DAILY_MINUTE_UTC", "15")),
+            "dead_stock_workflow_debounce_seconds": int(os.getenv("DEAD_STOCK_WORKFLOW_DEBOUNCE_SECONDS", "300")),
+            "dead_stock_alerts_enabled": _parse_bool(
+                os.getenv("DEAD_STOCK_ALERTS_ENABLED"),
+                default=False,
+            ),
+            "dead_stock_alert_locked_capital_threshold": float(os.getenv("DEAD_STOCK_ALERT_LOCKED_CAPITAL_THRESHOLD", "10000.0")),
+            "dead_stock_alert_additional_age_days": int(os.getenv("DEAD_STOCK_ALERT_ADDITIONAL_AGE_DAYS", "30")),
+            "dead_stock_alert_cooldown_hours": int(os.getenv("DEAD_STOCK_ALERT_COOLDOWN_HOURS", "24")),
             "pricing_analytics_max_competitor_data_age_hours": int(os.getenv("PRICING_ANALYTICS_MAX_COMPETITOR_DATA_AGE_HOURS", "24")),
             "pricing_analytics_max_inventory_data_age_hours": int(os.getenv("PRICING_ANALYTICS_MAX_INVENTORY_DATA_AGE_HOURS", "48")),
             "pricing_analytics_max_velocity_data_age_hours": int(os.getenv("PRICING_ANALYTICS_MAX_VELOCITY_DATA_AGE_HOURS", "48")),

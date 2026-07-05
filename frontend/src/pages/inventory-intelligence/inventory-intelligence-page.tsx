@@ -3,15 +3,28 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  Coins,
+  FileWarning,
   PackageSearch,
   RefreshCw,
   ShieldAlert,
   Truck,
 } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 import { ErrorState } from "@/components/common/error-state"
 import { PageHeader } from "@/components/common/page-header"
+import { DeadStockReadinessPanel } from "@/components/dead-stock/DeadStockReadinessPanel"
+import { UnavailableValueWithReason } from "@/components/dead-stock/UnavailableValueWithReason"
 import { Button } from "@/components/ui/button"
+import {
+  useDeadStockProducts,
+  useDeadStockReadiness,
+  useDeadStockRecalculation,
+  useDeadStockSummary,
+  useProductDeadStockIntelligence,
+  useRecoverySimulation,
+} from "@/hooks/useDeadStock"
 import {
   useInventoryIntelligenceSummary,
   useInventoryReorderList,
@@ -27,7 +40,16 @@ import type {
   InventoryRiskLevel,
 } from "@/types/inventory-intelligence"
 import type { Product } from "@/types/product"
-import { formatDateTime, formatNumber } from "@/utils/formatters"
+import type {
+  DeadStockClassification,
+  DeadStockDataStatus,
+  DeadStockProduct,
+  DeadStockRiskLevel,
+  ProductDeadStockIntelligence,
+  RecoveryAction,
+} from "@/types/dead-stock"
+import type { DeadStockReadiness } from "@/types/dead-stock-readiness"
+import { formatCurrency, formatDateTime, formatNumber } from "@/utils/formatters"
 
 const PAGE_LIMIT = 8
 
@@ -62,6 +84,12 @@ const formatDate = (value?: string | null) => {
     dateStyle: "medium",
   }).format(new Date(`${value}T00:00:00`))
 }
+
+const currency = (value?: number | null) =>
+  value == null || Number.isNaN(value) ? "Estimate unavailable" : formatCurrency(value)
+
+const labelize = (value?: string | null) =>
+  value ? value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (s) => s.toUpperCase()) : "Not available"
 
 function RiskBadge({ level }: { level?: InventoryRiskLevel | null }) {
   if (!level) {
@@ -265,11 +293,379 @@ function IntelligenceRows({
   )
 }
 
+function DeadStockRiskBadge({ level }: { level?: DeadStockRiskLevel | null }) {
+  return (
+    <span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 text-xs font-semibold text-foreground">
+      {level ? `${level} risk` : "Risk unavailable"}
+    </span>
+  )
+}
+
+function SelectFilter<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: T
+  onChange: (value: T) => void
+  options: { value: T; label: string }[]
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function DeadStockTable({
+  rows,
+  total,
+  isLoading,
+  isError,
+  offset,
+  setOffset,
+  onRetry,
+}: {
+  rows?: DeadStockProduct[]
+  total?: number
+  isLoading: boolean
+  isError: boolean
+  offset: number
+  setOffset: (value: number) => void
+  onRetry: () => void
+}) {
+  const canPrev = offset > 0
+  const canNext = offset + PAGE_LIMIT < (total ?? 0)
+  return (
+    <section className="glass-panel p-4" aria-label="At-risk inventory table">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">At-risk inventory</h3>
+        <span className="text-xs text-muted-foreground">{formatNumber(total ?? 0)} products</span>
+      </div>
+      {isLoading ? (
+        <div className="mt-4 h-48 rounded-lg bg-muted/30" role="status" aria-label="Loading dead-stock products" />
+      ) : isError ? (
+        <div className="mt-4">
+          <ErrorState title="Dead-stock products unavailable" message="We couldn't load the at-risk inventory table." action={<Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>} />
+        </div>
+      ) : !rows?.length ? (
+        <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+          No dead-stock products match the selected filters.
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[960px] text-left text-sm">
+              <thead className="text-xs uppercase text-muted-foreground">
+                <tr className="border-b border-border/70">
+                  <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 pr-3">Current stock</th>
+                  <th className="py-2 pr-3">Inventory age</th>
+                  <th className="py-2 pr-3">Last sale</th>
+                  <th className="py-2 pr-3">Classification</th>
+                  <th className="py-2 pr-3">Risk</th>
+                  <th className="py-2 pr-3">Locked capital</th>
+                  <th className="py-2 pr-3">Recommended action</th>
+                  <th className="py-2 pr-3">Potential recovery</th>
+                  <th className="py-2">Last calculated</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {rows.map((row: DeadStockProduct) => (
+                  <tr key={row.productId}>
+                    <td className="py-3 pr-3">
+                      <div className="font-medium text-foreground">{row.productName}</div>
+                      <div className="text-xs text-muted-foreground">{row.category || "Uncategorized"}</div>
+                    </td>
+                    <td className="py-3 pr-3">{formatNumber(row.currentStock)}</td>
+                    <td className="py-3 pr-3">
+                      {row.inventoryAgeDays == null ? (
+                        <UnavailableValueWithReason
+                          label="Inventory age"
+                          fallback="Add inventory receipt, lot, goods-received date, or stock-in transaction."
+                        />
+                      ) : `${formatNumber(row.inventoryAgeDays)} days`}
+                      {row.inventoryAgeIsEstimated ? <span className="ml-2 rounded border border-amber-400/40 px-1.5 py-0.5 text-xs text-amber-200">Estimated age</span> : null}
+                      <div className="text-xs text-muted-foreground">{labelize(row.ageSource)}</div>
+                    </td>
+                    <td className="py-3 pr-3">
+                      {row.daysSinceLastSale == null ? (
+                        <UnavailableValueWithReason
+                          label="Last sale"
+                          fallback="Import completed or fulfilled sales records, or confirm never sold when supported."
+                        />
+                      ) : `${row.daysSinceLastSale} days`}
+                    </td>
+                    <td className="py-3 pr-3">{labelize(row.classification)}</td>
+                    <td className="py-3 pr-3">
+                      <DeadStockRiskBadge level={row.riskLevel} />
+                      <div className="text-xs text-muted-foreground">
+                        {row.riskScore == null ? "Risk score requires dead-stock assessment" : `Score ${formatDecimal(row.riskScore)}`}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-3">
+                      {row.lockedCapital == null ? (
+                        <UnavailableValueWithReason
+                          label="Locked capital"
+                          fallback="Add product landed cost to calculate locked capital."
+                        />
+                      ) : currency(row.lockedCapital)}
+                    </td>
+                    <td className="py-3 pr-3">
+                      {row.primaryRecommendation ? labelize(row.primaryRecommendation) : (
+                        <UnavailableValueWithReason
+                          label="Recommendation"
+                          fallback="Add product cost, selling price, marketplace fee policy, and pricing policy."
+                        />
+                      )}
+                    </td>
+                    <td className="py-3 pr-3">
+                      {row.potentialRecovery == null ? (
+                        <UnavailableValueWithReason
+                          label="Potential recovery"
+                          fallback="Marketplace fees and safe discount validation are required before estimating recovery."
+                        />
+                      ) : currency(row.potentialRecovery)}
+                    </td>
+                    <td className="py-3">{formatDateTime(row.lastCalculatedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <Button variant="outline" size="sm" disabled={!canPrev} onClick={() => setOffset(Math.max(0, offset - PAGE_LIMIT))}>Previous</Button>
+            <span className="text-xs text-muted-foreground">Page {Math.floor(offset / PAGE_LIMIT) + 1}</span>
+            <Button variant="outline" size="sm" disabled={!canNext} onClick={() => setOffset(offset + PAGE_LIMIT)}>Next</Button>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
+function AgeDistribution({ data }: { data?: Record<string, number> }) {
+  const rows = ["0-30", "31-45", "46-60", "61-90", "91-180", "180+"].map((bucket) => ({
+    bucket,
+    count: data?.[bucket] ?? 0,
+  }))
+  return (
+    <section className="glass-panel p-4" aria-label="Inventory age distribution">
+      <h3 className="text-sm font-semibold text-foreground">Inventory age distribution</h3>
+      <div className="mt-4 h-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis dataKey="bucket" tickLine={false} axisLine={false} />
+            <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+            <Tooltip />
+            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  )
+}
+
+function RecoveryPanel({
+  productId,
+  intelligence,
+  readiness,
+}: {
+  productId: string
+  intelligence?: ProductDeadStockIntelligence
+  readiness?: DeadStockReadiness
+}) {
+  const [discount, setDiscount] = useState("0.10")
+  const simulation = useRecoverySimulation(productId || undefined)
+  const recommendation = intelligence?.recoveryRecommendation
+  const capital = intelligence?.capitalRecovery
+  const rejected = (recommendation?.rejected_actions as Array<{ action: string; reasons?: string[] }> | undefined) ?? []
+  const costCheck = readiness?.checks.product_cost
+  const feeCheck = readiness?.checks.marketplace_fee_policy
+  const policyCheck = readiness?.checks.pricing_policy
+  const canSimulate = Boolean(productId && readiness?.canEstimatePotentialRecovery)
+  const simulationBlocker =
+    costCheck?.reasonCode === "MISSING_PRODUCT_COST"
+      ? "Product cost is required before recovery simulation."
+      : feeCheck?.reasonCode === "MISSING_MARKETPLACE_FEE_POLICY"
+        ? "Marketplace fee policy is required before discount recovery can be estimated safely."
+        : policyCheck?.reasonCode === "MISSING_PRICING_POLICY"
+          ? "Pricing policy is required before MarginGuard can validate recovery pricing."
+          : null
+  const runSimulation = () => {
+    if (!canSimulate) return
+    simulation.mutate({
+      action: intelligence?.primaryRecoveryRecommendation || "DISCOUNT",
+      candidateDiscount: Number(discount),
+      eligibleQuantity: intelligence?.eligibleUnsoldQuantity ?? undefined,
+    })
+  }
+  const simulated = simulation.data
+  return (
+    <section className="glass-panel p-4" aria-label="Recovery recommendation panel">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Recovery recommendation</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Recommendations are estimates and do not execute marketplace changes.</p>
+        </div>
+        <span className="rounded-full border border-border bg-muted/30 px-2 py-1 text-xs font-semibold text-foreground">
+          {intelligence?.primaryRecoveryRecommendation ? labelize(intelligence.primaryRecoveryRecommendation) : "Recommendation unavailable"}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <Detail label="Suggested discount" value={intelligence?.recommendedDiscountRate == null ? "Unavailable - MarginGuard needs safe pricing data" : `${Math.round(intelligence.recommendedDiscountRate * 100)}%`} />
+        <Detail label="Recommended price" value={intelligence?.recommendedPrice == null ? "Unavailable - safe price not calculated" : currency(intelligence.recommendedPrice)} />
+        <Detail label="Expected cash range" value={intelligence?.potentialRecoveredCashLow == null || intelligence?.potentialRecoveredCashHigh == null ? "Unavailable - recovery estimate is blocked" : `${currency(intelligence.potentialRecoveredCashLow)} - ${currency(intelligence.potentialRecoveredCashHigh)}`} />
+        <Detail label="Confidence" value={formatDecimal(intelligence?.confidence, "%")} />
+      </div>
+      {recommendation?.explanation ? (
+        <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
+          {String(recommendation.explanation)}
+        </div>
+      ) : null}
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+          <h4 className="text-xs font-semibold uppercase text-muted-foreground">Assumptions</h4>
+          <ul className="mt-2 space-y-1 text-sm text-foreground">
+            <li>Margin safety: {capital?.estimate_status === "BLOCKED_BY_MARGIN_POLICY" ? "Blocked by MarginGuard" : "Evaluated when pricing data is available"}</li>
+            <li>Estimate method: {labelize(String(capital?.estimation_method ?? ""))}</li>
+            <li>No automatic price, campaign, title, bundle, stock, or customer action is performed.</li>
+          </ul>
+        </div>
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+          <h4 className="text-xs font-semibold uppercase text-muted-foreground">Rejected actions</h4>
+          {rejected.length ? (
+            <ul className="mt-2 space-y-2 text-sm text-foreground">
+              {rejected.slice(0, 4).map((item, index) => (
+                <li key={`${item.action}-${index}`}>
+                  <span className="font-medium">{labelize(item.action)}:</span> {(item.reasons ?? []).join(", ") || "Rejected by rule"}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">No rejected actions were returned.</p>
+          )}
+        </div>
+      </div>
+      <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-3" aria-label="Capital recovery simulator">
+        <h4 className="text-sm font-semibold text-foreground">Capital recovery simulator</h4>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Candidate discount
+            <select className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground" value={discount} onChange={(event) => setDiscount(event.target.value)}>
+              <option value="0.05">5%</option>
+              <option value="0.10">10%</option>
+              <option value="0.15">15%</option>
+              <option value="0.20">20%</option>
+            </select>
+          </label>
+          <Button size="sm" onClick={runSimulation} disabled={!canSimulate || simulation.isPending}>
+            {simulation.isPending ? <RefreshCw className="size-4 animate-spin" /> : <Coins className="size-4" />}
+            Estimate recovery
+          </Button>
+        </div>
+        {simulationBlocker ? (
+          <p className="mt-3 text-sm text-amber-100">{simulationBlocker}</p>
+        ) : null}
+        {simulation.isError ? (
+          <p className="mt-3 text-sm text-red-200">Simulation unavailable. Check cost and marketplace fee setup.</p>
+        ) : simulated ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <Detail label="Locked capital" value={currency(simulated.lockedCapital)} />
+            <Detail label="Potential cash" value={currency(simulated.potentialRecoveredCash)} />
+            <Detail label="Status" value={labelize(String(simulated.capitalRecovery?.estimate_status ?? ""))} />
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+function DataQualityPanel({
+  intelligence,
+  readiness,
+}: {
+  intelligence?: ProductDeadStockIntelligence
+  readiness?: DeadStockReadiness
+}) {
+  const readinessChecks = Object.entries(readiness?.checks ?? {}).filter(([, check]) => check.reasonCode)
+  const blocking = readinessChecks.filter(([, check]) => check.blocking)
+  const optional = readinessChecks.filter(([, check]) => !check.blocking && check.status === "UNAVAILABLE")
+  const pending = readinessChecks.filter(([, check]) => check.status === "PENDING_CALCULATION" || check.status === "ACTION_REQUIRED")
+  const estimated = intelligence?.inventoryAgeIsEstimated
+  return (
+    <section className="glass-panel p-4" aria-label="Data quality panel">
+      <h3 className="text-sm font-semibold text-foreground">Data quality</h3>
+      {readinessChecks.length || estimated ? (
+        <div className="mt-3 space-y-3">
+          <QualityGroup title="Blocking setup required" items={blocking} />
+          <QualityGroup title="Optional data unavailable" items={optional} />
+          <QualityGroup title="Pending calculations" items={pending} />
+          {estimated ? (
+            <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm">
+              <div className="flex items-center gap-2 font-medium text-amber-100"><FileWarning className="size-4" />Estimated age</div>
+              <p className="mt-1 text-amber-50/80">Inventory age is estimated from the earliest available stock record.</p>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">No blocking data quality issues were returned.</p>
+      )}
+    </section>
+  )
+}
+
+function QualityGroup({
+  title,
+  items,
+}: {
+  title: string
+  items: Array<[string, DeadStockReadiness["checks"][string]]>
+}) {
+  if (!items.length) return null
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase text-muted-foreground">{title}</h4>
+      <div className="mt-2 space-y-2">
+        {items.map(([key, check]) => (
+          <div key={key} className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <FileWarning className="size-4" />
+              {labelize(key)}
+            </div>
+            <p className="mt-1 text-muted-foreground">{check.message}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function InventoryIntelligencePage() {
   const productsQuery = useProducts()
   const products = productsQuery.data ?? []
   const [productId, setProductId] = useState("")
   const [riskLevel, setRiskLevel] = useState<InventoryRiskLevel | "ALL">("ALL")
+  const [deadStockClassification, setDeadStockClassification] = useState<DeadStockClassification | "ALL">("ALL")
+  const [deadStockRisk, setDeadStockRisk] = useState<DeadStockRiskLevel | "ALL">("ALL")
+  const [deadStockDataStatus, setDeadStockDataStatus] = useState<DeadStockDataStatus | "ALL">("ALL")
+  const [deadStockAction, setDeadStockAction] = useState<RecoveryAction | "ALL">("ALL")
+  const [deadStockSort, setDeadStockSort] = useState<"risk" | "age" | "locked_capital" | "potential_recovery">("risk")
+  const [deadStockOffset, setDeadStockOffset] = useState(0)
   const filters = useMemo(
     () => ({
       productId: productId || undefined,
@@ -281,12 +677,29 @@ export default function InventoryIntelligencePage() {
   )
 
   const summary = useInventoryIntelligenceSummary()
+  const deadStockSummary = useDeadStockSummary()
+  const deadStockFilters = useMemo(
+    () => ({
+      classification: deadStockClassification,
+      riskLevel: deadStockRisk,
+      dataStatus: deadStockDataStatus,
+      recommendationAction: deadStockAction,
+      sort: deadStockSort,
+      limit: PAGE_LIMIT,
+      offset: deadStockOffset,
+    }),
+    [deadStockAction, deadStockClassification, deadStockDataStatus, deadStockOffset, deadStockRisk, deadStockSort]
+  )
+  const deadStockProducts = useDeadStockProducts(deadStockFilters)
   const reorderList = useInventoryReorderList({
     ...filters,
     sort: "deadline",
   })
   const risks = useInventoryRisks(filters)
   const productIntelligence = useProductInventoryIntelligence(productId || undefined)
+  const deadStockIntelligence = useProductDeadStockIntelligence(productId || undefined)
+  const deadStockReadiness = useDeadStockReadiness(productId || undefined)
+  const deadStockRecalculation = useDeadStockRecalculation(productId || undefined)
   const dailyWorkflow = useRunDailyInventoryWorkflow()
   const productWorkflow = useRunProductInventoryWorkflow()
   const selectedProduct = products.find((product) => product.id === productId)
@@ -295,14 +708,22 @@ export default function InventoryIntelligencePage() {
     summary.isFetching ||
     reorderList.isFetching ||
     risks.isFetching ||
-    productIntelligence.isFetching
+    productIntelligence.isFetching ||
+    deadStockSummary.isFetching ||
+    deadStockProducts.isFetching ||
+    deadStockIntelligence.isFetching ||
+    deadStockReadiness.isFetching
 
   const refreshAll = () => {
     void summary.refetch()
     void reorderList.refetch()
     void risks.refetch()
+    void deadStockSummary.refetch()
+    void deadStockProducts.refetch()
     if (productId) {
       void productIntelligence.refetch()
+      void deadStockIntelligence.refetch()
+      void deadStockReadiness.refetch()
     }
   }
 
@@ -402,6 +823,125 @@ export default function InventoryIntelligencePage() {
           />
         </div>
       )}
+
+      <section className="space-y-4" aria-label="Dead stock dashboard">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Dead stock recovery</h2>
+            <p className="text-sm text-muted-foreground">
+              Estimated locked capital and recovery recommendations. Values are estimates, not guaranteed cash.
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Formula {deadStockSummary.data?.formulaVersion ?? "not available"}
+          </span>
+        </div>
+        {deadStockSummary.isError && !deadStockSummary.data ? (
+          <ErrorState
+            title="Dead-stock summary unavailable"
+            message="We couldn't load the Phase 9 summary."
+            action={<Button variant="outline" size="sm" onClick={() => deadStockSummary.refetch()}>Retry</Button>}
+          />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <MetricCard label="Dead-stock products" value={formatNumber(deadStockSummary.data?.deadStockCount ?? 0)} helper={`${formatNumber(deadStockSummary.data?.totalEligibleDeadStockUnits ?? 0)} eligible units`} icon={PackageSearch} />
+            <MetricCard label="At-risk products" value={formatNumber(deadStockSummary.data?.atRiskCount ?? 0)} helper={`${formatNumber(deadStockSummary.data?.slowMovingCount ?? 0)} slow-moving products`} icon={ShieldAlert} />
+            <MetricCard label="Locked capital" value={currency(deadStockSummary.data?.totalLockedCapital)} helper={deadStockSummary.data?.lockedCapitalCurrency ?? "Currency unavailable"} icon={Coins} />
+            <MetricCard label="Potential recoverable cash" value={currency(deadStockSummary.data?.estimatedRecoverableCash)} helper={deadStockSummary.data?.monetaryTotalsComparable ? `Comparable ${deadStockSummary.data.forecastHorizonDays ?? ""} day horizon` : "Estimate not aggregated across mixed currency or horizons"} icon={Truck} />
+            <MetricCard label="Manual review" value={formatNumber(deadStockSummary.data?.productsRequiringManualReview ?? 0)} helper={`${formatNumber(deadStockSummary.data?.productsWithInsufficientData ?? 0)} products with insufficient data`} icon={AlertTriangle} />
+          </div>
+        )}
+        <div className="glass-panel flex flex-col gap-3 p-4 lg:flex-row lg:flex-wrap lg:items-end">
+          <SelectFilter label="Classification" value={deadStockClassification} onChange={(value) => { setDeadStockClassification(value); setDeadStockOffset(0) }} options={[
+            { value: "ALL", label: "All classifications" },
+            { value: "SLOW_MOVING", label: "Slow moving" },
+            { value: "AT_RISK", label: "At risk" },
+            { value: "DEAD_STOCK", label: "Dead stock" },
+            { value: "HEALTHY", label: "Healthy" },
+            { value: "INSUFFICIENT_DATA", label: "Insufficient data" },
+          ]} />
+          <SelectFilter label="Risk" value={deadStockRisk} onChange={(value) => { setDeadStockRisk(value); setDeadStockOffset(0) }} options={[
+            { value: "ALL", label: "All risks" },
+            { value: "CRITICAL", label: "Critical" },
+            { value: "HIGH", label: "High" },
+            { value: "MEDIUM", label: "Medium" },
+            { value: "LOW", label: "Low" },
+          ]} />
+          <SelectFilter label="Action" value={deadStockAction} onChange={(value) => { setDeadStockAction(value); setDeadStockOffset(0) }} options={[
+            { value: "ALL", label: "All actions" },
+            { value: "BUNDLE", label: "Bundle" },
+            { value: "DISCOUNT", label: "Discount" },
+            { value: "FLASH_SALE", label: "Flash sale" },
+            { value: "SEO_FIX", label: "SEO fix" },
+            { value: "HOLD", label: "Hold" },
+            { value: "MANUAL_REVIEW", label: "Manual review" },
+          ]} />
+          <SelectFilter label="Data status" value={deadStockDataStatus} onChange={(value) => { setDeadStockDataStatus(value); setDeadStockOffset(0) }} options={[
+            { value: "ALL", label: "All data statuses" },
+            { value: "SUFFICIENT", label: "Sufficient" },
+            { value: "LIMITED", label: "Limited" },
+            { value: "INSUFFICIENT", label: "Insufficient" },
+          ]} />
+          <SelectFilter label="Sort" value={deadStockSort} onChange={(value) => { setDeadStockSort(value); setDeadStockOffset(0) }} options={[
+            { value: "risk", label: "Risk" },
+            { value: "age", label: "Age" },
+            { value: "locked_capital", label: "Locked capital" },
+            { value: "potential_recovery", label: "Potential recovery" },
+          ]} />
+        </div>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+          <DeadStockTable
+            rows={deadStockProducts.data?.items}
+            total={deadStockProducts.data?.total}
+            isLoading={deadStockProducts.isLoading}
+            isError={deadStockProducts.isError}
+            offset={deadStockOffset}
+            setOffset={setDeadStockOffset}
+            onRetry={() => deadStockProducts.refetch()}
+          />
+          <AgeDistribution data={deadStockSummary.data?.ageDistribution} />
+        </div>
+        {productId ? (
+          <DeadStockReadinessPanel
+            readiness={deadStockReadiness.data}
+            isError={deadStockReadiness.isError}
+            onRunAnalysis={() => deadStockRecalculation.mutate()}
+            runAnalysisPending={deadStockRecalculation.isPending}
+          />
+        ) : null}
+        <div className="grid gap-4 xl:grid-cols-2">
+          <RecoveryPanel productId={productId} intelligence={deadStockIntelligence.data} readiness={deadStockReadiness.data} />
+          <DataQualityPanel intelligence={deadStockIntelligence.data} readiness={deadStockReadiness.data} />
+        </div>
+        <div className="glass-panel p-4" aria-label="Triggered rules and evidence">
+          <h3 className="text-sm font-semibold text-foreground">Triggered rules and evidence</h3>
+          {!productId ? (
+            <p className="mt-3 text-sm text-muted-foreground">Select a product to review dead-stock rules, recovery evidence, and recommendation history.</p>
+          ) : deadStockIntelligence.isLoading ? (
+            <div className="mt-3 h-20 rounded-lg bg-muted/30" />
+          ) : deadStockIntelligence.isError ? (
+            <p className="mt-3 text-sm text-red-200">Product dead-stock intelligence is unavailable.</p>
+          ) : (
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground">Triggered rules</h4>
+                {deadStockIntelligence.data?.triggeredRules.length ? (
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {deadStockIntelligence.data.triggeredRules.map((rule: string) => (
+                      <li key={rule} className="rounded-full border border-border bg-background px-2 py-1 text-xs text-foreground">{labelize(rule)}</li>
+                    ))}
+                  </ul>
+                ) : <p className="mt-2 text-sm text-muted-foreground">No triggered rules returned.</p>}
+              </div>
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground">Recommendation history</h4>
+                <p className="mt-2 text-sm text-foreground">Latest action: {labelize(deadStockIntelligence.data?.primaryRecoveryRecommendation)}</p>
+                <p className="text-sm text-muted-foreground">Last updated: {formatDateTime(deadStockIntelligence.data?.lastUpdatedAt)}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-12">
         <div className="xl:col-span-7">
