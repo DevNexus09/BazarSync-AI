@@ -17,9 +17,11 @@ from app.models.dead_stock_recovery_recommendation import (
 )
 from app.models.inventory_aging import InventoryAgingSnapshot
 from app.models.product import Product
+from app.models.rag_memory import RagMemorySourceType
 from app.models.sales_velocity import SalesVelocity
 from app.repositories.dead_stock_recovery_repository import DeadStockRecoveryRepository
 from app.services.margin_guard import MarginGuard
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 MONEY = Decimal("0.01")
 
@@ -102,7 +104,17 @@ class DeadStockRecoveryService:
                 companion_products=companions,
                 generated_at=timestamp,
             )
-        return self._repository.add_idempotent(recommendation)
+        saved, created = self._repository.add_idempotent(recommendation)
+        if created and self._db is not None:
+            RagIndexOutboxService(self._db).enqueue_upsert(
+                seller_id=saved.seller_id,
+                source_type=RagMemorySourceType.RECOMMENDATION,
+                source_id=str(saved.id),
+                product_id=saved.product_id,
+                source_updated_at=saved.generated_at,
+            )
+            self._db.commit()
+        return saved, created
 
     def build_recommendation(
         self,

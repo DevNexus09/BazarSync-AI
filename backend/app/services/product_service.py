@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
+from app.models.product_price_history import ProductPriceHistorySource
 from app.schemas.products import ProductCreate, ProductUpdate
+from app.services.product_price_history_service import ProductPriceHistoryService
+from app.models.rag_memory import RagMemorySourceType
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 INVENTORY_RECALC_SPEC_KEYS = {
     "incoming_quantity",
@@ -61,6 +66,8 @@ class ProductService:
         product = Product(
             seller_id=seller_id,
             title=payload.title,
+            sku=payload.sku,
+            status=payload.status,
             description=payload.description,
             category=payload.category,
             specifications=payload.specifications or {},
@@ -72,6 +79,14 @@ class ProductService:
             minimum_margin=payload.minimum_margin,
         )
         self._db.add(product)
+        self._db.flush()
+        RagIndexOutboxService(self._db).enqueue_upsert(
+            seller_id=seller_id,
+            source_type=RagMemorySourceType.PRODUCT_PROFILE,
+            source_id=str(product.id),
+            product_id=product.id,
+            source_updated_at=datetime.now(timezone.utc),
+        )
         self._db.commit()
         self._db.refresh(product)
         return product
@@ -83,11 +98,22 @@ class ProductService:
 
         old_stock_quantity = product.stock_quantity
         old_cost_price = product.cost_price
+        old_selling_price = product.selling_price
         old_supplier_lead_time = product.supplier_lead_time
         old_specifications = dict(product.specifications or {})
         updates = payload.model_dump(exclude_unset=True)
         for field, value in updates.items():
             setattr(product, field, value)
+        if "selling_price" in updates and product.selling_price != old_selling_price:
+            ProductPriceHistoryService(self._db).record_price_change(
+                seller_id=seller_id,
+                product_id=product.id,
+                old_price=old_selling_price,
+                new_price=product.selling_price,
+                currency="BDT",
+                source=ProductPriceHistorySource.PRODUCT_EDIT,
+                reason="Product selling price updated through ProductService.",
+            )
 
         if any(
             field in updates
@@ -99,6 +125,14 @@ class ProductService:
                 category=product.category or "",
                 specifications=product.specifications or {},
             )
+
+        RagIndexOutboxService(self._db).enqueue_upsert(
+            seller_id=seller_id,
+            source_type=RagMemorySourceType.PRODUCT_PROFILE,
+            source_id=str(product.id),
+            product_id=product.id,
+            source_updated_at=datetime.now(timezone.utc),
+        )
 
         self._db.commit()
         self._db.refresh(product)
@@ -154,6 +188,13 @@ class ProductService:
         product = self.get_product(seller_id, product_id)
         if not product:
             raise ProductNotFoundError
+        RagIndexOutboxService(self._db).enqueue_delete(
+            seller_id=seller_id,
+            source_type=RagMemorySourceType.PRODUCT_PROFILE,
+            source_id=str(product.id),
+            product_id=product.id,
+            source_updated_at=datetime.now(timezone.utc),
+        )
         self._db.delete(product)
         self._db.commit()
 

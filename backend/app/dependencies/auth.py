@@ -62,6 +62,12 @@ def get_current_seller(
             detail="Seller not found.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if int(payload.get("auth_version", 0)) != seller.auth_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication session has expired.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return seller
 
 
@@ -106,6 +112,12 @@ async def get_current_seller_async(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Seller not found.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if int(payload.get("auth_version", 0)) != seller.auth_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication session has expired.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return seller

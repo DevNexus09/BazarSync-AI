@@ -17,6 +17,7 @@ from app.db.session import SessionLocal
 from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockRiskLevel
 from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction
 from app.models.product import Product
+from app.models.rag_memory import RagMemorySourceType
 from app.models.telegram_inventory_alert import TelegramInventoryAlert, TelegramInventoryAlertStatus, TelegramInventoryAlertType
 from app.repositories.dead_stock_capital_recovery_repository import DeadStockCapitalRecoveryRepository
 from app.repositories.dead_stock_recovery_repository import DeadStockRecoveryRepository
@@ -24,6 +25,7 @@ from app.repositories.telegram_inventory_alert_repository import TelegramInvento
 from app.services.dead_stock_capital_recovery_service import DeadStockCapitalRecoveryService
 from app.services.dead_stock_dashboard_service import DeadStockDashboardService
 from app.services.dead_stock_recovery_service import DeadStockRecoveryService
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 from app.tasks.dead_stock_tasks import assess_dead_stock_task
 from app.tasks.inventory_aging_tasks import calculate_inventory_aging_task
 from app.tasks.inventory_history_tasks import capture_daily_inventory_snapshots_task
@@ -321,6 +323,15 @@ def generate_dead_stock_phase9_alerts_task(
                     alert_repo=alert_repo,
                 ):
                     saved, was_created = alert_repo.add_idempotent(alert)
+                    if was_created:
+                        RagIndexOutboxService(session).enqueue_upsert(
+                            seller_id=saved.seller_id,
+                            source_type=RagMemorySourceType.ALERT,
+                            source_id=str(saved.id),
+                            product_id=saved.product_id,
+                            source_updated_at=saved.created_at,
+                        )
+                        session.commit()
                     del saved
                     created += int(was_created)
                     skipped += int(not was_created)

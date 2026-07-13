@@ -15,9 +15,11 @@ from app.models.dynamic_pricing_recommendation import DynamicPricingAction, Dyna
 from app.models.pricing_analytics_snapshot import PricingAnalyticsDataStatus, PricingAnalyticsSnapshot
 from app.models.pricing_policy import PricingObjective
 from app.models.product import Product
+from app.models.rag_memory import RagMemorySourceType
 from app.services.demand_response_service import DemandElasticityResult, DemandResponseService
 from app.services.margin_guard import MarginGuard
 from app.services.pricing_policy_service import PricingPolicyService
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 MONEY = Decimal("0.01")
 
@@ -108,8 +110,16 @@ class DynamicPricingService:
             generated_at=timestamp,
             cooldown_hours=policy.recommendation_cooldown_hours,
         )
-        self._db.add(recommendation)
         try:
+            self._db.add(recommendation)
+            self._db.flush()
+            RagIndexOutboxService(self._db).enqueue_upsert(
+                seller_id=seller_id,
+                source_type=RagMemorySourceType.PRICE_HISTORY,
+                source_id=str(recommendation.id),
+                product_id=product_id,
+                source_updated_at=timestamp,
+            )
             self._db.commit()
         except IntegrityError:
             self._db.rollback()
@@ -312,6 +322,13 @@ class DynamicPricingService:
             item.acknowledged_at = now
         if status == DynamicPricingRecommendationStatus.DISMISSED:
             item.dismissed_at = now
+        RagIndexOutboxService(self._db).enqueue_upsert(
+            seller_id=seller_id,
+            source_type=RagMemorySourceType.PRICE_HISTORY,
+            source_id=str(item.id),
+            product_id=item.product_id,
+            source_updated_at=now,
+        )
         self._db.commit()
         self._db.refresh(item)
         return item

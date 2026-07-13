@@ -39,6 +39,12 @@ celery_app.conf.update(
 
 celery_app.autodiscover_tasks(["app.tasks"])
 
+# The project keeps tasks in multiple modules under ``app.tasks`` rather than
+# in a single ``tasks.py`` module. Import the package explicitly so a worker
+# started with this Celery application registers every task before it begins
+# consuming messages.
+import app.tasks  # noqa: E402,F401
+
 beat_schedule = {}
 if settings.scraper_schedule_enabled:
     beat_schedule.update(
@@ -67,6 +73,36 @@ if settings.dead_stock_workflow_schedule_enabled:
         "schedule": crontab(
             minute=settings.dead_stock_workflow_daily_minute_utc,
             hour=settings.dead_stock_workflow_daily_hour_utc,
+        ),
+    }
+if settings.rag_memory_schedule_enabled:
+    beat_schedule["rag_memory_daily_backfill"] = {
+        "task": "rag_backfill_memory",
+        "schedule": crontab(
+            minute=settings.rag_memory_daily_minute_utc,
+            hour=settings.rag_memory_daily_hour_utc,
+        ),
+    }
+    beat_schedule["rag_memory_daily_embedding"] = {
+        "task": "rag_embed_pending_chunks",
+        "schedule": crontab(
+            minute=(settings.rag_memory_daily_minute_utc + 15) % 60,
+            hour=settings.rag_memory_daily_hour_utc,
+        ),
+    }
+    beat_schedule["rag_memory_outbox_processing"] = {
+        "task": "process_rag_index_outbox",
+        "schedule": crontab(minute="*"),
+    }
+    beat_schedule["rag_memory_outbox_retry"] = {
+        "task": "retry_failed_rag_index_events",
+        "schedule": crontab(minute="*/5"),
+    }
+    beat_schedule["rag_memory_reconciliation"] = {
+        "task": "reconcile_rag_memory_sources",
+        "schedule": crontab(
+            minute=(settings.rag_memory_daily_minute_utc + 30) % 60,
+            hour=(settings.rag_memory_daily_hour_utc + 1) % 24,
         ),
     }
 

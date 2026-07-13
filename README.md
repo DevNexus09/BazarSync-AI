@@ -89,7 +89,8 @@ The simulator uses these backend endpoints:
 Environment variables:
 
 - `GROQ_API_KEY` — backend-only key used by the Groq explanation endpoint. Do not create any `VITE_GROQ_*` variable and do not expose this key in frontend hosting settings.
-- `GROQ_MODEL` — optional Groq model override. Default simulator model is `llama-3.1-8b-instant`.
+- `GROQ_MODEL` — optional Groq model override for existing non-RAG Groq features. Default simulator model is `llama-3.1-8b-instant`.
+- `RAG_GROQ_MODEL` — Phase 12 RAG answer model override. RAG answer generation does not use `GROQ_MODEL`.
 - `VITE_API_BASE_URL` — frontend API base URL, for example `https://api.example.com/api/v1`. The simulator derives `/api/pricing/...` from the same backend origin.
 
 Deployment note:
@@ -164,3 +165,69 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173`.
+
+## Phase 12 RAG memory database setup
+
+Phase 12 stores seller-scoped business memory chunks in PostgreSQL `pgvector`.
+The migration tries Supabase's preferred extension schema first:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+```
+
+If that is not available locally, it falls back to:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+Local Postgres must have pgvector installed before running the Phase 12
+migration. If your local database image does not include pgvector, use a
+pgvector-enabled Postgres image or install the extension package for your
+Postgres version.
+
+The default embedding provider is local BGE with `BAAI/bge-m3`. Configure
+`RAG_EMBEDDING_DEVICE` as `cpu`, `mps`, or another device supported by
+SentenceTransformers. If BGE-M3 is too heavy for your machine or deployment target, set `RAG_EMBEDDING_MODEL` to
+a smaller BGE model such as `BAAI/bge-small-en-v1.5`. The backend detects the
+generated vector dimension and stores it with each chunk; do not force a
+dimension that does not match the selected model. The first migration uses exact
+vector search for correctness and attempts an HNSW index only when the installed
+pgvector version supports it. Retrieval code must always filter by authenticated
+`seller_id`.
+
+Phase 12 RAG settings are controlled separately:
+
+- `RAG_ENABLED` enables the authenticated `/api/v1/rag/ask` endpoint.
+- `RAG_RETRIEVAL_TOP_K` and `RAG_MIN_SIMILARITY` set retrieval defaults.
+- `RAG_PROMPT_VERSION` is stored in RAG query logs.
+- `RAG_GROQ_MODEL` selects the Groq model for grounded RAG answers.
+- `RAG_OUTBOX_BATCH_SIZE`, `RAG_OUTBOX_MAX_ATTEMPTS`,
+  `RAG_OUTBOX_INITIAL_BACKOFF_SECONDS`, `RAG_OUTBOX_MAX_BACKOFF_SECONDS`, and
+  `RAG_OUTBOX_PROCESSING_LEASE_SECONDS` control bounded event-driven indexing,
+  retries, and crash recovery leases.
+
+## Forgot-password configuration
+
+The custom FastAPI authentication flow uses a short-lived, one-time numeric
+email code. Code hashes and reset authorizations are stored server-side; the
+frontend keeps the email and temporary authorization only in React memory.
+There is no reset token or code in the URL or localStorage.
+
+For local development, `EMAIL_PROVIDER=console` is supported only when
+`APP_ENV=development` or `APP_ENV=test`; the development log is the test-mail
+transport and must never be enabled in production. Production must configure
+`EMAIL_PROVIDER=smtp`, `SMTP_HOST`, `SMTP_FROM_EMAIL`, and
+`PASSWORD_RESET_CODE_SECRET`. SMTP credentials remain backend-only.
+
+The reset endpoints are:
+
+- `POST /api/v1/auth/forgot-password/request-code`
+- `POST /api/v1/auth/forgot-password/resend-code`
+- `POST /api/v1/auth/forgot-password/verify-code`
+- `POST /api/v1/auth/forgot-password/reset`
+
+The final reset request carries the short-lived authorization in the
+`X-Password-Reset-Authorization` header. A successful reset increments the
+seller `auth_version`, which invalidates previously issued access tokens when
+session revocation is enabled.

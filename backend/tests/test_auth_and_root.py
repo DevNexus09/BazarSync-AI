@@ -49,16 +49,16 @@ class AuthAndRootTests(unittest.TestCase):
     def test_normalize_email_lowercases_and_trims(self):
         self.assertEqual("seller@example.com", _normalize_email("  Seller@Example.COM  "))
 
-    def test_register_stores_plaintext_password(self):
+    def test_register_stores_hashed_password(self):
         session = FakeAuthSession()
         seller = AuthService(session).register_seller(
             SellerCreate(email="Seller@Example.com", password="ashish2023")
         )
 
         self.assertEqual("seller@example.com", seller.email)
-        self.assertEqual("ashish2023", seller.password_hash)
+        self.assertTrue(seller.password_hash.startswith("$2b$"))
 
-    def test_authenticate_compares_plaintext_password(self):
+    def test_authenticate_upgrades_legacy_plaintext_password(self):
         session = FakeAuthSession()
         seller = Seller(id=uuid4(), email="seller@example.com", password_hash="ashish2023")
         session.sellers.append(seller)
@@ -68,12 +68,13 @@ class AuthAndRootTests(unittest.TestCase):
         )
 
         self.assertEqual(seller, authenticated)
+        self.assertTrue(seller.password_hash.startswith("$2b$"))
         with self.assertRaises(InvalidCredentialsError):
             AuthService(session).authenticate_seller(
                 SellerLogin(email="seller@example.com", password="wrongpass")
             )
 
-    def test_delete_account_compares_plaintext_password(self):
+    def test_delete_account_supports_legacy_plaintext_password(self):
         session = FakeAuthSession()
         seller = Seller(id=uuid4(), email="seller@example.com", password_hash="ashish2023")
         session.sellers.append(seller)

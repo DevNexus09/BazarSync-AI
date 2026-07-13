@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
-import { Navigate, useLocation, useNavigate, type Location } from "react-router-dom"
+import { Link, Navigate, useLocation, useNavigate, type Location } from "react-router-dom"
 
 import { AuthField } from "@/components/auth/auth-field"
 import { AuthFooterLink } from "@/components/auth/auth-footer-link"
@@ -16,6 +16,7 @@ import { isValidEmail, isValidPassword } from "@/utils/validation"
 
 type LocationState = {
   from?: Location
+  passwordReset?: boolean
 }
 
 export default function LoginPage() {
@@ -35,6 +36,7 @@ export default function LoginPage() {
 
   const from =
     (location.state as LocationState | null)?.from?.pathname ?? "/app/dashboard"
+  const passwordReset = (location.state as LocationState | null)?.passwordReset
 
   if (status === "loading") {
     return <LoadingState label="Checking your session..." />
@@ -116,6 +118,11 @@ export default function LoginPage() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-5">
+        {passwordReset ? (
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">
+            Password reset successfully. Sign in with your new password.
+          </div>
+        ) : null}
         <AuthFormAlert message={formError} />
         <AuthField
           id="login-email"
@@ -150,7 +157,9 @@ export default function LoginPage() {
             />
             Remember me
           </label>
-          <span className="text-muted-foreground">Forgot password?</span>
+          <Link className="text-primary hover:underline" to="/forgot-password">
+            Forgot password?
+          </Link>
         </div>
         <Button
           type="submit"

@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   DeleteAccountInput,
   LoginInput,
+  PasswordResetVerifyResponse,
   ProfileInput,
   RegisterInput,
   User,
@@ -110,4 +111,61 @@ export async function deleteAccount(input: DeleteAccountInput): Promise<void> {
     password: input.password,
   }
   await apiClient.post("/auth/delete-account", payload)
+}
+
+type ApiPasswordResetVerifyResponse = {
+  message: string
+  reset_authorization: string
+  expires_at: string
+}
+
+export async function requestPasswordResetCode(email: string): Promise<string> {
+  const { data } = await apiClient.post<{ message: string }>(
+    "/auth/forgot-password/request-code",
+    { email },
+  )
+  return data.message
+}
+
+export async function resendPasswordResetCode(email: string): Promise<string> {
+  const { data } = await apiClient.post<{ message: string }>(
+    "/auth/forgot-password/resend-code",
+    { email },
+  )
+  return data.message
+}
+
+export async function verifyPasswordResetCode(
+  email: string,
+  code: string,
+): Promise<PasswordResetVerifyResponse> {
+  const { data } = await apiClient.post<ApiPasswordResetVerifyResponse>(
+    "/auth/forgot-password/verify-code",
+    { email, code },
+  )
+  return {
+    message: data.message,
+    resetAuthorization: data.reset_authorization,
+    expiresAt: data.expires_at,
+  }
+}
+
+export async function resetPassword(input: {
+  resetAuthorization: string
+  newPassword: string
+  confirmPassword: string
+}): Promise<string> {
+  const { data } = await apiClient.post<{ message: string }>(
+    "/auth/forgot-password/reset",
+    {
+      new_password: input.newPassword,
+      confirm_password: input.confirmPassword,
+    },
+    {
+      headers: {
+        "X-Password-Reset-Authorization": input.resetAuthorization,
+      },
+    },
+  )
+  return data.message
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID, uuid4
@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.models.inventory_risk import InventoryRiskAssessment, InventoryRiskLevel
 from app.models.reorder_recommendation import ReorderRecommendationAction
 from app.models.stockout_prediction import StockoutPredictionStatus
+from app.models.rag_memory import RagMemorySourceType
 from app.models.telegram_inventory_alert import (
     TelegramInventoryAlert,
     TelegramInventoryAlertStatus,
@@ -22,6 +23,7 @@ from app.services.telegram.inventory_alert_formatter import (
     format_inventory_alert_message,
 )
 from app.services.telegram.telegram_service import DeliveryStatus, TelegramDeliveryResult, TelegramService
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,15 @@ class TelegramInventoryAlertService:
                 continue
             alert = self._build_alert(assessment, previous, alert_type)
             saved, was_created = self._repository.add_idempotent(alert)
+            if was_created and hasattr(self._repository, "_db"):
+                RagIndexOutboxService(self._repository._db).enqueue_upsert(
+                    seller_id=saved.seller_id,
+                    source_type=RagMemorySourceType.ALERT,
+                    source_id=str(saved.id),
+                    product_id=saved.product_id,
+                    source_updated_at=saved.created_at,
+                )
+                self._repository._db.commit()
             created += int(was_created)
             skipped += int(not was_created)
             alert_ids.append(str(saved.id))

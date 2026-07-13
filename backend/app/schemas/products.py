@@ -7,6 +7,8 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 
+from app.models.product import ProductMarketplaceListingStatus, ProductStatus
+
 Price = Annotated[Decimal, Field(max_digits=12, decimal_places=2, ge=0)]
 Margin = Annotated[Decimal, Field(max_digits=8, decimal_places=2, ge=0)]
 NonNegativeInt = Annotated[int, Field(ge=0)]
@@ -15,6 +17,8 @@ PositiveInt = Annotated[int, Field(gt=0)]
 
 class ProductBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255, description="Product title")
+    sku: str | None = Field(None, min_length=1, max_length=120, description="Seller product SKU")
+    status: ProductStatus = Field(default=ProductStatus.ACTIVE, description="Product lifecycle status")
     description: str | None = Field(
         None, min_length=10, max_length=5000, description="Product description"
     )
@@ -63,6 +67,8 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
+    sku: str | None = Field(None, min_length=1, max_length=120)
+    status: ProductStatus | None = None
     description: str | None = Field(None, min_length=10, max_length=5000)
     category: str | None = Field(None, min_length=2, max_length=120)
     specifications: dict[str, str] | None = None
@@ -77,6 +83,7 @@ class ProductResponse(ProductBase):
     id: UUID
     seller_id: UUID
     created_at: datetime
+    updated_at: datetime
     pricing_warning: str | None = Field(None, description="Warning when selling price is below cost")
     searchable_text: str | None = Field(
         None, description="Normalized text used for matching"
@@ -185,6 +192,29 @@ class ProductListResponse(BaseModel):
             ]
         }
     )
+
+
+class ProductMarketplaceListingResponse(BaseModel):
+    id: UUID
+    seller_id: UUID
+    product_id: UUID
+    marketplace: str
+    marketplace_listing_id: str | None = None
+    listing_url: str | None = None
+    listing_status: ProductMarketplaceListingStatus
+    currency: str | None = None
+    selling_price: Decimal | None = None
+    previous_selling_price: Decimal | None = None
+    category_on_marketplace: str | None = None
+    title_on_marketplace: str | None = None
+    is_primary: bool
+    published_at: datetime | None = None
+    last_synced_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+    archived_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductDeleteResponse(BaseModel):

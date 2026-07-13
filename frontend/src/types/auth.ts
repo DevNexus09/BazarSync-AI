@@ -35,6 +35,12 @@ export type DeleteAccountInput = {
   password: string
 }
 
+export type PasswordResetVerifyResponse = {
+  message: string
+  resetAuthorization: string
+  expiresAt: string
+}
+
 export type ProfileInput = {
   fullName: string
   businessName: string

@@ -20,11 +20,13 @@ from app.models.dead_stock_assessment import (
     DeadStockRiskLevel,
     DeadStockVisibilityStatus,
 )
-from app.models.inventory_aging import InventoryAgeSource, InventoryAgingSnapshot
+from app.models.inventory_aging import InventoryAgingSnapshot
 from app.models.product import Product
+from app.models.rag_memory import RagMemorySourceType
 from app.models.sales_velocity import SalesVelocity, SalesVelocityDataStatus
 from app.models.seller import Seller
 from app.repositories.dead_stock_repository import DeadStockRepository
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,7 @@ class DeadStockService:
     ) -> None:
         if repository is None and db is None:
             raise ValueError("Either db or repository is required.")
+        self._db = db
         self._repository = repository or DeadStockRepository(db)  # type: ignore[arg-type]
         self._calculation_version = calculation_version or settings.dead_stock_calculation_version
         self._log = log or logger
@@ -87,7 +90,17 @@ class DeadStockService:
             as_of_date=as_of_date,
             assessed_at=_ensure_utc(assessed_at or datetime.now(timezone.utc)),
         )
-        return self._repository.add_idempotent(assessment)
+        saved, created = self._repository.add_idempotent(assessment)
+        if created and self._db is not None:
+            RagIndexOutboxService(self._db).enqueue_upsert(
+                seller_id=saved.seller_id,
+                source_type=RagMemorySourceType.DEAD_STOCK,
+                source_id=str(saved.id),
+                product_id=saved.product_id,
+                source_updated_at=saved.assessed_at,
+            )
+            self._db.commit()
+        return saved, created
 
     def assess_batch(
         self,

@@ -1,0 +1,445 @@
+from __future__ import annotations
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.dependencies.auth import get_current_seller
+from app.dependencies.db import get_db
+from app.models.copilot import CopilotActionProposalStatus, CopilotMessage, CopilotMessageRole
+from app.models.product import Product
+from app.models.seller import Seller
+from app.schemas.copilot import (
+    CopilotApiAskResponse,
+    CopilotActionProposalListResponse,
+    CopilotActionProposalResponse,
+    CopilotActionProposalTransitionResponse,
+    CopilotConversationCreate,
+    CopilotConversationDetailResponse,
+    CopilotConversationListResponse,
+    CopilotConversationResponse,
+    CopilotAskRequest,
+    CopilotErrorResponse,
+    CopilotMessageResponse,
+    CopilotSearchResponse,
+    CopilotToolMetadataResponse,
+    CopilotToolsResponse,
+    CopilotToolUsedResponse,
+)
+from app.repositories.copilot_repository import CopilotRepository
+from app.services.copilot.action_proposal_service import (
+    CopilotActionProposalNotFoundError,
+    CopilotActionProposalService,
+    CopilotActionProposalTransitionError,
+)
+from app.services.copilot.observability import capability_snapshot, copilot_health_snapshot
+from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
+from app.services.copilot.tool_registry import CopilotToolRegistry
+
+router = APIRouter(prefix="/copilot", tags=["copilot"])
+
+
+@router.get("/health")
+def get_copilot_health(
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> dict:
+    """Return seller-scoped Copilot telemetry without prompt or payload content."""
+
+    return copilot_health_snapshot(db, seller_id=current_seller.id)
+
+
+@router.get("/capabilities")
+def get_copilot_capabilities(
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> dict:
+    return {
+        "status": "ok",
+        "capabilities": capability_snapshot(db, seller_id=current_seller.id),
+    }
+
+
+@router.get("/conversations", response_model=CopilotConversationListResponse)
+def list_conversations(
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+    include_archived: bool = False,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> CopilotConversationListResponse:
+    conversations, total = CopilotRepository(db).list_conversations(
+        seller_id=current_seller.id,
+        include_archived=include_archived,
+        limit=limit,
+        offset=offset,
+    )
+    return CopilotConversationListResponse(
+        items=[_conversation_response(db, item) for item in conversations],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/conversations", response_model=CopilotConversationResponse, status_code=status.HTTP_201_CREATED)
+def create_conversation(
+    payload: CopilotConversationCreate,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotConversationResponse:
+    conversation = CopilotRepository(db).create_conversation(
+        seller_id=current_seller.id,
+        user_id=current_seller.id,
+        title=payload.title,
+        language=payload.language,
+        metadata_json=payload.metadata_json,
+    )
+    return _conversation_response(db, conversation)
+
+
+@router.get("/conversations/{conversation_id}", response_model=CopilotConversationDetailResponse)
+def get_conversation_messages(
+    conversation_id: UUID,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotConversationDetailResponse:
+    repository = CopilotRepository(db)
+    conversation = repository.get_conversation(seller_id=current_seller.id, conversation_id=conversation_id)
+    if conversation is None:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "conversation_not_found", "Conversation not found.")
+    messages = repository.list_messages(seller_id=current_seller.id, conversation_id=conversation_id)
+    return CopilotConversationDetailResponse(
+        conversation=_conversation_response(db, conversation),
+        messages=[_message_response(item) for item in messages],
+    )
+
+
+@router.post(
+    "/ask",
+    response_model=CopilotApiAskResponse,
+    responses={403: {"model": CopilotErrorResponse}, 404: {"model": CopilotErrorResponse}},
+)
+async def ask_copilot(
+    payload: CopilotAskRequest,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotApiAskResponse:
+    if payload.product_id is not None and not _seller_owns_product(
+        db,
+        seller_id=current_seller.id,
+        product_id=payload.product_id,
+    ):
+        raise _http_error(status.HTTP_403_FORBIDDEN, "product_not_owned", "Product is not available for this seller.")
+
+    debug_allowed = payload.debug and (_debug_allowed() or _seller_can_debug(current_seller))
+    if payload.debug and not debug_allowed:
+        raise _http_error(status.HTTP_403_FORBIDDEN, "debug_not_allowed", "Copilot debug output is not enabled for this account.")
+    try:
+        result = await CopilotOrchestrator(db=db).ask(
+            CopilotOrchestratorRequest(
+                seller_id=current_seller.id,
+                user_id=current_seller.id,
+                conversation_id=payload.conversation_id,
+                question=payload.question,
+                product_id=payload.product_id,
+                requested_language=payload.language,
+                from_date=payload.from_date,
+                to_date=payload.to_date,
+                domain_filters=payload.domain_filters,
+                include_current_data=payload.include_current_data,
+                include_memory=payload.include_memory,
+                memory_source_types=payload.memory_source_types,
+                top_k=payload.top_k,
+                debug_allowed=debug_allowed,
+                include_tool_trace=True,
+            )
+        )
+    except ValueError as exc:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "conversation_not_found", "Conversation not found.") from exc
+    tools_used = [
+        CopilotToolUsedResponse(
+            name=item.get("name") or item.get("tool_name", ""),
+            status=item.get("status", "UNKNOWN"),
+            evidence_count=item.get("evidence_count"),
+            error=item.get("error") if isinstance(item.get("error"), dict) else None,
+        )
+        for item in (getattr(result, "tools_used", None) or result.tool_trace)
+    ]
+    return CopilotApiAskResponse(
+        conversation_id=result.conversation_id,
+        message_id=result.assistant_message_id,
+        answer=result.answer,
+        summary=result.summary,
+        confidence=result.confidence,
+        language=result.language,
+        intent=result.intent,
+        question_type=getattr(result, "question_type", None),
+        domains_used=getattr(result, "domains_used", []),
+        tools_used=tools_used,
+        evidence=result.evidence,
+        missing_data=result.missing_data,
+        data_freshness=getattr(result, "data_freshness", []),
+        recommended_next_steps=result.recommended_next_steps,
+        action_proposal=result.action_proposal,
+        debug={"tool_trace": result.tool_trace} if debug_allowed else None,
+    )
+
+
+@router.get("/search", response_model=CopilotSearchResponse)
+def search_copilot_history(
+    q: str = Query(min_length=1, max_length=200),
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> CopilotSearchResponse:
+    messages, total = CopilotRepository(db).search_messages(
+        seller_id=current_seller.id,
+        query=q,
+        limit=limit,
+        offset=offset,
+    )
+    return CopilotSearchResponse(
+        items=[_message_response(item) for item in messages],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/tools", response_model=CopilotToolsResponse)
+def get_available_tools(
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotToolsResponse:
+    del current_seller
+    tools = [
+        CopilotToolMetadataResponse(
+            name=tool.name,
+            domain=list(tool.catalog_domains),
+            description=tool.description,
+            input_fields=list(tool.argument_schema.model_fields.keys()),
+            safety_level=tool.safety_level.value,
+            requires_confirmation=tool.requires_confirmation,
+            allowed_in_read_only_mode=tool.allowed_in_read_only_mode,
+        )
+        for tool in CopilotToolRegistry().list_tools()
+    ]
+    return CopilotToolsResponse(tools=tools)
+
+
+@router.get("/action-proposals", response_model=CopilotActionProposalListResponse)
+def list_action_proposals(
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+    status_filter: CopilotActionProposalStatus | None = Query(default=None, alias="status"),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> CopilotActionProposalListResponse:
+    service = CopilotActionProposalService(db)
+    proposals, total = service.list_proposals(
+        seller_id=current_seller.id,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+    return CopilotActionProposalListResponse(
+        items=[CopilotActionProposalResponse.model_validate(item) for item in proposals],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+def _seller_owns_product(db: Session, *, seller_id: UUID, product_id: UUID) -> bool:
+    return bool(
+        db.execute(
+            select(Product.id).where(
+                Product.id == product_id,
+                Product.seller_id == seller_id,
+            )
+        ).scalar_one_or_none()
+    )
+
+
+def _debug_allowed() -> bool:
+    return settings.env.lower() in {"development", "dev", "local", "test"}
+
+
+def _seller_can_debug(seller: Seller) -> bool:
+    return bool(getattr(seller, "is_admin", False) or getattr(seller, "role", None) == "admin")
+
+
+def _conversation_response(db: Session, conversation) -> CopilotConversationResponse:
+    message_count = 0
+    if hasattr(db, "execute"):
+        try:
+            value = db.execute(
+                select(func.count()).select_from(CopilotMessage).where(
+                    CopilotMessage.seller_id == conversation.seller_id,
+                    CopilotMessage.conversation_id == conversation.id,
+                )
+            ).scalar_one_or_none()
+            message_count = int(value or 0) if isinstance(value, int) else 0
+        except Exception:
+            message_count = 0
+    last_message = None
+    try:
+        last_message = db.execute(
+            select(CopilotMessage)
+            .where(CopilotMessage.seller_id == conversation.seller_id, CopilotMessage.conversation_id == conversation.id)
+            .order_by(CopilotMessage.created_at.desc(), CopilotMessage.id.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+    except Exception:
+        last_message = None
+    preview = getattr(last_message, "content", None)
+    confidence = getattr(last_message, "answer_confidence", None)
+    return CopilotConversationResponse(
+        id=conversation.id,
+        conversation_id=conversation.id,
+        seller_id=conversation.seller_id,
+        user_id=getattr(conversation, "user_id", None),
+        title=getattr(conversation, "title", None),
+        last_message_preview=_preview(preview),
+        status=conversation.status,
+        language=getattr(conversation, "language", "en"),
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        archived_at=getattr(conversation, "archived_at", None),
+        message_count=message_count,
+        last_confidence=getattr(confidence, "value", confidence),
+        metadata_json=getattr(conversation, "metadata_json", None),
+    )
+
+
+def _message_response(message) -> CopilotMessageResponse:
+    metadata = getattr(message, "response_metadata_json", None) or {}
+    evidence = _list_json(getattr(message, "evidence_json", None))
+    missing = _list_json(getattr(message, "missing_data_json", None) or getattr(message, "missing_context_json", None))
+    tools = _list_json(getattr(message, "tools_used_json", None))
+    domains = _list_json(getattr(message, "domains_used_json", None))
+    freshness = _list_json(getattr(message, "data_freshness_json", None))
+    next_steps = _list_json(getattr(message, "recommended_next_steps_json", None))
+    is_assistant = getattr(message, "role", None) == CopilotMessageRole.ASSISTANT
+    return CopilotMessageResponse(
+        id=message.id,
+        seller_id=message.seller_id,
+        conversation_id=message.conversation_id,
+        role=message.role,
+        content=message.content,
+        language=getattr(message, "language", "en"),
+        answer_confidence=getattr(message, "answer_confidence", None),
+        model_id=getattr(message, "model_id", None),
+        prompt_version=getattr(message, "prompt_version", None),
+        token_usage_json=getattr(message, "token_usage_json", None),
+        evidence_json=getattr(message, "evidence_json", None),
+        missing_context_json=getattr(message, "missing_context_json", None),
+        missing_data_json=getattr(message, "missing_data_json", None),
+        data_freshness_json=getattr(message, "data_freshness_json", None),
+        tools_used_json=getattr(message, "tools_used_json", None),
+        domains_used_json=getattr(message, "domains_used_json", None),
+        recommended_next_steps_json=getattr(message, "recommended_next_steps_json", None),
+        action_proposal_json=getattr(message, "action_proposal_json", None),
+        response_metadata_json=getattr(message, "response_metadata_json", None),
+        answer=message.content if is_assistant else None,
+        summary=metadata.get("summary") if isinstance(metadata, dict) else None,
+        confidence=getattr(message, "answer_confidence", None) if is_assistant else None,
+        question_type=metadata.get("question_type") if isinstance(metadata, dict) else None,
+        domains_used=[str(item) for item in domains],
+        tools_used=[item for item in tools if isinstance(item, dict)],
+        evidence=[item for item in evidence if isinstance(item, dict)],
+        missing_data=missing,
+        data_freshness=[item for item in freshness if isinstance(item, dict)],
+        recommended_next_steps=[str(item) for item in next_steps],
+        action_proposal=getattr(message, "action_proposal_json", None) if isinstance(getattr(message, "action_proposal_json", None), dict) else None,
+        created_at=message.created_at,
+    )
+
+
+def _list_json(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        for key in ("items", "missing_data", "tools_used", "domains_used", "data_freshness", "recommended_next_steps", "evidence"):
+            if isinstance(value.get(key), list):
+                return value[key]
+    return []
+
+
+def _preview(value: str | None) -> str | None:
+    if not value:
+        return None
+    return " ".join(value.split())[:160]
+
+
+def _http_error(status_code: int, error_code: str, message: str) -> HTTPException:
+    return HTTPException(
+        status_code=status_code,
+        detail={"error_code": error_code, "detail": message},
+    )
+
+
+@router.get("/action-proposals/{proposal_id}", response_model=CopilotActionProposalResponse)
+def get_action_proposal(
+    proposal_id: UUID,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotActionProposalResponse:
+    try:
+        proposal = CopilotActionProposalService(db).get_proposal(
+            seller_id=current_seller.id,
+            proposal_id=proposal_id,
+        )
+    except CopilotActionProposalNotFoundError as exc:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "action_proposal_not_found", "Action proposal not found.") from exc
+    return CopilotActionProposalResponse.model_validate(proposal)
+
+
+@router.post("/action-proposals/{proposal_id}/approve", response_model=CopilotActionProposalTransitionResponse)
+def approve_action_proposal(
+    proposal_id: UUID,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotActionProposalTransitionResponse:
+    try:
+        proposal, message = CopilotActionProposalService(db).approve(
+            seller_id=current_seller.id,
+            proposal_id=proposal_id,
+        )
+    except CopilotActionProposalNotFoundError as exc:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "action_proposal_not_found", "Action proposal not found.") from exc
+    except CopilotActionProposalTransitionError as exc:
+        raise _http_error(status.HTTP_409_CONFLICT, "action_proposal_transition_invalid", str(exc)) from exc
+    return CopilotActionProposalTransitionResponse(
+        proposal=CopilotActionProposalResponse.model_validate(proposal),
+        message=message,
+        executed=False,
+    )
+
+
+@router.post("/action-proposals/{proposal_id}/reject", response_model=CopilotActionProposalTransitionResponse)
+def reject_action_proposal(
+    proposal_id: UUID,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotActionProposalTransitionResponse:
+    try:
+        proposal, message = CopilotActionProposalService(db).reject(
+            seller_id=current_seller.id,
+            proposal_id=proposal_id,
+        )
+    except CopilotActionProposalNotFoundError as exc:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "action_proposal_not_found", "Action proposal not found.") from exc
+    except CopilotActionProposalTransitionError as exc:
+        raise _http_error(status.HTTP_409_CONFLICT, "action_proposal_transition_invalid", str(exc)) from exc
+    return CopilotActionProposalTransitionResponse(
+        proposal=CopilotActionProposalResponse.model_validate(proposal),
+        message=message,
+        executed=False,
+    )

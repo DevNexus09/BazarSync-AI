@@ -1,5 +1,4 @@
 import {
-  Activity,
   ClipboardList,
   LayoutDashboard,
   LineChart,
@@ -54,13 +53,6 @@ export const appNavItems: NavItem[] = [
     path: "/app/pricing",
     icon: LineChart,
     description: "Price elasticity insights",
-  },
-  {
-    label: "Realtime Monitoring",
-    path: "/app/realtime",
-    icon: Activity,
-    description: "Live marketplace tracking",
-    comingSoon: true,
   },
   {
     label: "Settings",

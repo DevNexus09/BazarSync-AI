@@ -38,6 +38,25 @@ class Settings(BaseModel):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    password_reset_enabled: bool = True
+    password_reset_code_length: int = 6
+    password_reset_code_ttl_minutes: int = 10
+    password_reset_max_attempts: int = 5
+    password_reset_resend_cooldown_seconds: int = 60
+    password_reset_max_requests_per_hour: int = 5
+    password_reset_max_requests_per_ip: int = 20
+    password_reset_auth_ttl_minutes: int = 15
+    password_reset_revoke_sessions: bool = True
+    password_reset_code_secret: str = ""
+    email_provider: str = "console"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_use_tls: bool = True
+    smtp_timeout_seconds: int = 10
+    password_reset_email_retry_attempts: int = 2
     bootstrap_db_on_startup: bool = False
     scraper_schedule_enabled: bool = False
     supabase_url: str | None = None
@@ -158,6 +177,29 @@ class Settings(BaseModel):
     dynamic_pricing_min_actionable_change_rate: float = 0.01
     dynamic_pricing_max_change_rate: float = 0.15
     dynamic_pricing_expiration_hours: int = 72
+    rag_enabled: bool = False
+    rag_embedding_provider: str = "local_bge"
+    rag_embedding_model: str = "BAAI/bge-m3"
+    rag_embedding_batch_size: int = 16
+    rag_embedding_device: str = "cpu"
+    rag_embedding_normalize: bool = True
+    rag_embedding_version: str = "v1"
+    rag_chunking_version: str = "v1"
+    rag_max_chunk_chars: int = 1500
+    rag_chunk_overlap_chars: int = 150
+    rag_retrieval_top_k: int = 8
+    rag_min_similarity: float = 0.35
+    rag_prompt_version: str = "v1"
+    rag_groq_model: str | None = None
+    rag_unembedded_chunk_batch_size: int = 100
+    rag_memory_schedule_enabled: bool = False
+    rag_memory_daily_hour_utc: int = 3
+    rag_memory_daily_minute_utc: int = 30
+    rag_outbox_batch_size: int = 100
+    rag_outbox_max_attempts: int = 5
+    rag_outbox_initial_backoff_seconds: int = 60
+    rag_outbox_max_backoff_seconds: int = 3600
+    rag_outbox_processing_lease_seconds: int = 900
 
     @classmethod
     def load(cls) -> "Settings":
@@ -165,6 +207,11 @@ class Settings(BaseModel):
         env = os.getenv("APP_ENV", "development")
         bootstrap_default = env == "development"
         scraper_schedule_default = env != "development"
+        password_reset_code_secret = os.getenv("PASSWORD_RESET_CODE_SECRET")
+        if env not in {"development", "test"} and not password_reset_code_secret:
+            raise RuntimeError(
+                "Missing required environment variable: PASSWORD_RESET_CODE_SECRET"
+            )
         data = {
             "app_name": os.getenv("APP_NAME", "BazarSync AI"),
             "env": env,
@@ -176,6 +223,46 @@ class Settings(BaseModel):
             "jwt_secret_key": _require_env("JWT_SECRET_KEY"),
             "jwt_algorithm": os.getenv("JWT_ALGORITHM", "HS256"),
             "access_token_expire_minutes": int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")),
+            "password_reset_enabled": _parse_bool(
+                os.getenv("PASSWORD_RESET_ENABLED"), default=True
+            ),
+            "password_reset_code_length": int(os.getenv("PASSWORD_RESET_CODE_LENGTH", "6")),
+            "password_reset_code_ttl_minutes": int(
+                os.getenv("PASSWORD_RESET_CODE_TTL_MINUTES", "10")
+            ),
+            "password_reset_max_attempts": int(
+                os.getenv("PASSWORD_RESET_MAX_ATTEMPTS", "5")
+            ),
+            "password_reset_resend_cooldown_seconds": int(
+                os.getenv("PASSWORD_RESET_RESEND_COOLDOWN_SECONDS", "60")
+            ),
+            "password_reset_max_requests_per_hour": int(
+                os.getenv("PASSWORD_RESET_MAX_REQUESTS_PER_HOUR", "5")
+            ),
+            "password_reset_max_requests_per_ip": int(
+                os.getenv("PASSWORD_RESET_MAX_REQUESTS_PER_IP", "20")
+            ),
+            "password_reset_auth_ttl_minutes": int(
+                os.getenv("PASSWORD_RESET_AUTH_TTL_MINUTES", "15")
+            ),
+            "password_reset_revoke_sessions": _parse_bool(
+                os.getenv("PASSWORD_RESET_REVOKE_SESSIONS"), default=True
+            ),
+            "password_reset_code_secret": password_reset_code_secret
+            or os.getenv("JWT_SECRET_KEY", ""),
+            "email_provider": os.getenv(
+                "EMAIL_PROVIDER", "console" if env == "development" else "smtp"
+            ),
+            "smtp_host": os.getenv("SMTP_HOST"),
+            "smtp_port": int(os.getenv("SMTP_PORT", "587")),
+            "smtp_username": os.getenv("SMTP_USERNAME"),
+            "smtp_password": os.getenv("SMTP_PASSWORD"),
+            "smtp_from_email": os.getenv("SMTP_FROM_EMAIL"),
+            "smtp_use_tls": _parse_bool(os.getenv("SMTP_USE_TLS"), default=True),
+            "smtp_timeout_seconds": int(os.getenv("SMTP_TIMEOUT_SECONDS", "10")),
+            "password_reset_email_retry_attempts": int(
+                os.getenv("PASSWORD_RESET_EMAIL_RETRY_ATTEMPTS", "2")
+            ),
             "bootstrap_db_on_startup": _parse_bool(
                 os.getenv("DB_BOOTSTRAP_ON_STARTUP"),
                 default=bootstrap_default,
@@ -347,6 +434,29 @@ class Settings(BaseModel):
             "dynamic_pricing_min_actionable_change_rate": float(os.getenv("DYNAMIC_PRICING_MIN_ACTIONABLE_CHANGE_RATE", "0.01")),
             "dynamic_pricing_max_change_rate": float(os.getenv("DYNAMIC_PRICING_MAX_CHANGE_RATE", "0.15")),
             "dynamic_pricing_expiration_hours": int(os.getenv("DYNAMIC_PRICING_EXPIRATION_HOURS", "72")),
+            "rag_enabled": _parse_bool(os.getenv("RAG_ENABLED"), default=False),
+            "rag_embedding_provider": os.getenv("RAG_EMBEDDING_PROVIDER", "local_bge"),
+            "rag_embedding_model": os.getenv("RAG_EMBEDDING_MODEL", "BAAI/bge-m3"),
+            "rag_embedding_batch_size": int(os.getenv("RAG_EMBEDDING_BATCH_SIZE", "16")),
+            "rag_embedding_device": os.getenv("RAG_EMBEDDING_DEVICE", "cpu"),
+            "rag_embedding_normalize": _parse_bool(os.getenv("RAG_EMBEDDING_NORMALIZE"), default=True),
+            "rag_embedding_version": os.getenv("RAG_EMBEDDING_VERSION", "v1"),
+            "rag_chunking_version": os.getenv("RAG_CHUNKING_VERSION", "v1"),
+            "rag_max_chunk_chars": int(os.getenv("RAG_MAX_CHUNK_CHARS", "1500")),
+            "rag_chunk_overlap_chars": int(os.getenv("RAG_CHUNK_OVERLAP_CHARS", "150")),
+            "rag_retrieval_top_k": int(os.getenv("RAG_RETRIEVAL_TOP_K", "8")),
+            "rag_min_similarity": float(os.getenv("RAG_MIN_SIMILARITY", "0.35")),
+            "rag_prompt_version": os.getenv("RAG_PROMPT_VERSION", "v1"),
+            "rag_groq_model": os.getenv("RAG_GROQ_MODEL"),
+            "rag_unembedded_chunk_batch_size": int(os.getenv("RAG_UNEMBEDDED_CHUNK_BATCH_SIZE", "100")),
+            "rag_memory_schedule_enabled": _parse_bool(os.getenv("RAG_MEMORY_SCHEDULE_ENABLED"), default=False),
+            "rag_memory_daily_hour_utc": int(os.getenv("RAG_MEMORY_DAILY_HOUR_UTC", "3")),
+            "rag_memory_daily_minute_utc": int(os.getenv("RAG_MEMORY_DAILY_MINUTE_UTC", "30")),
+            "rag_outbox_batch_size": int(os.getenv("RAG_OUTBOX_BATCH_SIZE", "100")),
+            "rag_outbox_max_attempts": int(os.getenv("RAG_OUTBOX_MAX_ATTEMPTS", "5")),
+            "rag_outbox_initial_backoff_seconds": int(os.getenv("RAG_OUTBOX_INITIAL_BACKOFF_SECONDS", "60")),
+            "rag_outbox_max_backoff_seconds": int(os.getenv("RAG_OUTBOX_MAX_BACKOFF_SECONDS", "3600")),
+            "rag_outbox_processing_lease_seconds": int(os.getenv("RAG_OUTBOX_PROCESSING_LEASE_SECONDS", "900")),
         }
         return cls.model_validate(data)
 

@@ -8,6 +8,8 @@ import { formatPercent } from "@/utils/formatters"
 
 export type ProductFormValues = {
   title: string
+  sku: string
+  status: NonNullable<ProductInput["status"]>
   description: string
   category: string
   costPrice: string
@@ -39,6 +41,8 @@ type ProductFormProps = {
 
 const initialValues: ProductFormValues = {
   title: "",
+  sku: "",
+  status: "ACTIVE",
   description: "",
   category: "",
   costPrice: "",
@@ -103,6 +107,8 @@ const buildInitialValues = (input?: ProductInput): ProductFormValues => {
 
   return {
     title: input.title ?? "",
+    sku: input.sku ?? "",
+    status: input.status ?? "ACTIVE",
     description: input.description ?? "",
     category: normalizeCategory(input.category),
     costPrice: toStringNumber(input.costPrice),
@@ -231,6 +237,13 @@ export function ProductForm({
     setErrors((prev) => ({ ...prev, [name]: undefined }))
   }
 
+  const handleStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setValues((prev) => ({
+      ...prev,
+      status: event.target.value as NonNullable<ProductInput["status"]>,
+    }))
+  }
+
   const handleDescriptionChange = (
     event: React.ChangeEvent<HTMLTextAreaElement>
   ) => {
@@ -289,6 +302,8 @@ export function ProductForm({
 
     const input: ProductInput = {
       title: values.title.trim(),
+      sku: values.sku.trim() || null,
+      status: values.status ?? "ACTIVE",
       description: values.description.trim(),
       category: values.category.trim(),
       specifications: {
@@ -330,6 +345,39 @@ export function ProductForm({
           onChange={handleChange}
           error={errors.title}
         />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            id="product-sku"
+            name="sku"
+            label="SKU"
+            value={values.sku}
+            placeholder="SKU-001"
+            onChange={handleChange}
+          />
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="product-status"
+            >
+              Product status
+            </label>
+            <select
+              id="product-status"
+              value={values.status}
+              onChange={handleStatusChange}
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {["ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED", "DISCONTINUED"].map(
+                (status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+        </div>
 
         <div className="space-y-2">
           <label

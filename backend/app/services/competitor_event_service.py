@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.competitor_event import CompetitorEvent, CompetitorEventSeverity, CompetitorEventType
 from app.models.competitor_snapshot import CompetitorSnapshot
+from app.models.rag_memory import RagMemorySourceType
 from app.models.scrape_run import ScrapeRun
 from app.repositories.competitor_event_repository import (
     CompetitorEventRepository,
     CompetitorEventSnapshotRepository,
 )
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,17 @@ class CompetitorEventService:
         new_events = [event for event in candidates if event.dedupe_key not in existing]
         self._events.add_all(new_events)
         try:
+            if hasattr(self._db, "flush"):
+                self._db.flush()
+                outbox = RagIndexOutboxService(self._db)
+                for event in new_events:
+                    outbox.enqueue_upsert(
+                        seller_id=event.seller_id,
+                        source_type=RagMemorySourceType.COMPETITOR_HISTORY,
+                        source_id=str(event.id),
+                        product_id=event.product_id,
+                        source_updated_at=event.detected_at,
+                    )
             self._db.commit()
         except IntegrityError:
             self._db.rollback()

@@ -6,6 +6,7 @@ import RootLayout from "@/layouts/root-layout"
 import ProtectedRoute from "@/routes/protected-route"
 import LoginPage from "@/pages/auth/login-page"
 import RegisterPage from "@/pages/auth/register-page"
+import ForgotPasswordPage from "@/pages/auth/forgot-password-page"
 import NotFoundPage from "@/pages/not-found"
 import LandingPage from "@/pages/landing/landing-page"
 
@@ -21,6 +22,9 @@ const router = createBrowserRouter([
       },
       { path: "login", Component: LoginPage },
       { path: "register", Component: RegisterPage },
+      { path: "forgot-password", Component: ForgotPasswordPage },
+      { path: "forgot-password/verify", Component: ForgotPasswordPage },
+      { path: "forgot-password/reset", Component: ForgotPasswordPage },
       {
         path: "app",
         Component: ProtectedRoute,
@@ -159,13 +163,6 @@ const router = createBrowserRouter([
               {
                 path: "alerts",
                 loader: () => redirect("/app/telegram-alerts"),
-              },
-              {
-                path: "realtime",
-                lazy: async () => ({
-                  Component: (await import("@/pages/realtime/realtime-page"))
-                    .default,
-                }),
               },
               {
                 path: "profile",

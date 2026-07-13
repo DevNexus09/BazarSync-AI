@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from app.schemas.auth import (
     LoginResponse,
+    PasswordResetCodeRequest,
+    PasswordResetEmailRequest,
+    PasswordResetMessageResponse,
+    PasswordResetSetPasswordRequest,
+    PasswordResetVerifyResponse,
     RegisterResponse,
     SellerCreate,
     SellerLogin,
@@ -21,6 +26,11 @@ from app.schemas.products import (
 __all__ = [
     "HealthResponse",
     "LoginResponse",
+    "PasswordResetCodeRequest",
+    "PasswordResetEmailRequest",
+    "PasswordResetMessageResponse",
+    "PasswordResetSetPasswordRequest",
+    "PasswordResetVerifyResponse",
     "RegisterResponse",
     "SellerCreate",
     "SellerLogin",

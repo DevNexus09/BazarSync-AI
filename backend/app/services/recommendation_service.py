@@ -24,6 +24,7 @@ from app.analytics.stock_engine import StockEngine
 from app.models.competitor import Competitor
 from app.models.product import Product
 from app.models.recommendation import Recommendation, RecommendationAction, RecommendationConfidence
+from app.models.rag_memory import RagMemorySourceType
 from app.models.scrape_run import ScrapeRun
 from app.recommendations.opportunity_calculator import OpportunityCalculator, OpportunityInput
 from app.schemas.recommendation import (
@@ -36,6 +37,7 @@ from app.services.dashboard.events import DashboardEventEmitter
 from app.services.dashboard.dashboard_service import DashboardService
 from app.services.margin_guard import MarginGuard
 from app.services.realtime import RealtimeService
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 from app.websocket.socket_events import (
     DashboardSummaryPayload,
     DashboardSummarySnapshot,
@@ -388,10 +390,20 @@ class RecommendationService:
 
         try:
             self._db.add(recommendation)
+            if hasattr(self._db, "flush"):
+                self._db.flush()
+                RagIndexOutboxService(self._db).enqueue_upsert(
+                    seller_id=product.seller_id,
+                    source_type=RagMemorySourceType.RECOMMENDATION,
+                    source_id=str(recommendation.id),
+                    product_id=product.id,
+                    source_updated_at=datetime.now(timezone.utc),
+                )
             self._db.commit()
             self._db.refresh(recommendation)
         except Exception as exc:
-            self._db.rollback()
+            if hasattr(self._db, "rollback"):
+                self._db.rollback()
             raise RecommendationPersistenceError("Failed to store recommendation.") from exc
         return recommendation
 

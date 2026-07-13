@@ -1,21 +1,28 @@
 import { useMemo } from "react"
-import { NavLink, useLocation } from "react-router-dom"
-import { Bell, Search } from "lucide-react"
+import type { RefObject } from "react"
+import { useLocation } from "react-router-dom"
+import { Bell, Menu, Search } from "lucide-react"
 
 import UserMenu from "@/components/app/user-menu"
-import { ComingSoonModal } from "@/components/common/coming-soon-modal"
 import { TelegramStatusBadge } from "@/components/telegram/telegram-status-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useComingSoon } from "@/hooks/useComingSoon"
 import { useTelegramConnection } from "@/hooks/useTelegramConnection"
 import { appNavItems } from "@/routes/nav-config"
-import { cn } from "@/lib/utils"
 import type { TelegramConnectionState } from "@/types/telegram"
 
-export default function AppHeader() {
+type AppHeaderProps = {
+  isSidebarOpen?: boolean
+  onMenuClick?: () => void
+  mobileMenuButtonRef?: RefObject<HTMLButtonElement | null>
+}
+
+export default function AppHeader({
+  isSidebarOpen = false,
+  onMenuClick,
+  mobileMenuButtonRef,
+}: AppHeaderProps) {
   const location = useLocation()
-  const comingSoon = useComingSoon()
   const telegram = useTelegramConnection()
 
   const telegramState: TelegramConnectionState = telegram.status.isError
@@ -38,13 +45,27 @@ export default function AppHeader() {
       <div className="px-4 pt-4 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12),_0_20px_50px_rgba(4,8,16,0.55)] backdrop-blur">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="min-w-[180px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                BazarSync AI
-              </p>
-              <h1 className="heading-font text-lg font-semibold text-foreground">
-                {activeItem?.label ?? "BazarSync AI"}
-              </h1>
+            <div className="flex min-w-[180px] items-center gap-3">
+              <Button
+                ref={mobileMenuButtonRef}
+                variant="outline"
+                size="icon"
+                className="shrink-0 lg:hidden"
+                aria-label={isSidebarOpen ? "Close navigation" : "Open navigation"}
+                aria-expanded={isSidebarOpen}
+                aria-controls="primary-navigation"
+                onClick={onMenuClick}
+              >
+                <Menu className="size-4" aria-hidden="true" />
+              </Button>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                  BazarSync AI
+                </p>
+                <h1 className="heading-font text-lg font-semibold text-foreground">
+                  {activeItem?.label ?? "BazarSync AI"}
+                </h1>
+              </div>
             </div>
             <div className="flex min-w-[220px] flex-1 items-center">
               <div className="relative w-full">
@@ -68,26 +89,6 @@ export default function AppHeader() {
           </div>
         </div>
       </div>
-      <nav className="flex gap-2 overflow-x-auto px-4 py-3 lg:hidden">
-        {appNavItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            onClick={(event) => comingSoon.handleNavClick(event, item)}
-            className={({ isActive }) =>
-              cn(
-                "whitespace-nowrap rounded-full border border-border/70 px-3 py-1 text-xs font-medium transition-colors",
-                isActive
-                  ? "bg-primary/20 text-foreground"
-                  : "bg-card/60 text-muted-foreground"
-              )
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-      <ComingSoonModal open={comingSoon.open} onClose={comingSoon.onClose} />
     </div>
   )
 }

@@ -2,6 +2,8 @@ export type Product = {
   id: string
   sellerId?: string
   title: string
+  sku?: string | null
+  status?: "ACTIVE" | "INACTIVE" | "DRAFT" | "ARCHIVED" | "DISCONTINUED"
   description: string
   category: string
   specifications: Record<string, string>
@@ -18,6 +20,8 @@ export type Product = {
 
 export type ProductInput = {
   title: string
+  sku?: string | null
+  status?: Product["status"]
   description: string
   category: string
   specifications: Record<string, string>

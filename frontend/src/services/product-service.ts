@@ -5,6 +5,8 @@ type ApiProduct = {
   id: string
   seller_id: string
   title: string
+  sku?: string | null
+  status?: Product["status"]
   description?: string | null
   category?: string | null
   specifications?: Record<string, string> | null
@@ -15,6 +17,7 @@ type ApiProduct = {
   supplier_lead_time: number
   minimum_margin: number | string
   created_at?: string
+  updated_at?: string
   pricing_warning?: string | null
 }
 
@@ -37,6 +40,8 @@ const mapProduct = (product: ApiProduct): Product => ({
   id: String(product.id),
   sellerId: product.seller_id,
   title: product.title,
+  sku: product.sku ?? null,
+  status: product.status ?? "ACTIVE",
   description: product.description ?? "",
   category: product.category ?? "Uncategorized",
   specifications: product.specifications ?? {},
@@ -48,6 +53,7 @@ const mapProduct = (product: ApiProduct): Product => ({
   minimumMargin: toNumber(product.minimum_margin),
   pricingWarning: product.pricing_warning ?? null,
   createdAt: product.created_at,
+  updatedAt: product.updated_at,
 })
 
 export async function getProducts(): Promise<Product[]> {
@@ -63,6 +69,8 @@ export async function getProduct(productId: string): Promise<Product> {
 export async function createProduct(input: ProductInput): Promise<Product> {
   const payload = {
     title: input.title,
+    sku: input.sku || null,
+    status: input.status ?? "ACTIVE",
     description: input.description,
     category: input.category,
     specifications: input.specifications,
@@ -82,6 +90,8 @@ export async function updateProduct(
 ): Promise<Product> {
   const payload = {
     title: input.title,
+    sku: input.sku || null,
+    status: input.status ?? "ACTIVE",
     description: input.description,
     category: input.category,
     specifications: input.specifications,

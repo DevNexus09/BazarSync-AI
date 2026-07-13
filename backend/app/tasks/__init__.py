@@ -13,6 +13,7 @@ from app.tasks import inventory_risk_tasks  # noqa: F401
 from app.tasks import market_opportunity_tasks  # noqa: F401
 from app.tasks import phase5_workflow_tasks  # noqa: F401
 from app.tasks import pricing_analytics_tasks  # noqa: F401
+from app.tasks import rag_memory_tasks  # noqa: F401
 from app.tasks import recommendation_tasks  # noqa: F401
 from app.tasks import reorder_recommendation_tasks  # noqa: F401
 from app.tasks import sales_velocity_tasks  # noqa: F401

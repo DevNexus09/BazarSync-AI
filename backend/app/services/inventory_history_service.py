@@ -15,6 +15,8 @@ from app.models.inventory_history import InventoryHistory, InventorySnapshotSour
 from app.models.product import Product
 from app.models.seller import Seller
 from app.repositories.inventory_history_repository import InventoryHistoryRepository
+from app.models.rag_memory import RagMemorySourceType
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,7 @@ class InventoryHistoryService:
         repository: ProductBatchRepository | None = None,
         log: logging.Logger | None = None,
     ) -> None:
+        self._db = db
         if repository is None and db is None:
             raise ValueError("Either db or repository is required.")
         self._repository = repository or InventoryHistoryRepository(db)  # type: ignore[arg-type]
@@ -140,6 +143,18 @@ class InventoryHistoryService:
             ),
         )
         saved, created = self._repository.add_idempotent(snapshot)
+        if created and self._db is not None:
+            RagIndexOutboxService(self._db).enqueue_upsert(
+                seller_id=saved.seller_id,
+                source_type=RagMemorySourceType.INVENTORY_HISTORY,
+                source_id=str(saved.id),
+                product_id=saved.product_id,
+                source_updated_at=saved.captured_at,
+            )
+            # The inventory repository commits the snapshot internally for
+            # compatibility with existing callers; this commits only the
+            # corresponding outbox row after that durable write succeeds.
+            self._db.commit()
         return InventorySnapshotOutcome(snapshot=saved, created=created)
 
     def capture_daily_snapshots(

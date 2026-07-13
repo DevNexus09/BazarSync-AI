@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -11,7 +11,9 @@ from app.core.config import settings
 from app.models.dead_stock_assessment import DeadStockVisibilityStatus
 from app.models.product import Product
 from app.models.product_visibility_metric import ProductVisibilityMetric
+from app.models.rag_memory import RagMemorySourceType
 from app.schemas.product_visibility_metric import ProductVisibilityMetricCreate, ProductVisibilityMetricResponse
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 
 class ProductVisibilityService:
@@ -35,6 +37,14 @@ class ProductVisibilityService:
             source_reference=payload.source_reference,
         )
         self._db.add(record)
+        self._db.flush()
+        RagIndexOutboxService(self._db).enqueue_upsert(
+            seller_id=seller_id,
+            source_type=RagMemorySourceType.SEO_VISIBILITY_HISTORY,
+            source_id=str(record.id),
+            product_id=product_id,
+            source_updated_at=datetime.combine(payload.metric_date, time.min, tzinfo=timezone.utc),
+        )
         self._db.commit()
         self._db.refresh(record)
         from app.tasks.dead_stock_workflow_tasks import enqueue_dead_stock_recalculation

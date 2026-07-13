@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.models.inventory_stock_in import InventoryStockIn
 from app.models.product import Product
+from app.models.rag_memory import RagMemorySourceType
 from app.schemas.inventory_stock_in import InventoryStockInCreate
+from app.services.rag_index_outbox_service import RagIndexOutboxService
 
 
 class InventoryStockInService:
@@ -37,6 +39,14 @@ class InventoryStockInService:
         self._db.add(record)
         self._db.commit()
         self._db.refresh(record)
+        RagIndexOutboxService(self._db).enqueue_upsert(
+            seller_id=seller_id,
+            source_type=RagMemorySourceType.INVENTORY_LIFECYCLE,
+            source_id=str(record.id),
+            product_id=record.product_id,
+            source_updated_at=record.received_at,
+        )
+        self._db.commit()
         from app.tasks.dead_stock_workflow_tasks import enqueue_dead_stock_recalculation
 
         enqueue_dead_stock_recalculation(seller_id=seller_id, product_id=payload.product_id, reason="inventory_receipt")

@@ -24,12 +24,12 @@ class SellerBase(BaseModel):
 
 
 class SellerCreate(SellerBase):
-    password: str = Field(..., min_length=8, description="Seller password")
+    password: str = Field(..., min_length=8, max_length=72, description="Seller password")
 
 
 class SellerLogin(BaseModel):
     email: EmailStr = Field(..., description="Seller email address")
-    password: str = Field(..., min_length=8, description="Seller password")
+    password: str = Field(..., min_length=8, max_length=72, description="Seller password")
 
 
 class SellerProfileUpdate(BaseModel):
@@ -49,7 +49,35 @@ class SellerProfileUpdate(BaseModel):
 
 
 class SellerDeleteRequest(BaseModel):
-    password: str = Field(..., min_length=8, description="Seller password")
+    password: str = Field(..., min_length=8, max_length=72, description="Seller password")
+
+
+class PasswordResetEmailRequest(BaseModel):
+    email: EmailStr = Field(..., description="Email address for the reset request")
+
+
+class PasswordResetCodeRequest(BaseModel):
+    email: EmailStr = Field(..., description="Email address used for the reset request")
+    # Keep code shape validation in the route so validation errors never echo
+    # a submitted secret back to the client.
+    code: str = Field(..., description="One-time verification code")
+
+
+class PasswordResetMessageResponse(BaseModel):
+    message: str
+
+
+class PasswordResetVerifyResponse(BaseModel):
+    message: str
+    reset_authorization: str
+    expires_at: datetime
+
+
+class PasswordResetSetPasswordRequest(BaseModel):
+    # Password policy validation belongs to the shared security service. Plain
+    # values are deliberately not included in validation error responses.
+    new_password: str = Field(..., description="New account password")
+    confirm_password: str = Field(..., description="Confirmation of new password")
 
 
 class SellerResponse(SellerBase):
