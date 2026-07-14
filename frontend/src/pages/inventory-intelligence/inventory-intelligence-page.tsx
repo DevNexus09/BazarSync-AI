@@ -94,7 +94,7 @@ const labelize = (value?: string | null) =>
 function RiskBadge({ level }: { level?: InventoryRiskLevel | null }) {
   if (!level) {
     return (
-      <span className="rounded-full border border-slate-400/40 bg-slate-400/10 px-2 py-0.5 text-xs font-semibold text-slate-200">
+      <span className="rounded-full border border-border-strong/40 bg-muted/60 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
         No risk yet
       </span>
     )

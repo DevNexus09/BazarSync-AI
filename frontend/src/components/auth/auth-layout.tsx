@@ -22,7 +22,7 @@ export function AuthLayout({
       <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-6 py-12 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-[0_0_16px_rgba(59,130,246,0.35)]">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-[0_0_16px_rgb(var(--primary)/.35)]">
               <LayoutDashboard className="size-5" />
             </div>
             <div>
@@ -55,8 +55,8 @@ export function AuthLayout({
             transition={{ duration: 0.6 }}
           >
             <div className="glass-panel relative w-full overflow-hidden p-8">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.2),_transparent_55%)]" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,_transparent,_rgba(15,23,42,0.6))]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgb(var(--primary)/.2),_transparent_55%)]" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,_transparent,_rgb(var(--overlay)/.6))]" />
               <div className="relative">{sideContent}</div>
             </div>
           </motion.div>

@@ -68,15 +68,34 @@ export function MarketTrendWidget({
       <div className="mt-4 h-48">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
-            <XAxis dataKey="timestamp" tickLine={false} axisLine={false} />
-            <YAxis tickLine={false} axisLine={false} width={40} />
-            <Tooltip />
-            <Legend />
+            <XAxis
+              dataKey="timestamp"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "rgb(var(--muted-foreground))", fontSize: 11 }}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "rgb(var(--muted-foreground))", fontSize: 11 }}
+              width={40}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "rgb(var(--tooltip-background))",
+                border: "1px solid rgb(var(--tooltip-border))",
+                borderRadius: "8px",
+                color: "rgb(var(--tooltip-foreground))",
+              }}
+              itemStyle={{ color: "rgb(var(--tooltip-foreground))" }}
+              labelStyle={{ color: "rgb(var(--tooltip-foreground))" }}
+            />
+            <Legend wrapperStyle={{ color: "rgb(var(--muted-foreground))" }} />
             <Line
               type="monotone"
               dataKey="demandIndex"
               name="Demand"
-              stroke="#38BDF8"
+              stroke="rgb(var(--chart-4))"
               strokeWidth={2}
               dot={false}
             />
@@ -84,7 +103,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="urgencyIndex"
               name="Urgency"
-              stroke="#F59E0B"
+              stroke="rgb(var(--chart-3))"
               strokeWidth={2}
               dot={false}
             />
@@ -92,7 +111,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="opportunityIndex"
               name="Opportunity"
-              stroke="#10B981"
+              stroke="rgb(var(--chart-2))"
               strokeWidth={2}
               dot={false}
             />

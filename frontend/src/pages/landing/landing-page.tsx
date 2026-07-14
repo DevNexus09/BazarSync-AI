@@ -1,4 +1,4 @@
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { Link } from "react-router-dom"
 import {
   Activity,
@@ -10,374 +10,161 @@ import {
   Zap,
 } from "lucide-react"
 
+import { PublicHeader } from "@/components/public/public-header"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  transition: { duration: 0.6 },
-  viewport: { once: true, amount: 0.2 },
-}
-
-const features = [
+const featurePreviews = [
+  {
+    icon: LayoutDashboard,
+    title: "Products",
+    caption: "Catalog clarity",
+    bars: [35, 54, 42, 70, 62],
+    tone: "bg-primary",
+  },
   {
     icon: Activity,
-    title: "Realtime intelligence",
-    description: "Detect price shifts, stock risks, and category spikes instantly.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI recommendations",
-    description: "Turn signals into precise actions with confidence scoring.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "Telegram alerts",
-    description: "Route critical updates to your ops team in seconds.",
+    title: "Inventory",
+    caption: "Coverage signals",
+    bars: [64, 46, 58, 34, 27],
+    tone: "bg-info",
   },
   {
     icon: Cpu,
-    title: "Competitive heatmaps",
-    description: "Visualize competitor moves across catalog segments.",
+    title: "Competitors",
+    caption: "Market movement",
+    bars: [28, 42, 38, 62, 78],
+    tone: "bg-warning",
   },
   {
-    icon: Bot,
-    title: "Autopilot insights",
-    description: "Automate your response to fast-moving marketplace changes.",
+    icon: Sparkles,
+    title: "Pricing",
+    caption: "Margin-safe moves",
+    bars: [36, 40, 58, 54, 73],
+    tone: "bg-accent",
   },
   {
     icon: Zap,
-    title: "Opportunity scoring",
-    description: "Prioritize the highest-impact opportunities every day.",
+    title: "Revenue",
+    caption: "Profit direction",
+    bars: [30, 48, 45, 68, 82],
+    tone: "bg-success",
+  },
+  {
+    icon: Bot,
+    title: "AI Copilot",
+    caption: "Decisions with evidence",
+    bars: [44, 32, 60, 48, 74],
+    tone: "bg-primary",
   },
 ]
 
-const previewCards = [
-  {
-    title: "Urgency score",
-    value: "92",
-    delta: "+12% since last sync",
-    tone: "text-emerald-300",
-  },
-  {
-    title: "Live competitors",
-    value: "184",
-    delta: "Tracking 41 categories",
-    tone: "text-sky-300",
-  },
-  {
-    title: "AI actions",
-    value: "27",
-    delta: "New recommendations",
-    tone: "text-violet-300",
-  },
-]
-
-function SectionHeader({
-  overline,
-  title,
-  description,
-  align = "left",
+function FeaturePreview({
+  feature,
+  index,
+  reducedMotion,
 }: {
-  overline: string
-  title: string
-  description: string
-  align?: "left" | "center"
+  feature: (typeof featurePreviews)[number]
+  index: number
+  reducedMotion: boolean
 }) {
+  const Icon = feature.icon
+
   return (
-    <div
-      className={cn(
-        "space-y-3",
-        align === "center" ? "text-center" : "text-left"
-      )}
+    <motion.div
+      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, delay: reducedMotion ? 0 : index * 0.035 }}
+      className="rounded-xl border border-border/60 bg-card/60 px-3 py-3 text-left shadow-[0_0_0_1px_rgb(var(--primary)/.04)] backdrop-blur"
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.4em] text-muted-foreground">
-        {overline}
-      </p>
-      <h2 className="heading-font text-3xl font-semibold text-foreground">
-        {title}
-      </h2>
-      <p className="text-sm text-muted-foreground">{description}</p>
-    </div>
+      <div className="flex items-center gap-2">
+        <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="size-3.5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 truncate text-xs font-semibold text-foreground">
+          {feature.title}
+        </span>
+      </div>
+      <div className="mt-2 flex h-7 items-end gap-1" aria-hidden="true">
+        {feature.bars.map((height, barIndex) => (
+          <span
+            key={`${feature.title}-${barIndex}`}
+            className={`flex-1 rounded-sm ${feature.tone}`}
+            style={{ height: `${height}%`, opacity: 0.35 + barIndex * 0.1 }}
+          />
+        ))}
+      </div>
+      <p className="mt-2 truncate text-[10px] text-muted-foreground">{feature.caption}</p>
+    </motion.div>
   )
 }
 
 export default function LandingPage() {
+  const { status } = useAuth()
+  const reducedMotion = Boolean(useReducedMotion())
+  const isAuthenticated = status === "authenticated"
+  const getStartedPath = isAuthenticated ? "/app/dashboard" : "/login"
+
   return (
-    <div className="relative overflow-hidden bg-background pb-24">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-[45%] bg-[radial-gradient(circle,_rgba(139,92,246,0.18),_transparent_60%)]" />
+    <div className="relative min-h-[100dvh] overflow-hidden bg-background">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,_rgb(var(--primary)/.22),_transparent_42%),radial-gradient(circle_at_85%_70%,_rgb(var(--accent)/.1),_transparent_34%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgb(var(--foreground)/.05)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--foreground)/.05)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]"
+      />
 
-      <header className="relative z-10">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-[0_0_18px_rgba(59,130,246,0.35)]">
-              <LayoutDashboard className="size-5" />
-            </div>
-            <div>
-              <p className="heading-font text-lg font-semibold text-foreground">
-                BazarSync AI
-              </p>
-              <p className="text-xs text-muted-foreground">Realtime intelligence</p>
-            </div>
-          </div>
-          <Button asChild size="lg">
-            <Link to="/login">Get Started</Link>
-          </Button>
-        </div>
-      </header>
-
-      <main className="relative z-10">
-        <section className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 pb-20 pt-12 lg:flex-row lg:items-center">
-          <motion.div {...fadeUp} className="flex-1 space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
-              <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-              Live intelligence online
-            </div>
-            <h1 className="heading-font text-4xl font-semibold text-foreground lg:text-5xl">
-              AI-Powered Market Intelligence for Bangladeshi Sellers
-            </h1>
-            <p className="text-base text-muted-foreground">
-              BazarSync AI turns realtime signals into decisive actions — competitor
-              monitoring, pricing intelligence, and AI recommendations designed for
-              operational teams.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link to="/login">Get Started</Link>
-              </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link to="/register">Request Access</Link>
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <span>Realtime monitoring</span>
-              <span>AI recommendations</span>
-              <span>Telegram alerts</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            {...fadeUp}
-            className="flex-1"
-            transition={{ duration: 0.7, delay: 0.1 }}
+      <PublicHeader
+        action={
+          <Link
+            to={isAuthenticated ? "/app/dashboard" : "/login"}
+            className="rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
-            <div className="glass-panel relative overflow-hidden p-6">
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,_rgba(59,130,246,0.12),_transparent_60%)]" />
-              <div className="relative space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                      AI Operations
-                    </p>
-                    <p className="heading-font text-lg text-foreground">
-                      Intelligence Preview
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="size-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
-                    Live
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {previewCards.map((card) => (
-                    <div
-                      key={card.title}
-                      className="rounded-xl border border-border/60 bg-card/60 p-3"
-                    >
-                      <p className="text-xs text-muted-foreground">{card.title}</p>
-                      <p className="mt-2 text-2xl font-semibold text-foreground">
-                        {card.value}
-                      </p>
-                      <p className={cn("text-xs font-semibold", card.tone)}>
-                        {card.delta}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Competitor price trend</span>
-                    <span className="text-emerald-300">+4.2% opportunity</span>
-                  </div>
-                  <div className="mt-3 h-20 w-full rounded-lg bg-[linear-gradient(90deg,_rgba(59,130,246,0.45),_rgba(139,92,246,0.15))]" />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </section>
+            {isAuthenticated ? "Dashboard" : "Sign in"}
+          </Link>
+        }
+      />
 
-        <section className="mx-auto w-full max-w-6xl space-y-12 px-6">
-          <motion.div {...fadeUp}>
-            <SectionHeader
-              overline="Features"
-              title="Operational intelligence that feels real-time"
-              description="Purpose-built modules for pricing, competitor monitoring, and AI-driven actions."
-              align="center"
-            />
-          </motion.div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <motion.div
-                key={feature.title}
-                {...fadeUp}
-                className="glass-panel group p-5 transition hover:-translate-y-1"
-              >
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-[0_0_14px_rgba(59,130,246,0.35)]">
-                  <feature.icon className="size-5" />
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-foreground">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
+      <main className="relative z-10 mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-6xl flex-col items-center justify-center px-4 pb-6 pt-4 text-center sm:px-6 lg:px-8">
+        <motion.div
+          initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.26, ease: "easeOut" }}
+          className="max-w-3xl"
+        >
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+            <MessagesSquare className="size-3.5" aria-hidden="true" />
+            Marketplace intelligence
           </div>
-        </section>
+          <h1 className="heading-font text-[clamp(3.2rem,8vw,6.6rem)] font-bold leading-[0.95] tracking-[-0.055em] text-foreground">
+            BazarSync <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">AI</span>
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-[clamp(1.2rem,2.4vw,1.75rem)] font-medium leading-tight text-foreground">
+            AI-powered marketplace intelligence for smarter selling.
+          </p>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Understand products, inventory, pricing, competitors, revenue, and opportunities from one intelligent platform.
+          </p>
+          <Button asChild size="lg" className="mt-6 px-6">
+            <Link to={getStartedPath}>
+              Get Started
+              <Zap className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </motion.div>
 
-        <section className="mx-auto mt-20 w-full max-w-6xl px-6">
-          <motion.div {...fadeUp} className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-            <SectionHeader
-              overline="Realtime intelligence"
-              title="Stay ahead of pricing shocks and competitor moves"
-              description="BazarSync AI monitors live marketplace signals, recalculates urgency, and pushes opportunity scores to your team in seconds."
+        <div className="mt-8 grid w-full max-w-5xl grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+          {featurePreviews.map((feature, index) => (
+            <FeaturePreview
+              key={feature.title}
+              feature={feature}
+              index={index}
+              reducedMotion={reducedMotion}
             />
-            <div className="glass-panel p-6">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Live signal feed</span>
-                <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase">
-                  Updating
-                </span>
-              </div>
-              <div className="mt-4 space-y-3">
-                {[
-                  "Competitor price drop detected",
-                  "Urgency score recalculated",
-                  "Stock risk threshold triggered",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-center justify-between rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs text-muted-foreground"
-                  >
-                    <span>{item}</span>
-                    <span className="size-2 animate-pulse rounded-full bg-emerald-400" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </section>
-
-        <section className="mx-auto mt-20 w-full max-w-6xl px-6">
-          <motion.div {...fadeUp} className="grid gap-8 lg:grid-cols-2">
-            <div className="glass-panel p-6">
-              <SectionHeader
-                overline="Telegram"
-                title="Telegram alert preview"
-                description="Deliver decisive alerts directly to your Telegram ops channel."
-              />
-              <div className="mt-5 space-y-3 text-xs text-muted-foreground">
-                <div className="rounded-xl border border-border/60 bg-card/60 p-4">
-                  <p className="text-sm font-semibold text-foreground">
-                    BazarSync AI • @bazarsync_bot
-                  </p>
-                  <p className="mt-2">
-                    Competitor median price dropped by 7%. Price gap: ৳410.
-                    Recommendation: adjust to ৳1,890.
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card/60 p-4">
-                  <p className="text-sm font-semibold text-foreground">
-                    Stock risk detected
-                  </p>
-                  <p className="mt-2">
-                    Inventory projected to run out in 4 days. Lead time: 8 days.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel p-6">
-              <SectionHeader
-                overline="AI Recommendations"
-                title="Preview AI actions"
-                description="Summaries and next-best actions prioritized by confidence and opportunity."
-              />
-              <div className="mt-5 space-y-3">
-                {[
-                  "Increase price by 4% to regain margin",
-                  "Bundle accessories for higher conversion",
-                  "Replenish stock with fast-moving supplier",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-xl border border-border/60 bg-card/60 px-4 py-3 text-sm text-muted-foreground"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </section>
-
-        <section className="mx-auto mt-20 w-full max-w-6xl px-6">
-          <motion.div {...fadeUp} className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="glass-panel p-6">
-              <SectionHeader
-                overline="Dashboard preview"
-                title="AI Operations Center layout"
-                description="Center your analytics, recommendation feed, and realtime monitoring in a single command view."
-              />
-              <div className="mt-6 grid gap-3 md:grid-cols-2">
-                {["KPI cards", "Competitor heatmap", "Price trend charts", "Live recommendation feed"].map(
-                  (item) => (
-                    <div
-                      key={item}
-                      className="rounded-xl border border-border/60 bg-card/60 px-4 py-3 text-sm text-muted-foreground"
-                    >
-                      {item}
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-            <div className="glass-panel p-6">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>AI confidence</span>
-                <span className="text-emerald-300">High</span>
-              </div>
-              <div className="mt-4 h-36 rounded-xl bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.35),_transparent_70%)]" />
-              <p className="mt-4 text-sm text-muted-foreground">
-                Confidence score and opportunity signals update live as your data
-                streams in.
-              </p>
-            </div>
-          </motion.div>
-        </section>
-
-        <section className="mx-auto mt-24 w-full max-w-6xl px-6">
-          <motion.div {...fadeUp} className="glass-panel p-8 text-center">
-            <h2 className="heading-font text-3xl font-semibold text-foreground">
-              Ready to run BazarSync AI?
-            </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Launch BazarSync AI and keep every seller decision ahead of the market.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button asChild size="lg">
-                <Link to="/login">Get Started</Link>
-              </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link to="/register">Schedule Demo</Link>
-              </Button>
-            </div>
-          </motion.div>
-        </section>
+          ))}
+        </div>
       </main>
     </div>
   )

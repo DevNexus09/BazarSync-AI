@@ -163,6 +163,9 @@ export function CompetitorTable({
     []
   )
 
+  // TanStack Table manages its own mutable table instance. Keep this
+  // integration boundary local instead of spreading the lint exception.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

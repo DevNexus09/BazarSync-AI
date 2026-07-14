@@ -9,42 +9,16 @@ import { useAuth } from "@/hooks/use-auth"
 
 export default function DashboardLayout() {
   const { user } = useAuth()
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
-    if (typeof window === "undefined") {
-      return false
-    }
-
-    const isDesktop =
-      window.matchMedia?.("(min-width: 1024px)").matches ?? window.innerWidth >= 1024
-
-    return isDesktop && window.localStorage.getItem("bazarsync-sidebar-state") === "expanded"
-  })
+  const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const desktopToggleRef = useRef<HTMLButtonElement>(null)
   const mobileToggleRef = useRef<HTMLButtonElement>(null)
 
   const closeSidebar = useCallback(() => {
     setSidebarExpanded(false)
     window.setTimeout(() => {
-      const isDesktop =
-        window.matchMedia?.("(min-width: 1024px)").matches ?? window.innerWidth >= 1024
-      const focusTarget = isDesktop
-        ? desktopToggleRef.current
-        : mobileToggleRef.current
-      focusTarget?.focus()
+      mobileToggleRef.current?.focus()
     }, 0)
   }, [])
-
-  useEffect(() => {
-    const isDesktop =
-      window.matchMedia?.("(min-width: 1024px)").matches ?? window.innerWidth >= 1024
-
-    if (isDesktop) {
-      window.localStorage.setItem(
-        "bazarsync-sidebar-state",
-        sidebarExpanded ? "expanded" : "collapsed"
-      )
-    }
-  }, [sidebarExpanded])
 
   useEffect(() => {
     const handleResize = () => {

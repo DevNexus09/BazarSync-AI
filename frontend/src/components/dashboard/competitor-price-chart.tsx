@@ -74,23 +74,37 @@ export function CompetitorPriceChart({
       <div className="mt-4 h-56">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
-            <XAxis dataKey="timestamp" tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="timestamp"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "rgb(var(--muted-foreground))", fontSize: 11 }}
+            />
             <YAxis
               tickLine={false}
               axisLine={false}
+              tick={{ fill: "rgb(var(--muted-foreground))", fontSize: 11 }}
               tickFormatter={(value) => formatCurrency(Number(value))}
               width={72}
             />
             <Tooltip
               formatter={(value) => formatCurrency(Number(value))}
               labelFormatter={(label) => `Time: ${label}`}
+              contentStyle={{
+                background: "rgb(var(--tooltip-background))",
+                border: "1px solid rgb(var(--tooltip-border))",
+                borderRadius: "8px",
+                color: "rgb(var(--tooltip-foreground))",
+              }}
+              itemStyle={{ color: "rgb(var(--tooltip-foreground))" }}
+              labelStyle={{ color: "rgb(var(--tooltip-foreground))" }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: "rgb(var(--muted-foreground))" }} />
             <Line
               type="monotone"
               dataKey="competitorPrice"
               name="Competitor"
-              stroke="#F59E0B"
+              stroke="rgb(var(--chart-3))"
               strokeWidth={2}
               dot={false}
             />
@@ -98,7 +112,7 @@ export function CompetitorPriceChart({
               type="monotone"
               dataKey="sellerPrice"
               name="Your price"
-              stroke="#3B82F6"
+              stroke="rgb(var(--chart-1))"
               strokeWidth={2}
               dot={false}
             />
@@ -106,7 +120,7 @@ export function CompetitorPriceChart({
               type="monotone"
               dataKey="marketAverage"
               name="Market avg"
-              stroke="#10B981"
+              stroke="rgb(var(--chart-2))"
               strokeWidth={2}
               dot={false}
             />

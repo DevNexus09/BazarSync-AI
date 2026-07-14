@@ -117,7 +117,7 @@ export function DashboardSummaryHeader({
         {metrics.map((metric) => (
           <div
             key={metric.label}
-            className="rounded-xl border border-border/60 bg-card/60 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_0_18px_rgba(59,130,246,0.2)]"
+            className="rounded-xl border border-border/60 bg-card/60 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_0_18px_rgb(var(--primary)/.2)]"
           >
             <p className="text-xs text-muted-foreground">{metric.label}</p>
             <div className="mt-2 text-2xl font-semibold text-foreground">

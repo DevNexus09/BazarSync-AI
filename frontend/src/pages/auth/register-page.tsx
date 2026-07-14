@@ -1,13 +1,12 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
-import { Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useNavigate } from "react-router-dom"
 
 import { AuthField } from "@/components/auth/auth-field"
 import { AuthFooterLink } from "@/components/auth/auth-footer-link"
 import { AuthFormAlert } from "@/components/auth/auth-form-alert"
-import { AuthHighlights } from "@/components/auth/auth-highlights"
-import { AuthLayout } from "@/components/auth/auth-layout"
 import { LoadingState } from "@/components/common/loading-state"
+import { PublicAuthLayout } from "@/components/public/public-auth-layout"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import type { RegisterInput } from "@/types/auth"
@@ -84,34 +83,22 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthLayout
+    <PublicAuthLayout
       title="Create your account"
-      description="Start tracking competitors, pricing, and AI recommendations today."
+      description="Start managing your marketplace business intelligently."
+      action={
+        <Link
+          className="rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          to="/login"
+        >
+          Sign in
+        </Link>
+      }
       footer={
         <AuthFooterLink
           prompt="Already have an account?"
           to="/login"
           label="Sign in"
-        />
-      }
-      sideContent={
-        <AuthHighlights
-          title="Launch BazarSync AI"
-          description="Get the signals you need to act faster in the Bangladeshi ecommerce market."
-          highlights={[
-            {
-              title: "Realtime monitoring",
-              description: "Stay ahead of sudden demand spikes and price moves.",
-            },
-            {
-              title: "AI recommendations",
-              description: "Turn insights into measurable revenue improvements.",
-            },
-            {
-              title: "Team-ready alerts",
-              description: "Keep ops and sales aligned with Telegram notifications.",
-            },
-          ]}
         />
       }
     >
@@ -171,6 +158,6 @@ export default function RegisterPage() {
           policy.
         </p>
       </form>
-    </AuthLayout>
+    </PublicAuthLayout>
   )
 }

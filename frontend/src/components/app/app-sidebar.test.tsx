@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import AppSidebar from "@/components/app/app-sidebar"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import { appNavItems } from "@/routes/nav-config"
 
 function setViewport(width: number) {
@@ -35,21 +36,23 @@ function SidebarHarness({
   const desktopToggleRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <MemoryRouter initialEntries={[initialPath]}>
-      <button
-        type="button"
-        data-testid="mobile-open"
-        onClick={() => setIsExpanded(true)}
-      >
-        Open mobile navigation
-      </button>
-      <AppSidebar
-        isExpanded={isExpanded}
-        onToggle={() => setIsExpanded((current) => !current)}
-        onClose={() => setIsExpanded(false)}
-        desktopToggleRef={desktopToggleRef}
-      />
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <button
+          type="button"
+          data-testid="mobile-open"
+          onClick={() => setIsExpanded(true)}
+        >
+          Open mobile navigation
+        </button>
+        <AppSidebar
+          isExpanded={isExpanded}
+          onToggle={() => setIsExpanded((current) => !current)}
+          onClose={() => setIsExpanded(false)}
+          desktopToggleRef={desktopToggleRef}
+        />
+      </MemoryRouter>
+    </ThemeProvider>
   )
 }
 
@@ -72,6 +75,22 @@ describe("AppSidebar", () => {
     )
   })
 
+  it("temporarily expands the desktop rail while the pointer is over it", () => {
+    setViewport(1440)
+    render(<SidebarHarness />)
+
+    const sidebar = screen.getByTestId("app-sidebar")
+    const dashboardLabel = screen.getByTestId("sidebar-label-Dashboard")
+
+    expect(dashboardLabel).toHaveClass("max-w-0")
+
+    fireEvent.mouseEnter(sidebar)
+    expect(dashboardLabel).toHaveClass("max-w-[190px]")
+
+    fireEvent.mouseLeave(sidebar)
+    expect(dashboardLabel).toHaveClass("max-w-0")
+  })
+
   it("expands on toggle and reveals the existing English labels", async () => {
     setViewport(1440)
     const user = userEvent.setup()
@@ -86,14 +105,30 @@ describe("AppSidebar", () => {
     expect(screen.getByTestId("sidebar-label-Dashboard")).toHaveClass("max-w-[190px]")
   })
 
+  it("collapses a desktop expansion when the pointer leaves the rail", async () => {
+    setViewport(1440)
+    const user = userEvent.setup()
+    render(<SidebarHarness />)
+
+    const sidebar = screen.getByTestId("app-sidebar")
+    await user.click(screen.getByRole("button", { name: "Expand navigation" }))
+    expect(screen.getByRole("button", { name: "Collapse navigation" })).toBeInTheDocument()
+
+    fireEvent.mouseLeave(sidebar)
+
+    expect(screen.getByRole("button", { name: "Expand navigation" })).toBeInTheDocument()
+    expect(screen.getByTestId("sidebar-label-Dashboard")).toHaveClass("max-w-0")
+  })
+
   it("marks the active route without changing the configured routes", () => {
     setViewport(1440)
     render(<SidebarHarness initialPath="/app/products" />)
 
-    expect(screen.getByRole("link", { name: "Products" })).toHaveAttribute(
-      "aria-current",
-      "page"
-    )
+    const activeLink = screen.getByRole("link", { name: "Products" })
+    expect(activeLink).toHaveAttribute("aria-current", "page")
+    expect(activeLink).not.toHaveClass("bg-primary/10")
+    expect(activeLink).not.toHaveClass("border-primary/20")
+    expect(activeLink).not.toHaveClass("shadow-[inset_3px_0_0_rgb(var(--primary))]")
     for (const item of appNavItems) {
       expect(screen.getByRole("link", { name: item.label })).toHaveAttribute(
         "href",
@@ -138,5 +173,46 @@ describe("AppSidebar", () => {
 
     expect(competitorsLink).toHaveFocus()
     expect(competitorsLink).toHaveAttribute("title", "Competitors")
+  })
+
+  it("reveals the theme toggle on hover or focus in the collapsed rail", () => {
+    setViewport(1440)
+    render(<SidebarHarness />)
+
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument()
+
+    fireEvent.mouseEnter(screen.getByTestId("app-sidebar"))
+    expect(screen.getByRole("switch")).toBeVisible()
+
+    fireEvent.mouseLeave(screen.getByTestId("app-sidebar"))
+    fireEvent.focus(screen.getByRole("button", { name: "Expand navigation" }))
+    expect(screen.getByRole("switch")).toBeVisible()
+  })
+
+  it("keeps the theme toggle visible in the open mobile drawer", async () => {
+    setViewport(390)
+    const user = userEvent.setup()
+    render(<SidebarHarness />)
+
+    await user.click(screen.getByTestId("mobile-open"))
+
+    expect(screen.getByRole("switch")).toBeVisible()
+  })
+
+  it("changes the root theme without changing navigation", async () => {
+    setViewport(1440)
+    const user = userEvent.setup()
+    render(<SidebarHarness initialExpanded />)
+
+    const themeSwitch = screen.getByRole("switch")
+    const initialTheme = themeSwitch.getAttribute("aria-checked") === "true" ? "dark" : "light"
+    await user.click(themeSwitch)
+
+    expect(document.documentElement).toHaveAttribute(
+      "data-theme",
+      initialTheme === "dark" ? "light" : "dark"
+    )
+    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument()
+    expect(screen.getByRole("switch")).toBeInTheDocument()
   })
 })

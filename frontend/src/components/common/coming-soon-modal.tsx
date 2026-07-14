@@ -40,7 +40,7 @@ export function ComingSoonModal({ open, onClose, className }: ComingSoonModalPro
         aria-modal="true"
         aria-label="Coming Soon"
         className={cn(
-          "relative w-full max-w-md rounded-2xl border border-border/70 bg-card/80 p-6 shadow-[0_0_0_1px_rgba(59,130,246,0.2),_0_24px_60px_rgba(4,8,16,0.6)] backdrop-blur",
+          "relative w-full max-w-md rounded-2xl border border-border/70 bg-card/80 p-6 shadow-[0_0_0_1px_rgb(var(--primary)/.2),_0_24px_60px_rgb(var(--overlay)/.6)] backdrop-blur",
           "animate-in fade-in zoom-in-95",
           className
         )}

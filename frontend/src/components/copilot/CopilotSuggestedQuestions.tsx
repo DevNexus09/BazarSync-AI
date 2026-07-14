@@ -99,7 +99,7 @@ export function CopilotSuggestedQuestions({
                 type="button"
                 disabled={disabled}
                 onClick={() => onSelect(question)}
-                className="rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-left text-xs font-medium text-foreground transition hover:border-sky-400/40 hover:bg-sky-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 disabled:opacity-50"
+                className="rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-left text-xs font-medium text-foreground transition hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
               >
                 {question}
               </button>

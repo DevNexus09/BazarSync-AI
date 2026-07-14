@@ -133,9 +133,24 @@ export function StockAlertCard({
           <div className="mt-4 h-24">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                <Tooltip cursor={{ fill: "transparent" }} />
-                <Bar dataKey="count" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: "rgb(var(--muted-foreground))", fontSize: 11 }}
+                />
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                  contentStyle={{
+                    background: "rgb(var(--tooltip-background))",
+                    border: "1px solid rgb(var(--tooltip-border))",
+                    borderRadius: "8px",
+                    color: "rgb(var(--tooltip-foreground))",
+                  }}
+                  itemStyle={{ color: "rgb(var(--tooltip-foreground))" }}
+                  labelStyle={{ color: "rgb(var(--tooltip-foreground))" }}
+                />
+                <Bar dataKey="count" fill="rgb(var(--chart-1))" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -2,10 +2,10 @@ import { cn } from "@/lib/utils"
 import type { CopilotConfidence } from "@/types/copilot"
 
 const confidenceStyles: Record<CopilotConfidence, string> = {
-  HIGH: "border-emerald-400/40 bg-emerald-500/15 text-emerald-200",
-  MEDIUM: "border-sky-400/40 bg-sky-500/15 text-sky-200",
-  LOW: "border-amber-400/40 bg-amber-500/15 text-amber-100",
-  NO_CONTEXT: "border-slate-400/40 bg-slate-500/15 text-slate-200",
+  HIGH: "border-success/40 bg-success/15 text-success",
+  MEDIUM: "border-info/40 bg-info/15 text-info",
+  LOW: "border-warning/40 bg-warning/15 text-warning",
+  NO_CONTEXT: "border-border-strong/40 bg-muted/60 text-muted-foreground",
 }
 
 export function CopilotConfidenceBadge({
@@ -24,4 +24,3 @@ export function CopilotConfidenceBadge({
     </span>
   )
 }
-

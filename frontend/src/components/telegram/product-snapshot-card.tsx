@@ -88,7 +88,7 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
   return (
     <div className="glass-panel p-5">
       <div className="flex items-start gap-3">
-        <div className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary shadow-[0_0_12px_rgba(59,130,246,0.4)]">
+        <div className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary shadow-[0_0_12px_rgb(var(--primary)/.4)]">
           <Sparkles className="size-4" />
         </div>
         <div>

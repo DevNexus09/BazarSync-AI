@@ -41,7 +41,7 @@ export function LiveStatusIndicator({ status, className }: LiveStatusIndicatorPr
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-3 py-2 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]",
+        "flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-3 py-2 shadow-[0_0_0_1px_rgb(var(--primary)/.15)]",
         className
       )}
       role="status"
@@ -51,10 +51,10 @@ export function LiveStatusIndicator({ status, className }: LiveStatusIndicatorPr
         className={cn(
           "inline-flex size-2 rounded-full",
           isLive
-            ? "bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]"
+            ? "bg-success shadow-[0_0_0_4px_rgb(var(--success)/.15)]"
             : isReconnecting
-              ? "bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.15)]"
-              : "bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.15)]"
+              ? "bg-warning shadow-[0_0_0_4px_rgb(var(--warning)/.15)]"
+              : "bg-danger shadow-[0_0_0_4px_rgb(var(--danger)/.15)]"
         )}
         aria-hidden="true"
       />

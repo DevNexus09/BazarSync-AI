@@ -43,7 +43,7 @@ export default function AppHeader({
   return (
     <div className="sticky top-0 z-30">
       <div className="px-4 pt-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12),_0_20px_50px_rgba(4,8,16,0.55)] backdrop-blur">
+        <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--primary)/.12),_0_20px_50px_rgb(var(--overlay)/.55)] backdrop-blur">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex min-w-[180px] items-center gap-3">
               <Button

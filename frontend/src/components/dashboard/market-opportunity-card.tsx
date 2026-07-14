@@ -21,7 +21,7 @@ export function MarketOpportunityCard({ opportunity }: MarketOpportunityCardProp
       : opportunity.probability
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12)]">
+    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--primary)/.12)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground">

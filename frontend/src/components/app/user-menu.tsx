@@ -96,7 +96,7 @@ export default function UserMenu() {
       </Button>
       {isOpen ? (
         <div
-          className="absolute right-0 mt-3 w-72 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-[0_0_0_1px_rgba(59,130,246,0.12),_0_24px_60px_rgba(4,8,16,0.6)] backdrop-blur"
+          className="absolute right-0 mt-3 w-72 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-[0_0_0_1px_rgb(var(--primary)/.12),_0_24px_60px_rgb(var(--overlay)/.6)] backdrop-blur"
           role="menu"
         >
           <div className="flex items-center gap-3">

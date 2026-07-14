@@ -5,9 +5,8 @@ import { Link, Navigate, useLocation, useNavigate, type Location } from "react-r
 import { AuthField } from "@/components/auth/auth-field"
 import { AuthFooterLink } from "@/components/auth/auth-footer-link"
 import { AuthFormAlert } from "@/components/auth/auth-form-alert"
-import { AuthHighlights } from "@/components/auth/auth-highlights"
-import { AuthLayout } from "@/components/auth/auth-layout"
 import { LoadingState } from "@/components/common/loading-state"
+import { PublicAuthLayout } from "@/components/public/public-auth-layout"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import type { LoginInput } from "@/types/auth"
@@ -86,34 +85,22 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthLayout
+    <PublicAuthLayout
       title="Sign in"
-      description="Access your AI-powered ecommerce intelligence dashboard."
+      description="Sign in to continue to your marketplace intelligence workspace."
+      action={
+        <Link
+          className="rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          to="/register"
+        >
+          Create account
+        </Link>
+      }
       footer={
         <AuthFooterLink
           prompt="New to BazarSync AI?"
           to="/register"
           label="Create an account"
-        />
-      }
-      sideContent={
-        <AuthHighlights
-          title="Stay ahead of the marketplace"
-          description="Surface competitor moves, pricing shifts, and AI recommendations built for Bangladeshi sellers."
-          highlights={[
-            {
-              title: "Competitor intelligence",
-              description: "Monitor price drops and promotion cycles in real time.",
-            },
-            {
-              title: "AI-powered recommendations",
-              description: "Convert insights into next-best actions instantly.",
-            },
-            {
-              title: "Telegram alerts",
-              description: "Keep the team aligned with instant Telegram updates.",
-            },
-          ]}
         />
       }
     >
@@ -176,6 +163,6 @@ export default function LoginPage() {
           )}
         </Button>
       </form>
-    </AuthLayout>
+    </PublicAuthLayout>
   )
 }

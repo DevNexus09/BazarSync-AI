@@ -21,7 +21,7 @@ const getHeatTone = (gap: number) => {
   if (gap >= 200) {
     return "bg-emerald-500/20 text-emerald-200"
   }
-  return "bg-slate-500/20 text-slate-200"
+  return "bg-muted/60 text-muted-foreground"
 }
 
 export function CompetitorHeatmap({

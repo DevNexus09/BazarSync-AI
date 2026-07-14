@@ -25,7 +25,7 @@ const actionMetaMap: Record<RecommendationAction, ActionMeta> = {
   HOLD: {
     label: "Hold price",
     description: "Pricing is within a healthy range.",
-    tone: "text-slate-700 bg-slate-100/80 border-slate-200",
+    tone: "text-muted-foreground bg-muted/80 border-border",
   },
   REORDER: {
     label: "Reorder stock",

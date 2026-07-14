@@ -14,7 +14,7 @@ export function MissingDataReason({
       className={
         check.blocking
           ? "rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm"
-          : "rounded-lg border border-sky-400/30 bg-sky-400/10 p-3 text-sm"
+          : "rounded-lg border border-info/30 bg-info/10 p-3 text-sm"
       }
     >
       <div className="flex items-center gap-2 font-medium text-foreground">

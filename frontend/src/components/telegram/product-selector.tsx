@@ -87,7 +87,7 @@ export function ProductSelector({
         </Button>
 
         {isOpen ? (
-          <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-[0_0_0_1px_rgba(59,130,246,0.15),_0_24px_60px_rgba(4,8,16,0.6)]">
+          <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-xl border border-border/60 bg-card/90 shadow-[0_0_0_1px_rgb(var(--primary)/.15),_0_24px_60px_rgb(var(--overlay)/.6)]">
             <div className="border-b border-border/60 px-3 py-2">
               <Input
                 placeholder="Search products"

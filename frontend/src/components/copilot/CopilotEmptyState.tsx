@@ -12,7 +12,7 @@ export function CopilotEmptyState({
   return (
     <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
       <div className="flex items-start gap-3">
-        <div className="rounded-full border border-sky-400/30 bg-sky-500/15 p-2 text-sky-200">
+        <div className="rounded-full border border-info/30 bg-info/15 p-2 text-info">
           <Sparkles className="size-4" aria-hidden="true" />
         </div>
         <div>
@@ -32,4 +32,3 @@ export function CopilotEmptyState({
     </div>
   )
 }
-

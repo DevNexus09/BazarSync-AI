@@ -29,7 +29,7 @@ export function AuthHighlights({
         {highlights.map((item) => (
           <div
             key={item.title}
-            className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.15)]"
+            className="rounded-2xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--accent)/.15)]"
           >
             <h3 className="text-sm font-semibold text-foreground">
               {item.title}

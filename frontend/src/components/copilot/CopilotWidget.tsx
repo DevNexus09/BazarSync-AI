@@ -372,7 +372,13 @@ export function CopilotWidget() {
       return
     }
 
-    clearConversation({ clearMessages: true })
+    // Defer the reset so the query error can settle before changing the
+    // conversation state from this effect.
+    const resetTimeout = window.setTimeout(() => {
+      clearConversation({ clearMessages: true })
+    }, 0)
+
+    return () => window.clearTimeout(resetTimeout)
   }, [
     clearConversation,
     conversation.error,

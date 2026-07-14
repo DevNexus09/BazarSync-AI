@@ -15,15 +15,15 @@ type RecommendationCardProps = {
 
 const priorityStyles: Record<RecommendationPriority, string> = {
   [RecommendationPriority.Low]: "bg-muted/60 text-muted-foreground",
-  [RecommendationPriority.Medium]: "bg-amber-500/15 text-amber-300",
-  [RecommendationPriority.High]: "bg-rose-500/15 text-rose-300",
-  [RecommendationPriority.Critical]: "bg-rose-500/25 text-rose-200",
+  [RecommendationPriority.Medium]: "bg-warning/15 text-warning",
+  [RecommendationPriority.High]: "bg-danger/15 text-danger",
+  [RecommendationPriority.Critical]: "bg-danger/25 text-danger",
 }
 
 const statusStyles: Record<RecommendationStatus, string> = {
-  [RecommendationStatus.New]: "bg-emerald-500/15 text-emerald-300",
-  [RecommendationStatus.Reviewed]: "bg-sky-500/15 text-sky-300",
-  [RecommendationStatus.Implemented]: "bg-indigo-500/15 text-indigo-300",
+  [RecommendationStatus.New]: "bg-success/15 text-success",
+  [RecommendationStatus.Reviewed]: "bg-info/15 text-info",
+  [RecommendationStatus.Implemented]: "bg-primary/15 text-primary",
   [RecommendationStatus.Dismissed]: "bg-muted/60 text-muted-foreground",
 }
 
@@ -47,7 +47,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
       : recommendation.expectedLift
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgba(139,92,246,0.15)]">
+    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--accent)/.15)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground">
