@@ -1,108 +1,207 @@
-# BazarSync-AI
-A Bangla-first AI commerce OS for marketplace sellers. Monitors competitor prices, promotions, and stockouts in real-time, delivering margin-safe optimization via a web dashboard and urgent WhatsApp alerts. 
+# BazarSync AI
 
-## Security note
-The frontend currently stores JWTs in `localStorage`, which is vulnerable to token theft if an XSS occurs. For production deployments, prefer httpOnly cookies (or another mitigated storage strategy) and enforce a strong CSP + input sanitization to reduce XSS risk.
+Bangla-first AI commerce intelligence for marketplace sellers.
 
-Database bootstrap helpers run only when `DB_BOOTSTRAP_ON_STARTUP` is enabled (defaults to `true` in development and `false` otherwise). Use migrations for predictable schema changes in multi-instance environments.
+BazarSync AI helps sellers monitor products, competitors, pricing, inventory, revenue, dead stock, promotions, alerts, and business memory from one dashboard. The backend uses deterministic business services for financial and operational calculations, while the Copilot layer combines seller-scoped current data with RAG memory for grounded business answers.
 
-## Telegram product intelligence snapshots
+> Production note: this repository is a full-stack application. Deploy the FastAPI backend, worker, PostgreSQL/pgvector database, Redis, and Vite frontend as separate production services unless your hosting platform explicitly supports the full stack.
 
-**Frontend flow**
-1. Open **Telegram Alerts**.
-2. In **Product Intelligence Snapshot**, select a product and click **Send Snapshot**.
-3. A success toast appears and the realtime activity feed updates.
+## Contents
 
-**API endpoint**
-`POST /api/v1/telegram/send-product-snapshot`
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Repository Structure](#repository-structure)
+- [Local Development](#local-development)
+- [Environment Variables](#environment-variables)
+- [Database and Migrations](#database-and-migrations)
+- [AI Copilot and RAG Memory](#ai-copilot-and-rag-memory)
+- [Telegram Alerts](#telegram-alerts)
+- [Testing and Quality Gates](#testing-and-quality-gates)
+- [Deployment](#deployment)
+- [Security Notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
 
-**cURL example**
+## Features
+
+### Seller Dashboard
+
+- Product catalog and marketplace listing management.
+- Competitor monitoring, rankings, price events, and market opportunities.
+- Inventory intelligence with stockout, reorder, aging, and risk workflows.
+- Pricing analytics, MarginGuard checks, dynamic pricing recommendations, and marketplace fee policies.
+- Sales import with transaction unit price, line total, status, currency, and sales coverage tracking.
+- Revenue and estimated profit analytics with deterministic backend calculations.
+- Dead-stock classification, capital recovery estimates, and recovery recommendations.
+- Alerts, recommendations, and realtime dashboard activity.
+
+### Universal AI Business Copilot
+
+- Seller-scoped chat widget on dashboard pages.
+- Dynamic planner for broad business questions.
+- Allowlisted tools and allowlisted metric execution only.
+- Hybrid answers from current database facts plus seller-scoped RAG memory.
+- Evidence, confidence, missing-data, freshness, tool usage, and action proposal metadata.
+- Action proposal flow for price changes, promotions, and reorder plans without live marketplace execution.
+- Conversation hydration with rich assistant-message metadata.
+
+### RAG Memory Layer
+
+- Seller-scoped memory documents and chunks.
+- Product, sales, inventory, pricing, competitor, recommendation, alert, promotion, and Copilot-history memory sources where implemented.
+- pgvector-backed vector search with seller filtering.
+- Bounded retrieval with deleted/stale document exclusion by default.
+- Local BGE embedding support through SentenceTransformers.
+
+### Notifications and Integrations
+
+- Telegram connection and alert delivery.
+- Product intelligence snapshots.
+- Celery worker workflows for scheduled and event-driven intelligence jobs.
+- Redis-backed async task queue.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    UI["React + Vite Frontend"] --> API["FastAPI Backend"]
+    API --> Auth["JWT Seller Auth"]
+    API --> DB[("PostgreSQL + pgvector")]
+    API --> Redis[("Redis")]
+    Redis --> Worker["Celery Worker"]
+    Worker --> DB
+    API --> Groq["Groq API<br/>backend only"]
+    API --> Telegram["Telegram Bot API"]
+
+    subgraph Copilot["AI Business Copilot"]
+      Planner["Question Planner"]
+      Catalogs["Business + Metric Catalogs"]
+      Tools["Allowlisted Tools"]
+      Metrics["MetricExecutionService"]
+      RAG["Seller-scoped RAG Retrieval"]
+      Validator["Response Validator"]
+    end
+
+    API --> Planner
+    Planner --> Catalogs
+    Catalogs --> Tools
+    Tools --> Metrics
+    Tools --> RAG
+    Metrics --> DB
+    RAG --> DB
+    Tools --> Validator
+    Validator --> API
+```
+
+Copilot safety model:
+
+```text
+Seller question
+  -> planner
+  -> business data catalog + metric catalog
+  -> allowlisted tools + MetricExecutionService
+  -> seller-scoped deterministic analytics
+  -> seller-scoped RAG memory retrieval
+  -> hybrid answer engine
+  -> evidence/confidence/missing-data validation
+  -> frontend widget
+```
+
+The Copilot must not generate SQL, execute arbitrary SQL, expose the Groq key, directly mutate marketplace state, or bypass seller ownership checks.
+
+## Tech Stack
+
+### Backend
+
+- Python 3.14
+- FastAPI
+- SQLAlchemy
+- Alembic
+- PostgreSQL with pgvector for RAG memory
+- Redis
+- Celery
+- Socket.IO
+- Groq SDK
+- SentenceTransformers / BGE embeddings
+- Playwright and scraping utilities
+
+### Frontend
+
+- React 19
+- Vite 8
+- TypeScript 6
+- Tailwind CSS
+- TanStack Query
+- TanStack Table
+- React Router
+- Recharts
+- Socket.IO client
+- Vitest and Testing Library
+
+## Repository Structure
+
+```text
+.
+├── backend/
+│   ├── alembic/                 # Database migrations
+│   ├── app/
+│   │   ├── api/                 # FastAPI routes
+│   │   ├── core/                # Config, security, Celery, Socket.IO
+│   │   ├── db/                  # Database session and vector helpers
+│   │   ├── models/              # SQLAlchemy models
+│   │   ├── repositories/        # Data-access helpers
+│   │   ├── schemas/             # Pydantic schemas
+│   │   ├── services/            # Business services and Copilot/RAG logic
+│   │   ├── tasks/               # Celery tasks
+│   │   └── main.py              # FastAPI app entrypoint
+│   ├── scripts/                 # Local operational scripts
+│   └── tests/                   # Backend test suite
+├── frontend/
+│   ├── src/
+│   │   ├── components/          # UI components
+│   │   ├── hooks/               # React Query and UI hooks
+│   │   ├── pages/               # Route pages
+│   │   ├── routes/              # Router and nav config
+│   │   ├── services/            # API clients
+│   │   ├── types/               # Frontend types
+│   │   └── utils/               # Formatters and helpers
+│   └── package.json
+├── docs/                        # Phase notes and implementation summaries
+├── docker-compose.yml
+└── README.md
+```
+
+## Local Development
+
+### Prerequisites
+
+- Python 3.14
+- Node.js compatible with the frontend lockfile/environment
+- npm
+- PostgreSQL
+- pgvector extension for RAG features
+- Redis
+- Optional: Telegram bot token
+- Optional: Groq API key
+
+### 1. Clone and configure
+
 ```bash
-curl -X POST http://localhost:8000/api/v1/telegram/send-product-snapshot \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"product_id":"UUID"}'
+git clone https://github.com/DevNexus09/BazarSync-AI.git
+cd BazarSync-AI
+cp .env.example .env
 ```
 
-**Postman example**
-1. Method: `POST`
-2. URL: `http://localhost:8000/api/v1/telegram/send-product-snapshot`
-3. Headers: `Authorization: Bearer TOKEN`, `Content-Type: application/json`
-4. Body (raw JSON): `{"product_id":"UUID"}`
+Set at least these backend values in `.env`:
 
-**Expected Telegram output**
-```
-📊 BazarSync AI Product Intelligence
-
-🛒 Product:
-Dove Body Lotion 200ml
-
-💰 Current Price:
-৳320
-
-📦 Current Stock:
-45 units
-
-🚚 Supplier Lead Time:
-5 days
-
-📉 Competitor Median Price:
-৳305
-
-⚠️ Price Gap:
--4.7%
-
-🤖 Latest AI Recommendation:
-PRICE LOWER
-
-🧠 AI Reason:
-Competitor prices are currently lower while 2 sellers are out-of-stock. Lowering price slightly may capture additional demand.
-
-📈 Confidence:
-HIGH
-
-⏰ Updated:
-2026-05-28 10:45 PM
+```env
+APP_ENV=development
+DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@localhost:5432/bazarsync_ai
+JWT_SECRET_KEY=replace_with_a_long_random_secret
+VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
 ```
 
-## Telegram bot setup (webhook)
-
-Set these environment variables in production so Telegram can reach your webhook:
-
-1. `TELEGRAM_BOT_TOKEN` — Bot API token from BotFather.
-2. `TELEGRAM_WEBHOOK_URL` — Public HTTPS URL ending in `/api/v1/telegram/webhook`.
-3. `TELEGRAM_WEBHOOK_SECRET` (optional) — Secret token Telegram will echo in `X-Telegram-Bot-Api-Secret-Token`.
-
-When `TELEGRAM_WEBHOOK_URL` is set, the backend registers the webhook on startup.
-
-## Pricing simulator deployment
-
-The Revenue Simulator is embedded in the Pricing Analytics page:
-
-- `/app/pricing`
-
-The simulator uses these backend endpoints:
-
-- `POST /api/pricing/simulate`
-- `POST /api/pricing/explain`
-
-Environment variables:
-
-- `GROQ_API_KEY` — backend-only key used by the Groq explanation endpoint. Do not create any `VITE_GROQ_*` variable and do not expose this key in frontend hosting settings.
-- `GROQ_MODEL` — optional Groq model override for existing non-RAG Groq features. Default simulator model is `llama-3.1-8b-instant`.
-- `RAG_GROQ_MODEL` — Phase 12 RAG answer model override. RAG answer generation does not use `GROQ_MODEL`.
-- `VITE_API_BASE_URL` — frontend API base URL, for example `https://api.example.com/api/v1`. The simulator derives `/api/pricing/...` from the same backend origin.
-
-Deployment note:
-
-- The frontend is a Vite static app. On Vercel or similar static hosting, deploy the FastAPI backend separately and set `VITE_API_BASE_URL` to the public backend `/api/v1` URL.
-- If `GROQ_API_KEY` is missing or Groq is unavailable, the explanation endpoint returns a safe Bangla fallback instead of breaking the page.
-
-## Local development startup
-
-Start services in this order.
-
-1. Start Redis. Celery requires Redis before workers, purge commands, or scheduled tasks can run.
+### 2. Start Redis
 
 ```bash
 redis-server
@@ -114,31 +213,15 @@ Or with Docker:
 docker compose up -d redis
 ```
 
-2. Check Redis and database connectivity.
+### 3. Backend setup
 
 ```bash
 cd backend
+python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 python scripts/check_local_setup.py
-```
-
-If Redis is not running, Celery commands can fail with:
-
-```text
-Error 61 connecting to localhost:6379. Connection refused.
-```
-
-That means nothing is listening on port `6379`; start Redis and rerun the command.
-
-3. Run database migrations.
-
-```bash
 python -m alembic upgrade head
-```
-
-4. Start the backend API.
-
-```bash
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -148,7 +231,9 @@ Useful backend URLs:
 - `http://127.0.0.1:8000/docs`
 - `http://127.0.0.1:8000/api/v1/health`
 
-5. Start Celery in another terminal.
+### 4. Celery worker
+
+In a second terminal:
 
 ```bash
 cd backend
@@ -156,7 +241,9 @@ source venv/bin/activate
 celery -A app.core.celery_app:celery_app worker --loglevel=info
 ```
 
-6. Start the frontend in another terminal.
+### 5. Frontend setup
+
+In a third terminal:
 
 ```bash
 cd frontend
@@ -164,70 +251,308 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`.
+Open:
 
-## Phase 12 RAG memory database setup
+```text
+http://127.0.0.1:5173
+```
 
-Phase 12 stores seller-scoped business memory chunks in PostgreSQL `pgvector`.
-The migration tries Supabase's preferred extension schema first:
+## Environment Variables
+
+Use `.env.example` as the source of truth. Important groups are listed below.
+
+### Core Backend
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `APP_ENV` | Recommended | `development`, `test`, or production environment name. |
+| `DATABASE_URL` | Yes | SQLAlchemy database URL. |
+| `JWT_SECRET_KEY` | Yes | Backend-only signing key. Use a long random value. |
+| `JWT_ALGORITHM` | No | Defaults to `HS256`. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | Defaults to `60`. |
+| `CORS_ORIGINS` | Production | Comma-separated allowed frontend origins. |
+| `DB_BOOTSTRAP_ON_STARTUP` | No | Development helper. Prefer migrations in production. |
+
+### Frontend
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | Yes | Public FastAPI API base URL, usually ending in `/api/v1`. |
+
+Never define `VITE_GROQ_API_KEY`, `VITE_SUPABASE_KEY`, or any frontend variable containing backend credentials.
+
+### AI and RAG
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `GROQ_API_KEY` | For Groq features | Backend-only. |
+| `GROQ_MODEL` | No | Default non-RAG Groq model. |
+| `RAG_ENABLED` | No | Enables authenticated RAG endpoint. |
+| `RAG_GROQ_MODEL` | For RAG answers | Model used by grounded RAG answer generation. |
+| `RAG_EMBEDDING_PROVIDER` | No | Defaults to `local_bge`. |
+| `RAG_EMBEDDING_MODEL` | No | Defaults to `BAAI/bge-m3`. |
+| `RAG_EMBEDDING_DEVICE` | No | `cpu`, `mps`, or supported accelerator. |
+| `RAG_RETRIEVAL_TOP_K` | No | Bounded retrieval default. |
+| `RAG_MIN_SIMILARITY` | No | Retrieval threshold. |
+
+### Redis and Celery
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `REDIS_URL` | Recommended | Redis connection URL. |
+| `REDIS_BROKER_URL` | Recommended | Celery broker URL; falls back to `REDIS_URL`. |
+| `SCRAPER_SCHEDULE_ENABLED` | No | Enables scheduled scraper jobs. |
+| `RAG_MEMORY_SCHEDULE_ENABLED` | No | Enables scheduled memory indexing. |
+| `INVENTORY_INTELLIGENCE_SCHEDULE_ENABLED` | No | Enables scheduled inventory jobs. |
+| `DEAD_STOCK_WORKFLOW_SCHEDULE_ENABLED` | No | Enables scheduled dead-stock workflows. |
+
+### Password Reset Email
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `PASSWORD_RESET_ENABLED` | No | Defaults to enabled. |
+| `PASSWORD_RESET_CODE_SECRET` | Production | Required outside development/test. |
+| `EMAIL_PROVIDER` | Production | Use `smtp` outside local development. |
+| `SMTP_HOST` | Production | SMTP host. |
+| `SMTP_FROM_EMAIL` | Production | Sender address. |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | As needed | SMTP credentials. |
+
+### Telegram
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | For Telegram | Bot token from BotFather. |
+| `TELEGRAM_WEBHOOK_URL` | Production webhook | Public HTTPS URL ending in `/api/v1/telegram/webhook`. |
+| `TELEGRAM_WEBHOOK_SECRET` | Recommended | Telegram secret token validation. |
+
+## Database and Migrations
+
+Run migrations from `backend/`:
+
+```bash
+source venv/bin/activate
+python -m alembic upgrade head
+```
+
+Validate latest migration reversibility when changing schema:
+
+```bash
+python -m alembic downgrade -1
+python -m alembic upgrade head
+```
+
+RAG memory requires PostgreSQL pgvector. The migration attempts Supabase's extension schema first:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 ```
 
-If that is not available locally, it falls back to:
+If unavailable, local PostgreSQL can use:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-Local Postgres must have pgvector installed before running the Phase 12
-migration. If your local database image does not include pgvector, use a
-pgvector-enabled Postgres image or install the extension package for your
-Postgres version.
+Use a pgvector-enabled PostgreSQL image or install pgvector for your local PostgreSQL version before running RAG migrations.
 
-The default embedding provider is local BGE with `BAAI/bge-m3`. Configure
-`RAG_EMBEDDING_DEVICE` as `cpu`, `mps`, or another device supported by
-SentenceTransformers. If BGE-M3 is too heavy for your machine or deployment target, set `RAG_EMBEDDING_MODEL` to
-a smaller BGE model such as `BAAI/bge-small-en-v1.5`. The backend detects the
-generated vector dimension and stores it with each chunk; do not force a
-dimension that does not match the selected model. The first migration uses exact
-vector search for correctness and attempts an HNSW index only when the installed
-pgvector version supports it. Retrieval code must always filter by authenticated
-`seller_id`.
+## AI Copilot and RAG Memory
 
-Phase 12 RAG settings are controlled separately:
+The Copilot is designed around production safety rules:
 
-- `RAG_ENABLED` enables the authenticated `/api/v1/rag/ask` endpoint.
-- `RAG_RETRIEVAL_TOP_K` and `RAG_MIN_SIMILARITY` set retrieval defaults.
-- `RAG_PROMPT_VERSION` is stored in RAG query logs.
-- `RAG_GROQ_MODEL` selects the Groq model for grounded RAG answers.
-- `RAG_OUTBOX_BATCH_SIZE`, `RAG_OUTBOX_MAX_ATTEMPTS`,
-  `RAG_OUTBOX_INITIAL_BACKOFF_SECONDS`, `RAG_OUTBOX_MAX_BACKOFF_SECONDS`, and
-  `RAG_OUTBOX_PROCESSING_LEASE_SECONDS` control bounded event-driven indexing,
-  retries, and crash recovery leases.
+- Seller identity comes from backend authentication context.
+- Product-specific actions require product ownership checks.
+- Groq never queries the database directly.
+- Groq does not generate SQL.
+- Arbitrary SQL is not accepted by Copilot.
+- Only registered tools and registered metrics can execute.
+- Financial calculations are deterministic backend calculations.
+- Revenue uses transaction unit price or line total where available.
+- Profit is blocked or marked partial when cost or marketplace fee policy is missing.
+- Direct current data overrides stale memory.
+- RAG memory retrieval is seller-filtered.
+- Answers include evidence, confidence, missing data, freshness, tools, and domains when available.
+- Marketplace changes are proposals only unless a separate execution layer is explicitly implemented and tested.
 
-## Forgot-password configuration
+Core backend modules:
 
-The custom FastAPI authentication flow uses a short-lived, one-time numeric
-email code. Code hashes and reset authorizations are stored server-side; the
-frontend keeps the email and temporary authorization only in React memory.
-There is no reset token or code in the URL or localStorage.
+- `backend/app/services/copilot/question_planner.py`
+- `backend/app/services/copilot/tool_registry.py`
+- `backend/app/services/copilot/metric_catalog.py`
+- `backend/app/services/copilot/metric_execution_service.py`
+- `backend/app/services/copilot/hybrid_answer_engine.py`
+- `backend/app/services/copilot/copilot_response_validator.py`
+- `backend/app/services/rag_retrieval_service.py`
+- `backend/app/services/rag_memory_document_builder.py`
+- `backend/app/repositories/rag_memory_repository.py`
 
-For local development, `EMAIL_PROVIDER=console` is supported only when
-`APP_ENV=development` or `APP_ENV=test`; the development log is the test-mail
-transport and must never be enabled in production. Production must configure
-`EMAIL_PROVIDER=smtp`, `SMTP_HOST`, `SMTP_FROM_EMAIL`, and
-`PASSWORD_RESET_CODE_SECRET`. SMTP credentials remain backend-only.
+Main endpoints:
 
-The reset endpoints are:
+- `POST /api/v1/copilot/ask`
+- `GET /api/v1/copilot/conversations`
+- `GET /api/v1/copilot/conversations/{conversation_id}`
+- `GET /api/v1/copilot/tools`
+- `POST /api/v1/rag/ask`
+- `GET /api/v1/rag/coverage`
 
-- `POST /api/v1/auth/forgot-password/request-code`
-- `POST /api/v1/auth/forgot-password/resend-code`
-- `POST /api/v1/auth/forgot-password/verify-code`
-- `POST /api/v1/auth/forgot-password/reset`
+## Telegram Alerts
 
-The final reset request carries the short-lived authorization in the
-`X-Password-Reset-Authorization` header. A successful reset increments the
-seller `auth_version`, which invalidates previously issued access tokens when
-session revocation is enabled.
+Telegram support includes connection management, alert delivery, and product intelligence snapshots.
+
+Product snapshot endpoint:
+
+```text
+POST /api/v1/telegram/send-product-snapshot
+```
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/telegram/send-product-snapshot \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id":"PRODUCT_UUID"}'
+```
+
+If `TELEGRAM_WEBHOOK_URL` is configured, the backend registers the webhook on startup.
+
+## Testing and Quality Gates
+
+### Backend
+
+Run from `backend/`:
+
+```bash
+source venv/bin/activate
+pytest -q
+pytest tests/api/test_copilot.py tests/api/test_rag.py -q
+pytest tests/test_copilot_*.py -q
+pytest tests/unit/rag tests/integration/rag -q
+```
+
+Optional quality checks if installed/configured:
+
+```bash
+ruff check .
+ruff format --check .
+mypy app
+```
+
+### Frontend
+
+Run from `frontend/`:
+
+```bash
+npm run lint
+npm run typecheck
+npm test -- --run
+npm run build
+```
+
+Current known frontend lint warning: TanStack Table can trigger a React Compiler `react-hooks/incompatible-library` warning in the dashboard competitor table. It is a warning, not a build failure.
+
+## Deployment
+
+### Recommended Production Services
+
+- Frontend static app: Vercel, Netlify, Cloudflare Pages, or equivalent.
+- Backend API: container platform, VM, Railway/Fly/Render, ECS, or equivalent.
+- PostgreSQL with pgvector.
+- Redis.
+- Celery worker process.
+- Optional Celery beat process if scheduled jobs are enabled.
+
+### Backend Deployment Checklist
+
+1. Set `APP_ENV` to the production environment name.
+2. Set strong `JWT_SECRET_KEY` and `PASSWORD_RESET_CODE_SECRET`.
+3. Set production `DATABASE_URL`.
+4. Ensure pgvector is available before RAG migrations.
+5. Run `alembic upgrade head`.
+6. Set `CORS_ORIGINS` to the real frontend origin.
+7. Set Redis variables for Celery.
+8. Configure `GROQ_API_KEY` only on the backend if AI answer generation is enabled.
+9. Configure SMTP if password reset is enabled.
+10. Configure Telegram webhook variables if Telegram is enabled.
+11. Run backend tests and migration downgrade/upgrade validation before release.
+
+### Frontend Deployment Checklist
+
+1. Set `VITE_API_BASE_URL` to the public backend API base URL.
+2. Do not set backend secrets as `VITE_*` variables.
+3. Run `npm run lint`, `npm run typecheck`, `npm test -- --run`, and `npm run build`.
+4. Deploy the generated `frontend/dist` output.
+
+### Docker Compose
+
+The included `docker-compose.yml` provides backend API, worker, and Redis services. It does not replace a production PostgreSQL/pgvector plan.
+
+```bash
+docker compose up --build
+```
+
+## Security Notes
+
+- Frontend currently stores JWTs in `localStorage`. For production, prefer httpOnly secure cookies or another mitigated token strategy, and enforce a strong CSP.
+- Groq and SMTP credentials must remain backend-only.
+- Do not expose Supabase service keys, database URLs, embeddings, raw prompts, or internal stack traces to the frontend.
+- Use migrations for schema changes in production. Avoid startup bootstrapping in multi-instance deployments.
+- Keep seller isolation enforced in every service and query path.
+- Marketplace mutations must stay behind explicit, tested execution layers. Copilot approval currently represents internal proposal approval, not live marketplace execution.
+- Validate all uploaded/imported business data before analytics use.
+
+## Troubleshooting
+
+### Redis connection refused
+
+If Celery fails with:
+
+```text
+Error 61 connecting to localhost:6379. Connection refused.
+```
+
+Start Redis:
+
+```bash
+redis-server
+```
+
+or:
+
+```bash
+docker compose up -d redis
+```
+
+### pgvector migration failure
+
+Install pgvector or use a pgvector-enabled PostgreSQL image, then rerun:
+
+```bash
+cd backend
+source venv/bin/activate
+python -m alembic upgrade head
+```
+
+### Groq unavailable or missing key
+
+The backend should return safe fallback behavior for supported endpoints. Set:
+
+```env
+GROQ_API_KEY=...
+RAG_GROQ_MODEL=openai/gpt-oss-120b
+```
+
+Only set these on the backend.
+
+### Frontend cannot reach backend
+
+Check:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
+```
+
+Then restart the Vite dev server.
+
+## License
+
+No license file is currently included in this repository. Add a license before publishing or distributing the project publicly.
