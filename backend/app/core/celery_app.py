@@ -7,6 +7,7 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.core.config import settings
+from app.services.scrape_scheduling import adaptive_refresh_enabled
 
 DEFAULT_REDIS_URL: Final = "redis://localhost:6379/0"
 
@@ -59,6 +60,11 @@ if settings.scraper_schedule_enabled:
             },
         }
     )
+    if adaptive_refresh_enabled():
+        beat_schedule["scraper_adaptive_due_check"] = {
+            "task": "scraper.run_adaptive_refresh",
+            "schedule": crontab(minute=15),
+        }
 if settings.inventory_intelligence_schedule_enabled:
     beat_schedule["inventory_intelligence_daily"] = {
         "task": "inventory_intelligence.daily_workflow",

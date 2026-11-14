@@ -4,29 +4,27 @@ import asyncio
 import logging
 import random
 import re
-from typing import Awaitable, Callable, Iterable, TypeVar
-from urllib.parse import quote_plus, urljoin
+from decimal import Decimal
+from typing import TypeVar
+from urllib.parse import quote_plus, unquote, urljoin, urlsplit
 
-from fake_useragent import UserAgent
-from fake_useragent.errors import FakeUserAgentError
-
-from app.scraper.constants import (
-    DARAZ_BASE_URL,
-    DARAZ_SEARCH_PATH,
-    RANDOM_DELAY_RANGE,
-    RETRY_BASE_DELAY,
-    RETRY_MAX_DELAY,
-    USER_AGENT_FALLBACKS,
-)
+from app.scraper.schemas.scraped_product import StockStatus
+from app.scraper.constants import DARAZ_BASE_URL, DARAZ_SEARCH_PATH, RANDOM_DELAY_RANGE
 
 logger = logging.getLogger(__name__)
-
 T = TypeVar("T")
+
+_AMOUNT = r"(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})+,\d{3}|\d+)(?:\.\d{1,2})?"
+_PRICE = re.compile(rf"(?:BDT\s*|৳\s*|Tk\.?\s*)?({_AMOUNT})(?:\s*BDT)?", re.I)
+_COUNT = re.compile(rf"({_AMOUNT})\s*([km]?)\+?", re.I)
+
+
+def first_present(primary: T | None, fallback: T | None) -> T | None:
+    return primary if primary is not None and primary != "" else fallback
 
 
 def sanitize_query(query: str) -> str:
-    cleaned = re.sub(r"\s+", " ", query).strip()
-    return cleaned
+    return normalize_text(query)
 
 
 def build_search_url(query: str, *, ajax: bool = False) -> str:
@@ -36,103 +34,92 @@ def build_search_url(query: str, *, ajax: bool = False) -> str:
 
 
 def to_absolute_url(url: str) -> str:
-    if not url:
+    try:
+        return urljoin(DARAZ_BASE_URL, url) if url else ""
+    except ValueError:
         return ""
-    return urljoin(DARAZ_BASE_URL, url)
+
+
+def is_daraz_product_url(url: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+        path = unquote(parsed.path)
+        return (
+            parsed.scheme == "https"
+            and parsed.netloc == urlsplit(DARAZ_BASE_URL).netloc
+            and path.startswith("/products/")
+            and "\\" not in path
+            and not {".", ".."}.intersection(path.split("/"))
+        )
+    except ValueError:
+        return False
 
 
 def normalize_text(text: str | None) -> str:
+    return re.sub(r"\s+", " ", text).strip() if isinstance(text, str) else ""
+
+
+def _numeric_text(value: str | None) -> str:
+    text = normalize_text(value)
+    if text.lower() in {"n/a", "unavailable", "-", "—"}:
+        logger.debug("Daraz marked a numeric field unavailable.")
+        return ""
+    return text
+
+
+def parse_price(value: str | None) -> Decimal | None:
+    text = _numeric_text(value)
     if not text:
-        return ""
-    return re.sub(r"\s+", " ", text).strip()
+        return None
+    match = _PRICE.fullmatch(text)
+    if match and (price := Decimal(match[1].replace(",", ""))) <= Decimal("9999999999.99"):
+        return price
+    logger.debug("Invalid Daraz price.")
+    return None
 
 
-def parse_price(value: str | None) -> float:
-    if not value:
-        return 0.0
-    cleaned = re.sub(r"[^\d.]", "", value)
-    if not cleaned:
-        return 0.0
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
+def parse_compact_number(value: str | None) -> int | None:
+    text = _numeric_text(value).lower()
+    if not text:
+        return None
+    match = _COUNT.fullmatch(text.removeprefix("(").removesuffix(")").strip())
+    if match and ("." not in match[1] or match[2]):
+        multiplier = {"": 1, "k": 1_000, "m": 1_000_000}[match[2]]
+        digits = match[1].replace(",", "")
+        if len(digits) <= 14:
+            number = int(Decimal(digits) * multiplier)
+            if number <= 2_147_483_647:
+                return number
+    logger.debug("Invalid Daraz count.")
+    return None
 
 
-def parse_int(value: str | None) -> int:
-    if not value:
-        return 0
-    cleaned = re.sub(r"[^\d]", "", value)
-    if not cleaned:
-        return 0
-    try:
-        return int(cleaned)
-    except ValueError:
-        return 0
+def parse_rating(value: str | None) -> float | None:
+    text = _numeric_text(value)
+    if not text:
+        return None
+    if re.fullmatch(r"\d(?:\.\d+)?", text) and (rating := float(text)) <= 5:
+        return rating
+    logger.debug("Invalid Daraz rating.")
+    return None
 
 
-def parse_compact_number(value: str | None) -> int:
-    if not value:
-        return 0
-    cleaned = normalize_text(value).lower()
-    match = re.search(r"(\d+(?:\.\d+)?)\s*([km]?)", cleaned)
-    if not match:
-        return parse_int(cleaned)
-    magnitude = match.group(2)
-    multiplier = 1
-    if magnitude == "k":
-        multiplier = 1_000
-    elif magnitude == "m":
-        multiplier = 1_000_000
-    try:
-        return int(float(match.group(1)) * multiplier)
-    except ValueError:
-        return 0
+def parse_discount_percentage(value: str | None) -> int | None:
+    text = _numeric_text(value)
+    if not text:
+        return None
+    # Daraz uses a leading minus sign to denote a discount.
+    if re.fullmatch(r"-?\d{1,3}\s*%?", text):
+        discount = int(text.rstrip("%").strip().removeprefix("-"))
+        if discount <= 100:
+            return discount
+    logger.debug("Invalid Daraz discount.")
+    return None
 
 
-def parse_float(value: str | None) -> float:
-    if not value:
-        return 0.0
-    cleaned = re.sub(r"[^\d.]", "", value)
-    if not cleaned:
-        return 0.0
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
-
-
-def parse_discount_percentage(value: str | None) -> int:
-    if not value:
-        return 0
-    cleaned = re.sub(r"[^\d]", "", value)
-    if not cleaned:
-        return 0
-    try:
-        return int(cleaned)
-    except ValueError:
-        return 0
-
-
-def normalize_sold_count(value: str | None) -> str:
-    if not value:
-        return ""
-    cleaned = normalize_text(value).lower()
-    cleaned = cleaned.replace("sold", "").strip()
-    return cleaned
-
-
-def parse_sold_count_number(value: str | None) -> int:
-    cleaned = normalize_sold_count(value)
-    return parse_compact_number(cleaned)
-
-
-def get_random_user_agent() -> str:
-    try:
-        return UserAgent().random
-    except FakeUserAgentError as exc:
-        logger.warning("Failed to fetch random user-agent: %s", exc)
-        return random.choice(USER_AGENT_FALLBACKS)
+def normalize_sold_count(value: str | None) -> str | None:
+    text = normalize_text(value).lower().removesuffix("sold").strip()
+    return text if parse_compact_number(text) is not None else None
 
 
 def build_headers(user_agent: str) -> dict[str, str]:
@@ -145,33 +132,16 @@ def build_headers(user_agent: str) -> dict[str, str]:
     }
 
 
-async def random_delay(
-    min_seconds: float | None = None,
-    max_seconds: float | None = None,
-) -> None:
-    low, high = RANDOM_DELAY_RANGE
-    wait_min = min_seconds if min_seconds is not None else low
-    wait_max = max_seconds if max_seconds is not None else high
-    await asyncio.sleep(random.uniform(wait_min, wait_max))
+async def random_delay() -> None:
+    await asyncio.sleep(random.uniform(*RANDOM_DELAY_RANGE))
 
 
-async def retry_async(
-    operation: Callable[[], Awaitable[T]],
-    *,
-    retries: int,
-    exceptions: Iterable[type[BaseException]],
-    base_delay: float = RETRY_BASE_DELAY,
-    max_delay: float = RETRY_MAX_DELAY,
-) -> T:
-    attempt = 0
-    while True:
-        try:
-            return await operation()
-        except tuple(exceptions) as exc:
-            attempt += 1
-            if attempt > retries:
-                raise
-            backoff = min(max_delay, base_delay * (2 ** (attempt - 1)))
-            jittered = backoff * random.uniform(0.8, 1.2)
-            logger.warning("Retrying after error: %s (attempt %s/%s)", exc, attempt, retries)
-            await asyncio.sleep(jittered)
+def normalize_stock_status(value: str | None) -> StockStatus:
+    text = re.sub(r"[\s_-]+", " ", normalize_text(value)).lower()
+    if text in {"out of stock", "sold out", "unavailable", "currently unavailable", "not available", "not in stock"}:
+        return "OUT_OF_STOCK"
+    if text in {"in stock", "available", "low stock", "limited stock", "in stock online"}:
+        return "IN_STOCK"
+    if re.fullmatch(r"only [1-9]\d* left(?: in stock)?", text):
+        return "IN_STOCK"
+    return "UNKNOWN"

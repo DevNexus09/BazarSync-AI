@@ -59,6 +59,7 @@ class Settings(BaseModel):
     password_reset_email_retry_attempts: int = 2
     bootstrap_db_on_startup: bool = False
     scraper_schedule_enabled: bool = False
+    daraz_scraping_authorized: bool = False
     supabase_url: str | None = None
     supabase_key: str | None = None
     redis_broker_url: str | None = None
@@ -270,6 +271,9 @@ class Settings(BaseModel):
             "scraper_schedule_enabled": _parse_bool(
                 os.getenv("SCRAPER_SCHEDULE_ENABLED"),
                 default=scraper_schedule_default,
+            ),
+            "daraz_scraping_authorized": _parse_bool(
+                os.getenv("DARAZ_SCRAPING_AUTHORIZED"), default=False,
             ),
             "supabase_url": os.getenv("SUPABASE_URL"),
             "supabase_key": os.getenv("SUPABASE_KEY"),

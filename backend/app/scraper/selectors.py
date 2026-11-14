@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 PRODUCT_CARD_SELECTORS = [
-    "div[data-qa-locator='product-item']",
+    "[data-qa-locator='product-item']",
     "div.gridItem--Yd0sa",
 ]
 
@@ -17,9 +17,9 @@ PRODUCT_LINK_SELECTORS = [
 ]
 
 PRICE_SELECTORS = [
-    "span[data-qa-locator='product-item-price']",
-    "span.price--NVB62",
+    "[data-qa-locator='product-item-price']",
     "span.price",
+    "span.price--NVB62",
 ]
 
 ORIGINAL_PRICE_SELECTORS = [
@@ -33,7 +33,7 @@ DISCOUNT_SELECTORS = [
 ]
 
 STORE_NAME_SELECTORS = [
-    "a[data-qa-locator='product-item-seller']",
+    "[data-qa-locator='product-item-seller']",
     "div.seller-info--THVGd a",
     "div.store-name a",
 ]
@@ -65,14 +65,14 @@ STOCK_STATUS_SELECTORS = [
 DETAIL_DESCRIPTION_SELECTORS = [
     "div.pdp-product-detail__desc",
     "div#module_product_detail div.pdp-product-detail",
-    "div.product-description",
+    ".product-description",
     "div.description",
 ]
 
 DETAIL_SPEC_SECTION_SELECTORS = [
     "div.pdp-product-detail__specification",
     "div#module_product_detail",
-    "div.product-specification",
+    ".product-specification",
     "div.specification",
 ]
 
@@ -107,3 +107,17 @@ DETAIL_BRAND_SELECTORS = [
     "div.pdp-product-brand a",
     "a.brand",
 ]
+
+
+CARD_FIELD_SELECTORS = {
+    "current_price": PRICE_SELECTORS,
+    "original_price": ORIGINAL_PRICE_SELECTORS,
+    "discount_percentage": DISCOUNT_SELECTORS,
+    "seller_name": STORE_NAME_SELECTORS,
+    "rating": RATING_SELECTORS,
+    "review_count": RATING_COUNT_SELECTORS,
+    "sold_label": SOLD_COUNT_SELECTORS,
+    "stock_text": STOCK_STATUS_SELECTORS,
+}
+JSON_LD_SELECTOR = 'script[type="application/ld+json"]'
+APPLICATION_JSON_SELECTOR = 'script[type="application/json"]'

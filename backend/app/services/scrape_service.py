@@ -1,34 +1,37 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-import time
 import asyncio
-from uuid import UUID
+import logging
+import time
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select
+from kombu.exceptions import OperationalError as BrokerError
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.competitor import Competitor
 from app.models.price_history import PriceHistory
-from app.models.product import Product
+from app.models.product import Product, ProductStatus
 from app.models.scrape_run import ScrapeRun
 from app.models.seller import Seller
-from app.scraper.exceptions import ScraperError, SimilarityError
+from app.schemas.competitor import CompetitorSnapshot
+from app.schemas.scrape import ScrapeRunResponse
+from app.scraper.constants import MARKETPLACE_NAME, SIMILARITY_THRESHOLD
+from app.scraper.exceptions import ParseError, ScraperError, SimilarityError, public_failure_message
 from app.scraper.services.competitor_service import scrape_daraz_competitors
 from app.scraper.similarity import filter_similar_products
-from app.scraper.constants import SIMILARITY_THRESHOLD
-from app.scraper.constants import MARKETPLACE_NAME
-from app.schemas.scrape import ScrapeRunResponse
-from app.schemas.competitor import CompetitorSnapshot
-from app.services.competitor_snapshot_service import CompetitorSnapshotService, InvalidScrapeRunTransitionError
+from app.scraper.telemetry import ScrapeTelemetry
 from app.services.competitor_service import CompetitorService
+from app.services.competitor_snapshot_service import CompetitorObservation, CompetitorSnapshotService
 from app.services.dashboard.events import DashboardEventEmitter
 from app.services.realtime import RealtimeService
 from app.websocket.socket_events import CompetitorSnapshot as RealtimeCompetitorSnapshot
 from app.websocket.socket_events import CompetitorUpdatedPayload
 from app.websocket.socket_manager import get_socket_emitter
 from app.websocket.socket_rooms import seller_room
+
+logger = logging.getLogger(__name__)
 
 
 class ScrapeProductNotFoundError(Exception):
@@ -40,6 +43,16 @@ class ProductAccessError(Exception):
 
 
 class ScrapePipelineError(Exception):
+    def __init__(self, scrape_run_id: UUID) -> None:
+        super().__init__(str(scrape_run_id))
+        self.scrape_run_id = scrape_run_id
+
+
+class ScrapeEnqueueError(Exception):
+    pass
+
+
+class ScrapeProductIneligibleError(Exception):
     pass
 
 
@@ -68,6 +81,7 @@ class ScrapeService:
         scrape_run_id: UUID | None = None,
         run_key: str | None = None,
         task_id: str | None = None,
+        retry_count: int | None = None,
     ) -> ScrapeRunResponse:
         product = self._get_product(product_id)
         if not product:
@@ -81,8 +95,14 @@ class ScrapeService:
                 raise ScrapeRunNotFoundError("Scrape run not found.")
             if scrape_run.product_id != product.id or scrape_run.seller_id != seller.id:
                 raise ProductAccessError("Scrape run does not belong to this product.")
+            if scrape_run.celery_task_id and task_id and scrape_run.celery_task_id != task_id:
+                raise ProductAccessError("Scrape run belongs to a different task.")
             if scrape_run.status == "COMPLETED":
-                return self._completed_response(scrape_run=scrape_run, product=product, start=0.0)
+                return self._completed_response(scrape_run=scrape_run, product=product)
+            if scrape_run.status in {"FAILED", "PARTIAL"}:
+                raise ScrapeRunNotFoundError("Scrape run is already terminal.")
+            if scrape_run.run_key.startswith("scheduled:") and product.status != ProductStatus.ACTIVE:
+                raise ScrapeProductIneligibleError("Product is no longer eligible for scheduled scraping.")
             snapshot_service = CompetitorSnapshotService(self._db)
             snapshot_service.transition_to_running(scrape_run, task_id=task_id)
             self._db.commit()
@@ -99,34 +119,51 @@ class ScrapeService:
             self._db.commit()
             scrape_run = result.scrape_run
             if result.already_completed:
-                return self._completed_response(scrape_run=scrape_run, product=product, start=0.0)
+                return self._completed_response(scrape_run=scrape_run, product=product)
         start = time.monotonic()
 
+        telemetry = ScrapeTelemetry.start(scrape_run.id, product.id, retry_count)
         try:
-            scrape_response = await scrape_daraz_competitors(product_title=product.title)
+            telemetry.request_status = "failed"
+            scrape_response = await scrape_daraz_competitors(product_title=product.title, seller_id=product.seller_id)
+            telemetry.acquired(scrape_response)
+            telemetry.matching_status = "failed"
             competitors_raw = [item.model_dump() for item in scrape_response.products]
             competitors_found = len(competitors_raw)
 
-            filtered = await asyncio.to_thread(
-                filter_similar_products,
-                seller_title=product.title,
-                seller_description=product.description or "",
-                seller_category=product.category,
-                seller_specifications=product.specifications or {},
-                competitors=competitors_raw,
-                threshold=threshold if threshold is not None else SIMILARITY_THRESHOLD,
-            )
-            matched_results = len(filtered)
-            filtered_results = max(0, competitors_found - matched_results)
+            try:
+                filtered = await asyncio.to_thread(
+                    filter_similar_products,
+                    seller_title=product.title,
+                    seller_description=product.description or "",
+                    seller_category=product.category,
+                    seller_specifications=product.specifications or {},
+                    competitors=competitors_raw,
+                    threshold=threshold if threshold is not None else SIMILARITY_THRESHOLD,
+                )
+            except SimilarityError:
+                raise
+            except Exception as exc:
+                raise SimilarityError("Competitor matching failed unexpectedly.") from exc
 
-            competitor_rows = self._competitor_service.store_competitors(
+            telemetry.matching_status = "success"
+            telemetry.competitors_matched = len(filtered)
+            competitor_rows, observations = self._competitor_service.store_competitors(
                 scrape_run=scrape_run,
                 product=product,
                 marketplace=scrape_response.marketplace,
                 competitors=filtered,
                 observed_at=scrape_response.scraped_at,
+                price_observed_at_by_url={
+                    item.daraz_product_url: item.provenance.price_observed_at
+                    for item in scrape_response.products
+                    if item.provenance is not None and item.provenance.price_observed_at is not None
+                },
             )
 
+            matched_results = len(competitor_rows)
+            telemetry.competitors_matched = matched_results
+            filtered_results = max(0, competitors_found - matched_results)
             snapshot_service = CompetitorSnapshotService(self._db)
             snapshot_service.record_successful_scrape(
                 scrape_run=scrape_run,
@@ -134,22 +171,11 @@ class ScrapeService:
                 captured_at=scrape_response.scraped_at,
                 discovered_count=competitors_found,
                 matched_count=matched_results,
-            )
-
-            self._db.commit()
-            self._db.refresh(scrape_run)
-
-            await self._emit_competitor_updated(
-                scrape_run=scrape_run,
-                product=product,
-                competitors=competitor_rows,
-                matched_results=matched_results,
-                marketplace=scrape_response.marketplace,
-                scraped_at=scrape_response.scraped_at,
+                observations=observations,
             )
 
             processing_time = time.monotonic() - start
-            return ScrapeRunResponse(
+            response = ScrapeRunResponse(
                 success=True,
                 product_id=product.id,
                 product_title=product.title,
@@ -159,40 +185,131 @@ class ScrapeService:
                 filtered_results=filtered_results,
                 processing_time_seconds=round(processing_time, 2),
                 scraped_at=scrape_response.scraped_at,
-                competitors=[self._to_snapshot(item) for item in filtered],
+                competitors=[
+                    CompetitorSnapshot(
+                        competitor_title=row.competitor_title,
+                        competitor_price=observations[row.id].price,
+                        competitor_store=row.competitor_store,
+                        similarity_score=row.similarity_score,
+                        stock_status=observations[row.id].stock_status,
+                        product_url=row.product_url,
+                    )
+                    for row in competitor_rows
+                ],
             )
-        except (
-            ScraperError,
-            SimilarityError,
-            SQLAlchemyError,
-            RuntimeError,
-            ValueError,
-            TypeError,
-        ) as exc:
-            self._db.rollback()
-            self._mark_run_failed(scrape_run.id, str(exc))
-            raise ScrapePipelineError(str(exc)) from exc
 
-    def create_pending_run(self, *, seller: Seller, product_id: UUID) -> tuple[ScrapeRun, Product]:
-        product = self._get_product(product_id)
-        if not product:
+            self._db.commit()
+
+            try:
+                await self._emit_competitor_updated(
+                    product=product,
+                    competitors=competitor_rows,
+                    observations=observations,
+                    scraped_at=scrape_response.scraped_at,
+                )
+            except Exception as exc:
+                logger.error("scrape_realtime_failed run=%s error_type=%s", scrape_run.id, type(exc).__name__)
+                self._db.rollback()
+
+            return response
+        except Exception as exc:
+            if isinstance(exc, ParseError):
+                telemetry.request_status = "success"
+                telemetry.parser_status = "failed"
+            telemetry.failure_code = exc.failure_code if isinstance(exc, ScraperError) else "SCRAPE_FAILED"
+            self._db.rollback()
+            raise ScrapePipelineError(scrape_run.id) from exc
+        finally:
+            telemetry.emit(time.monotonic() - start)
+
+    def enqueue_scrape(
+        self,
+        *,
+        seller_id: UUID,
+        product_id: UUID,
+        threshold: float | None = None,
+        schedule_key: str | None = None,
+        scheduled_history: tuple[datetime | None] | None = None,
+    ) -> tuple[ScrapeRun, Product, bool]:
+        from app.core.celery_app import celery_app
+
+        # Serialize admission for this product, including competing Beat and API calls.
+        product = self._db.execute(
+            select(Product).where(Product.id == product_id).with_for_update()
+        ).scalar_one_or_none()
+        if product is None:
             raise ScrapeProductNotFoundError("Product not found.")
-        if product.seller_id != seller.id:
+        if product.seller_id != seller_id:
             raise ProductAccessError("You do not have access to this product.")
+        if schedule_key and product.status != ProductStatus.ACTIVE:
+            raise ScrapeProductIneligibleError("Product is ineligible for scheduled scraping.")
+
+        scope = select(ScrapeRun).where(
+            ScrapeRun.seller_id == seller_id,
+            ScrapeRun.product_id == product_id,
+            ScrapeRun.marketplace == MARKETPLACE_NAME,
+        )
+        active = self._db.execute(
+            scope.where(
+                ScrapeRun.status.in_(("PENDING", "RUNNING")),
+                ScrapeRun.celery_task_id.is_not(None),
+            )
+            .order_by(ScrapeRun.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if active is not None:
+            self._db.commit()
+            return active, product, False
+
+        if scheduled_history is not None:
+            latest_attempt = self._db.scalar(
+                scope.with_only_columns(func.max(func.coalesce(
+                    ScrapeRun.finished_at, ScrapeRun.completed_at, ScrapeRun.started_at, ScrapeRun.created_at,
+                ))).where(ScrapeRun.status.in_(("COMPLETED", "FAILED", "PARTIAL")))
+            )
+            if latest_attempt != scheduled_history[0]:
+                raise ScrapeProductIneligibleError("Scrape history changed during planning.")
+
+        task_id = uuid4()
+        run_key = schedule_key or f"manual:{task_id}:{threshold if threshold is not None else SIMILARITY_THRESHOLD}"
+        if schedule_key:
+            existing = self._db.execute(scope.where(ScrapeRun.run_key == run_key)).scalar_one_or_none()
+            if existing is not None:
+                self._db.commit()
+                return existing, product, False
 
         scrape_run = ScrapeRun(
-            seller_id=seller.id,
+            seller_id=seller_id,
             product_id=product.id,
             marketplace=MARKETPLACE_NAME,
-            run_key=self._default_run_key(seller.id, product.id),
+            run_key=run_key,
             status="PENDING",
+            celery_task_id=str(task_id),
         )
         self._db.add(scrape_run)
         self._db.flush()
-        scrape_run.run_key = f"manual:{scrape_run.id}"
+        try:
+            # The worker takes the same product lock before reading the run.
+            # Publishing within this transaction leaves no committed orphan if admission is interrupted.
+            celery_app.send_task(
+                "scraper.run_manual_scrape",
+                args=[str(product.id), str(seller_id), str(scrape_run.id), threshold],
+                task_id=str(task_id),
+                retry=False,
+            )
+        except BrokerError as exc:
+            logger.error("scrape_enqueue_failed run=%s", scrape_run.id)
+            self.mark_run_failed(scrape_run.id, "SCRAPE_ENQUEUE_FAILED")
+            raise ScrapeEnqueueError("Failed to enqueue scraper task.") from exc
         self._db.commit()
-        self._db.refresh(scrape_run)
-        return scrape_run, product
+        return scrape_run, product, True
+
+    @staticmethod
+    def run_threshold(scrape_run: ScrapeRun) -> float:
+        parts = scrape_run.run_key.split(":")
+        if len(parts) == 3 and parts[0] == "manual":
+            return float(parts[-1])
+        return SIMILARITY_THRESHOLD
 
     def _get_product(self, product_id: UUID) -> Product | None:
         return self._db.get(Product, product_id)
@@ -215,38 +332,17 @@ class ScrapeService:
             raise ScrapeRunNotFoundError("Scrape run not found.")
 
         product = self._db.get(Product, scrape_run.product_id)
-        if not product:
+        if not product or product.seller_id != seller.id:
             raise ScrapeProductNotFoundError("Product not found.")
 
         return scrape_run, product
 
-    def _create_scrape_run(self, seller_id: UUID, product_id: UUID) -> ScrapeRun:
-        scrape_run = ScrapeRun(
-            seller_id=seller_id,
-            product_id=product_id,
-            marketplace=MARKETPLACE_NAME,
-            run_key=self._default_run_key(seller_id, product_id),
-            status="RUNNING",
-            started_at=datetime.now(timezone.utc),
+    def mark_run_failed(self, scrape_run_id: UUID, code: str) -> None:
+        CompetitorSnapshotService(self._db).record_failed_scrape(
+            scrape_run_id=scrape_run_id,
+            reason=public_failure_message(code),
+            failure_code=code,
         )
-        self._db.add(scrape_run)
-        self._db.flush()
-        scrape_run.run_key = f"manual:{scrape_run.id}"
-        self._db.commit()
-        self._db.refresh(scrape_run)
-        return scrape_run
-
-    def _mark_run_failed(self, scrape_run_id: UUID, message: str) -> None:
-        try:
-            CompetitorSnapshotService(self._db).record_failed_scrape(
-                scrape_run_id=scrape_run_id,
-                reason=message,
-            )
-        except InvalidScrapeRunTransitionError:
-            self._db.rollback()
-
-    def mark_run_failed(self, scrape_run_id: UUID, message: str) -> None:
-        self._mark_run_failed(scrape_run_id, message)
 
     @staticmethod
     def _default_run_key(seller_id: UUID, product_id: UUID) -> str:
@@ -257,46 +353,31 @@ class ScrapeService:
         *,
         scrape_run: ScrapeRun,
         product: Product,
-        start: float,
     ) -> ScrapeRunResponse:
-        processing_time = 0.0 if start == 0.0 else round(time.monotonic() - start, 2)
+        found = scrape_run.total_results
+        if found is None:
+            found = scrape_run.discovered_competitor_count
+        found = 0 if found is None else found
+        matched = 0 if scrape_run.successful_matches is None else scrape_run.successful_matches
         return ScrapeRunResponse(
             success=True,
             product_id=product.id,
             product_title=product.title,
             scrape_run_id=scrape_run.id,
-            competitors_found=scrape_run.total_results or scrape_run.discovered_competitor_count or 0,
-            matched_results=scrape_run.successful_matches or 0,
-            filtered_results=max(
-                0,
-                (scrape_run.total_results or scrape_run.discovered_competitor_count or 0)
-                - (scrape_run.successful_matches or 0),
-            ),
-            processing_time_seconds=processing_time,
+            competitors_found=found,
+            matched_results=matched,
+            filtered_results=max(0, found - matched),
+            processing_time_seconds=0.0,
             scraped_at=scrape_run.completed_at or scrape_run.finished_at or scrape_run.created_at,
             competitors=[],
-        )
-
-    @staticmethod
-    def _to_snapshot(item: dict) -> CompetitorSnapshot:
-        return CompetitorSnapshot(
-            competitor_title=item.get("competitor_title") or item.get("product_title") or "",
-            competitor_price=item.get("competitor_price")
-            or item.get("product_price"),
-            competitor_store=item.get("competitor_store") or item.get("store_name"),
-            similarity_score=item.get("similarity_score"),
-            stock_status=item.get("stock_status"),
-            product_url=item.get("product_url") or item.get("daraz_product_url"),
         )
 
     async def _emit_competitor_updated(
         self,
         *,
-        scrape_run: ScrapeRun,
         product: Product,
         competitors: list[Competitor],
-        matched_results: int,
-        marketplace: str,
+        observations: dict[UUID, CompetitorObservation],
         scraped_at: datetime | None,
     ) -> None:
         realtime = self._resolve_realtime()
@@ -305,10 +386,10 @@ class ScrapeService:
         if not competitors:
             return
         primary = self._select_primary_competitor(competitors)
-        if not primary or primary.competitor_price is None:
+        if primary is None or (observed_price := observations[primary.id].price) is None:
             return
         seller_price = float(product.selling_price)
-        competitor_price = float(primary.competitor_price)
+        competitor_price = float(observed_price)
         price_gap = seller_price - competitor_price
         trend = self._resolve_price_trend(primary.id)
         snapshot = RealtimeCompetitorSnapshot(
@@ -318,10 +399,10 @@ class ScrapeService:
             competitor_price=competitor_price,
             seller_price=seller_price,
             price_gap=price_gap,
-            stock_status=primary.stock_status or "in_stock",
+            stock_status=observations[primary.id].stock_status or "unknown",
             urgency_score=_compute_competitor_urgency(
                 price_gap_percent=_compute_price_gap_percent(seller_price, competitor_price),
-                stock_status=primary.stock_status,
+                stock_status=observations[primary.id].stock_status,
             ),
             recommendation_action=_recommendation_action_label(seller_price, competitor_price),
             trend=trend,

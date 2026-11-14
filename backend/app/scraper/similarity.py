@@ -1,23 +1,34 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
+import time
 import unicodedata
-from collections import OrderedDict
+from collections import Counter, OrderedDict
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from threading import RLock
+from typing import TYPE_CHECKING, Any
 
-import torch
-from sentence_transformers import SentenceTransformer, util
+if TYPE_CHECKING:
+    import torch
+    from sentence_transformers import SentenceTransformer
 
 from app.scraper.constants import (
     SIMILARITY_BATCH_SIZE,
     SIMILARITY_DEVICE,
-    SIMILARITY_MIN_RESULTS,
     SIMILARITY_MODEL_NAME,
     SIMILARITY_THRESHOLD,
+    SIMILARITY_POSSIBLE_THRESHOLD,
+    SIMILARITY_VERY_STRONG_THRESHOLD,
+    SIMILARITY_VERIFICATION_FLOOR,
+    SIMILARITY_DIMENSIONS_TOLERANCE,
+    SIMILARITY_MIN_TITLE_EVIDENCE,
+    BASELINE_SIMILARITY_MODEL,
 )
-from app.scraper.exceptions import SimilarityError
+from app.scraper.exceptions import SimilarityError, SimilarityUnavailableError
+from app.scraper.product_identity import compare_identities, identity_from_listing, normalize_identity_text
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +61,6 @@ ACCESSORY_KEYWORDS = [
     "smart cover",
     "dock",
     "mount",
-    "battery",
     "power bank",
     "earbud",
     "earbuds",
@@ -154,6 +164,8 @@ BRAND_ALIASES = {
     "tecno": "tecno",
     "itel": "itel",
     "nokia": "nokia",
+    "dove": "dove",
+    "sony": "sony",
     "google": "google",
     "pixel": "google",
     "lenovo": "lenovo",
@@ -186,7 +198,7 @@ FAMILY_KEYWORDS = {
 CATEGORY_KEYWORDS = {
     "tablet": {"tablet", "ipad", "tab"},
     "phone": {"phone", "iphone", "galaxy", "redmi", "poco", "pixel"},
-    "laptop": {"laptop", "macbook"},
+    "laptop": {"laptop", "macbook", "thinkpad", "notebook"},
 }
 
 BASE_THRESHOLD = SIMILARITY_THRESHOLD
@@ -195,11 +207,11 @@ TITLE_WEIGHT = 0.30
 DESCRIPTION_WEIGHT = 0.25
 ATTRIBUTE_WEIGHT = 0.25
 KEYWORD_WEIGHT = 0.10
-RANKING_WEIGHT = 0.10
 
 # Embedding cache to avoid repeated encoding across scrapes.
-_EMBED_CACHE: OrderedDict[str, torch.Tensor] = OrderedDict()
+_EMBED_CACHE: OrderedDict[tuple[int, str], torch.Tensor] = OrderedDict()
 _EMBED_CACHE_MAX = 2000
+_EMBED_LOCK = RLock()
 
 
 # -----------------------------
@@ -230,12 +242,11 @@ _DIMENSION_PATTERN = re.compile(r"\b(\d+(?:\.\d+)?)\s*(cm|mm|inch|in)\b")
 def normalize_title(title: str) -> str:
     if not title:
         return ""
-    normalized = unicodedata.normalize("NFKC", title)
-    normalized = normalized.lower()
+    normalized = normalize_identity_text(title)
     normalized = normalized.replace("&", " and ")
     normalized = re.sub(r"[\u200b-\u200f]", "", normalized)
     normalized = re.sub(r"[®™©]", "", normalized)
-    normalized = re.sub(r"[^\w\s\.]", " ", normalized)
+    normalized = "".join(char if char.isalnum() or char.isspace() or char == "." or unicodedata.category(char).startswith("M") else " " for char in normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
 
     normalized = normalized.replace("i pad", "ipad")
@@ -268,7 +279,7 @@ def normalize_description(text: str) -> str:
     normalized = normalized.replace("&", " and ")
     normalized = re.sub(r"[\u200b-\u200f]", "", normalized)
     normalized = re.sub(r"[®™©]", "", normalized)
-    normalized = re.sub(r"[^\w\s\.]", " ", normalized)
+    normalized = "".join(char if char.isalnum() or char.isspace() or char == "." or unicodedata.category(char).startswith("M") else " " for char in normalized)
     normalized = _NOISE_PATTERN.sub(" ", normalized)
     return re.sub(r"\s+", " ", normalized).strip()
 
@@ -344,17 +355,22 @@ def _build_description_text(
     normalized_description = normalize_description(description or "")
     if len(normalized_description.split()) < 8:
         return build_searchable_text(title, normalized_description, category, attributes)
-    return normalized_description
+    return build_searchable_text("", normalized_description, category, attributes)
+
+
+def _identity_title(title: str) -> str:
+    # Included accessories must not supply the primary product's identity.
+    return re.split(r"\bwith\b", title, maxsplit=1, flags=re.I)[0]
 
 
 def is_accessory_product(title: str, description: str | None = None) -> bool:
     combined = " ".join([title or "", description or ""]).strip()
-    normalized = normalize_title(combined)
+    normalized = normalize_title(_identity_title(combined))
     return bool(_ACCESSORY_PATTERN.search(normalized))
 
 
 def _tokenize(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", text)
+    return [word.strip(".") for word in text.split() if word.strip(".")]
 
 
 def _important_tokens(text: str) -> set[str]:
@@ -411,7 +427,7 @@ def extract_key_entities(
             continue
         if re.match(r"^\d+gb$", token):
             continue
-        if re.match(r"^[a-z]{1,4}\d{1,4}[a-z]{0,2}$", token):
+        if re.fullmatch(r"[a-z]{1,5}\d{1,6}[a-z0-9]{0,5}", token):
             model_tokens.append(token)
 
     variant_tokens = {token for token in tokens if token in VARIANT_TOKENS}
@@ -433,10 +449,10 @@ def extract_key_entities(
 
 
 def _infer_category(text: str) -> str | None:
+    words = set(_tokenize(text))
     for category, keywords in CATEGORY_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in text:
-                return category
+        if words & keywords:
+            return category
     return None
 
 
@@ -517,9 +533,6 @@ def _attribute_similarity(
         if value == competitor_value:
             matched += 1
             matched_keys.append(key)
-        elif value in competitor_value or competitor_value in value:
-            matched += 0.5
-            matched_keys.append(key)
 
     if total == 0:
         return 0.0, []
@@ -527,71 +540,51 @@ def _attribute_similarity(
     return min(1.0, matched / total), matched_keys
 
 
-def _passes_required_overlap(
-    seller_entities: dict[str, Any], competitor_entities: dict[str, Any]
-) -> bool:
-    if seller_entities["brand"] and competitor_entities["brand"]:
-        if seller_entities["brand"] != competitor_entities["brand"]:
-            return False
+def _has_title_conflict(seller_entities: dict[str, Any], competitor_entities: dict[str, Any]) -> bool:
+    # Explicit identifiers in listing titles take precedence over semantic resemblance.
+    seller_title_tokens = seller_entities["title_tokens"]
+    competitor_title_tokens = competitor_entities["title_tokens"]
+    patterns = [r"gen\d+"]
+    if _infer_category(seller_entities["normalized_title"]) or _infer_category(competitor_entities["normalized_title"]):
+        patterns.extend((r"\d+gb", r"ram\d+gb"))
+    for pattern in patterns:
+        seller_values = {token for token in seller_title_tokens if re.fullmatch(pattern, token)}
+        competitor_values = {token for token in competitor_title_tokens if re.fullmatch(pattern, token)}
+        if seller_values and competitor_values and seller_values.isdisjoint(competitor_values):
+            return True
+    seller_models = seller_title_tokens & seller_entities["model_tokens"]
+    competitor_models = competitor_title_tokens & competitor_entities["model_tokens"]
+    if seller_models and competitor_models and seller_models.isdisjoint(competitor_models):
+        return True
 
-    seller_family = seller_entities["family_tokens"]
-    competitor_family = competitor_entities["family_tokens"]
-    if seller_family and not (seller_family & competitor_family):
-        seller_category = _infer_category(seller_entities["normalized_title"])
-        competitor_category = _infer_category(competitor_entities["normalized_title"])
-        brand_match = (
-            seller_entities["brand"]
-            and competitor_entities["brand"]
-            and seller_entities["brand"] == competitor_entities["brand"]
-        )
-        category_match = (
-            seller_category and competitor_category and seller_category == competitor_category
-        )
-        if not (brand_match and category_match):
-            return False
-
-    if seller_entities["model_tokens"]:
-        if not (seller_entities["model_tokens"] & competitor_entities["model_tokens"]):
-            if not (seller_family and (seller_family & competitor_family)):
-                return False
-
-    seller_variants = seller_entities.get("variant_tokens", set())
-    competitor_variants = competitor_entities.get("variant_tokens", set())
-    if seller_variants or competitor_variants:
-        if not seller_variants or not competitor_variants:
-            return False
-        if not (seller_variants & competitor_variants):
-            return False
-
-    return True
+    return False
 
 
-def _adjust_threshold(
-    base_threshold: float,
-    keyword_score: float,
-    attribute_score: float,
-    title_similarity: float,
-    seller_entities: dict[str, Any],
-    competitor_entities: dict[str, Any],
-) -> float:
-    adjustment = 0.0
-    if keyword_score < 0.2:
-        adjustment += 0.1
-    if keyword_score >= 0.8:
-        adjustment -= 0.1
+def is_obviously_unrelated(seller_title: str, candidate_title: str) -> bool:
+    if not is_accessory_product(seller_title) and is_accessory_product(candidate_title):
+        return True
+    seller = extract_key_entities(_identity_title(seller_title))
+    candidate = extract_key_entities(_identity_title(candidate_title))
+    if seller["brand"] and candidate["brand"] and seller["brand"] != candidate["brand"]:
+        return True
+    return _has_title_conflict(seller, candidate) or _variant_conflict(seller, candidate)
 
-    if attribute_score >= 0.7:
-        adjustment -= 0.05
 
-    if title_similarity >= 0.8:
-        adjustment -= 0.05
+def _variant_conflict(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    for pattern in (r"\biphone (\d+)\b", r"\b(?:galaxy )?(s\d+|a\d+)\b", r"\b(?:redmi )?note (\d+)\b", r"\bpixel (\d+)\b"):
+        first = re.search(pattern, left["normalized_title"])
+        second = re.search(pattern, right["normalized_title"])
+        if first and second and first[1] != second[1]:
+            return True
+    left_variants = left["title_tokens"] & VARIANT_TOKENS
+    right_variants = right["title_tokens"] & VARIANT_TOKENS
+    return bool(left["family_tokens"] & right["family_tokens"] and left_variants != right_variants)
 
-    if seller_entities["model_tokens"] and not (
-        seller_entities["model_tokens"] & competitor_entities["model_tokens"]
-    ):
-        adjustment += 0.1
 
-    return max(0.5, min(0.95, base_threshold + adjustment))
+def _brand_identity(explicit: str | None, inferred: str | None) -> str | None:
+    if not explicit:
+        return inferred
+    return BRAND_ALIASES.get(explicit, explicit.removesuffix(" inc.").removesuffix(" electronics"))
 
 
 # -----------------------------
@@ -599,26 +592,55 @@ def _adjust_threshold(
 # -----------------------------
 
 
+def _load_model(name: str, device: str) -> SentenceTransformer:
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer(name, device=device, local_files_only=True)
+    model.eval()
+    model._bazarsync_model_name = name
+    return model
+
+
 @lru_cache(maxsize=1)
 def _get_model() -> SentenceTransformer:
-    device = SIMILARITY_DEVICE.strip().lower()
-    if device == "auto":
-        if torch.cuda.is_available():
-            device = "cuda"
-        elif torch.backends.mps.is_available():
-            device = "mps"
-        else:
-            device = "cpu"
+    start = time.monotonic()
     try:
-        model = SentenceTransformer(SIMILARITY_MODEL_NAME, device=device)
-        logger.info("Similarity model loaded on %s.", device)
-        return model
+        import torch
+
+        device = SIMILARITY_DEVICE.strip().lower()
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+        target = torch.device(device)
+        if (target.type == "cuda" and (
+            not torch.cuda.is_available() or (target.index is not None and target.index >= torch.cuda.device_count())
+        )) or (target.type == "mps" and not torch.backends.mps.is_available()):
+            logger.warning("similarity_device_unavailable requested=%s fallback=cpu", device)
+            device = "cpu"
+        try:
+            model = _load_model(SIMILARITY_MODEL_NAME, device)
+        except Exception:
+            if device == "cpu":
+                raise
+            logger.warning("similarity_device_load_failed device=%s fallback=cpu", device, exc_info=True)
+            model = _load_model(SIMILARITY_MODEL_NAME, "cpu")
     except Exception as exc:
-        logger.exception("Failed to load similarity model %s.", SIMILARITY_MODEL_NAME)
-        raise SimilarityError("Failed to load similarity model.") from exc
+        if SIMILARITY_MODEL_NAME == BASELINE_SIMILARITY_MODEL:
+            raise SimilarityUnavailableError("Failed to load similarity model from local files.") from exc
+        logger.warning("similarity_model_unavailable model=%s fallback=%s", SIMILARITY_MODEL_NAME, BASELINE_SIMILARITY_MODEL, exc_info=True)
+        try:
+            model = _load_model(BASELINE_SIMILARITY_MODEL, "cpu")
+        except Exception as fallback_error:
+            raise SimilarityUnavailableError("Configured and baseline similarity models are unavailable.") from fallback_error
+
+    logger.info(
+        "similarity_model_loaded model=%s device=%s load_ms=%.1f parameter_bytes=%s",
+        model._bazarsync_model_name, model.device, (time.monotonic() - start) * 1000,
+        sum(parameter.numel() * parameter.element_size() for parameter in model.parameters()),
+    )
+    return model
 
 
-def _cache_embedding(text: str, embedding: torch.Tensor) -> None:
+def _cache_embedding(text: tuple[int, str], embedding: torch.Tensor) -> None:
     if text in _EMBED_CACHE:
         _EMBED_CACHE.move_to_end(text)
         return
@@ -631,10 +653,20 @@ def _embed_texts(texts: list[str]) -> torch.Tensor:
     if not texts:
         raise SimilarityError("No texts provided for embedding.")
 
+    with _EMBED_LOCK:
+        return _embed_texts_locked(texts)
+
+
+def _embed_texts_locked(texts: list[str]) -> torch.Tensor:
     model = _get_model()
+    import torch
+
+    model_name = getattr(model, "_bazarsync_model_name", SIMILARITY_MODEL_NAME)
+    prefix = "query: " if str(model_name).startswith("intfloat/multilingual-e5") else ""
+    texts = [prefix + text for text in texts]
     unique_texts = list(dict.fromkeys(texts))
     cached_embeddings: list[torch.Tensor | None] = [
-        _EMBED_CACHE.get(text) for text in unique_texts
+        _EMBED_CACHE.get((id(model), text)) for text in unique_texts
     ]
     to_encode = [
         text for text, cached in zip(unique_texts, cached_embeddings) if cached is None
@@ -646,6 +678,7 @@ def _embed_texts(texts: list[str]) -> torch.Tensor:
     }
 
     if to_encode:
+        start = time.monotonic()
         try:
             with torch.inference_mode():
                 new_embeddings = model.encode(
@@ -659,9 +692,19 @@ def _embed_texts(texts: list[str]) -> torch.Tensor:
             logger.exception("Failed to encode similarity texts.")
             raise SimilarityError("Failed to encode texts for similarity.") from exc
 
+        if new_embeddings.ndim != 2 or len(new_embeddings) != len(to_encode):
+            raise SimilarityError("Similarity model returned an invalid embedding shape.")
+        if not torch.isfinite(new_embeddings).all() or (new_embeddings.norm(dim=1) == 0).any():
+            raise SimilarityError("Similarity model returned an invalid embedding.")
+
         for text, embedding in zip(to_encode, new_embeddings):
+            embedding = embedding.detach().to("cpu", copy=True)
             local_embeddings[text] = embedding
-            _cache_embedding(text, embedding)
+            _cache_embedding((id(model), text), embedding)
+        logger.debug(
+            "similarity_inference texts=%s elapsed_ms=%.1f cached_embeddings=%s",
+            len(to_encode), (time.monotonic() - start) * 1000, len(_EMBED_CACHE),
+        )
 
     resolved_embeddings = torch.stack([local_embeddings[text] for text in texts])
     return resolved_embeddings
@@ -679,11 +722,19 @@ def compute_similarity(a: str, b: str) -> float:
         return 0.0
     try:
         embeddings = _embed_texts([normalized_a, normalized_b])
-        score = float(util.cos_sim(embeddings[0], embeddings[1]).item())
-        return max(0.0, min(1.0, score))
-    except SimilarityError as exc:
-        logger.warning("Similarity computation failed: %s", exc)
-        return 0.0
+        from sentence_transformers import util
+
+        return _bounded_score(float(util.cos_sim(embeddings[0], embeddings[1]).item()))
+    except SimilarityError:
+        raise
+    except Exception as exc:
+        raise SimilarityError("Failed to compute similarity.") from exc
+
+
+def _bounded_score(score: float) -> float:
+    if not math.isfinite(score):
+        raise SimilarityError("Similarity model returned a non-finite score.")
+    return max(0.0, min(1.0, score))
 
 
 def filter_valid_competitors(
@@ -712,228 +763,165 @@ def filter_similar_products(
     seller_category: str | None = None,
     seller_specifications: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """
-    Multi-stage competitor matching pipeline:
-    1) Preprocessing
-    2) Accessory filtering
-    3) Category validation
-    4) Attribute extraction
-    5) Semantic similarity
-    6) Ranking score combination
-    7) Confidence scoring
-    """
-    if not seller_title:
+    return [
+        record for record in evaluate_competitor_matches(
+            seller_title, competitors, threshold, seller_description, seller_category, seller_specifications,
+        )
+        if record["match_classification"] in {"VERY_STRONG", "STRONG"}
+    ]
+
+
+@dataclass(frozen=True)
+class _MatchCandidate:
+    listing: dict[str, Any]
+    exact_identity: bool
+    keyword: float
+    has_comparable_attributes: bool
+    attribute: float
+    matched_attributes: list[str]
+    category_match: bool | None
+    description: str
+
+
+def evaluate_competitor_matches(
+    seller_title: str,
+    competitors: list[dict[str, Any]],
+    threshold: float = BASE_THRESHOLD,
+    seller_description: str | None = None,
+    seller_category: str | None = None,
+    seller_specifications: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return internal evidence for compatible candidates, including exploratory scores."""
+    if not 0 <= threshold <= 1:
+        raise ValueError("Similarity threshold must be between zero and one.")
+    if not normalize_title(seller_title):
         return []
+    threshold = max(threshold, SIMILARITY_VERIFICATION_FLOOR)
 
-    seller_entities = extract_key_entities(
-        seller_title,
-        description=seller_description,
-        specifications=seller_specifications,
+    seller_identity = identity_from_listing(seller_title, seller_specifications)
+    seller_accessory = bool(seller_identity.accessory) or is_accessory_product(seller_title)
+    seller_entities = extract_key_entities(seller_title, specifications=seller_specifications)
+    seller_title_entities = extract_key_entities(_identity_title(seller_title))
+    seller_brand = _brand_identity(seller_identity.brand, seller_title_entities["brand"])
+    seller_desc = _build_description_text(
+        seller_entities["normalized_title"], seller_description, seller_category, seller_entities["normalized_attributes"],
     )
-    seller_is_accessory = is_accessory_product(seller_title, seller_description)
-
-    candidates: list[dict[str, Any]] = []
-    candidate_metadata: list[dict[str, Any]] = []
-    title_texts: list[str] = [_truncate_text(seller_entities["normalized_title"])]
-    seller_desc_text = _build_description_text(
-        seller_entities["normalized_title"],
-        seller_description,
-        seller_category,
-        seller_specifications,
-    )
-    description_texts: list[str] = [seller_desc_text]
+    title_texts = [_truncate_text(seller_entities["normalized_title"])]
+    description_texts = [_truncate_text(seller_desc)]
+    candidates: list[_MatchCandidate] = []
+    rejected: Counter[str] = Counter()
 
     for competitor in competitors or []:
         if not isinstance(competitor, dict):
             continue
-        raw_title = (
-            competitor.get("product_title")
-            or competitor.get("competitor_title")
-            or competitor.get("title")
-            or ""
+        title = competitor.get("product_title") or competitor.get("competitor_title") or competitor.get("title")
+        if not isinstance(title, str) or not normalize_title(title):
+            continue
+        attributes = competitor.get("product_attributes") or competitor.get("competitor_attributes")
+        category = competitor.get("product_category") or competitor.get("competitor_category")
+        description = competitor.get("product_description") or competitor.get("competitor_description")
+        brand = competitor.get("product_brand") or competitor.get("competitor_brand")
+        identity = identity_from_listing(title, attributes, brand)
+        title_entities = extract_key_entities(_identity_title(title))
+        candidate_accessory = bool(identity.accessory) or is_accessory_product(title)
+        candidate_brand = _brand_identity(identity.brand, title_entities["brand"])
+        evidence = compare_identities(
+            seller_identity, identity, context=f"{seller_category or ''} {category or ''} {seller_title} {title}",
+            seller_brand=seller_brand, candidate_brand=candidate_brand,
+            dimensions_tolerance=SIMILARITY_DIMENSIONS_TOLERANCE,
         )
-        raw_description = competitor.get("product_description") or competitor.get(
-            "competitor_description"
+        seller_family, candidate_family = seller_title_entities["family_tokens"], title_entities["family_tokens"]
+        family_conflict = bool(
+            seller_brand and seller_brand == candidate_brand and seller_family
+            and candidate_family and seller_family.isdisjoint(candidate_family)
         )
-        raw_category = competitor.get("product_category") or competitor.get(
-            "competitor_category"
-        )
-        raw_attributes = competitor.get("product_attributes") or competitor.get(
-            "competitor_attributes"
-        )
-
-        if not raw_title:
+        seller_type = _infer_category(seller_title_entities["normalized_title"])
+        candidate_type = _infer_category(title_entities["normalized_title"])
+        type_conflict = seller_type and candidate_type and seller_type != candidate_type
+        reason = evidence.conflict
+        if not reason:
+            if family_conflict or type_conflict:
+                reason = "product_family"
+            elif seller_accessory != candidate_accessory:
+                reason = "accessory"
+            elif _has_title_conflict(seller_title_entities, title_entities) or _variant_conflict(seller_title_entities, title_entities):
+                reason = "title_identity"
+        if reason:
+            rejected[reason] += 1
             continue
 
-        if not seller_is_accessory and is_accessory_product(raw_title, raw_description):
-            continue
-
-        competitor_entities = extract_key_entities(
-            raw_title, description=raw_description, specifications=raw_attributes
-        )
-
-        if not _passes_required_overlap(seller_entities, competitor_entities):
-            continue
-
-        keyword_score = _keyword_overlap_score(seller_entities, competitor_entities)
-        attribute_score, matched_attributes = _attribute_similarity(
-            seller_entities["normalized_attributes"],
-            competitor_entities["normalized_attributes"],
+        entities = extract_key_entities(title, specifications=attributes)
+        keyword = _keyword_overlap_score(seller_entities, entities)
+        comparable = seller_entities["normalized_attributes"].keys() & entities["normalized_attributes"].keys()
+        attribute, matched_attributes = _attribute_similarity(
+            seller_entities["normalized_attributes"], entities["normalized_attributes"],
         )
         category_match = None
-        if seller_category and raw_category:
-            category_match = seller_category.lower() == str(raw_category).lower()
+        if seller_category and category:
+            category_match = normalize_description(seller_category) == normalize_description(category)
+        desc = _build_description_text(entities["normalized_title"], description, category, entities["normalized_attributes"])
+        candidates.append(_MatchCandidate(
+            competitor, evidence.exact, keyword, bool(comparable), attribute, matched_attributes, category_match, desc,
+        ))
+        title_texts.append(_truncate_text(entities["normalized_title"]))
+        description_texts.append(_truncate_text(desc))
 
-        candidates.append(competitor)
-        candidate_metadata.append(
-            {
-                "entities": competitor_entities,
-                "keyword_score": keyword_score,
-                "attribute_score": attribute_score,
-                "matched_attributes": matched_attributes,
-                "category_match": category_match,
-                "description_text": _build_description_text(
-                    competitor_entities["normalized_title"],
-                    raw_description,
-                    raw_category,
-                    raw_attributes,
-                ),
-            }
-        )
-
-        title_texts.append(_truncate_text(competitor_entities["normalized_title"]))
-        description_texts.append(candidate_metadata[-1]["description_text"])
-
+    if rejected:
+        logger.debug("similarity_identity_rejections counts=%s", dict(rejected))
     if not candidates:
         return []
 
     try:
+        from sentence_transformers import util
+
         title_embeddings = _embed_texts(title_texts)
-        seller_title_embedding = title_embeddings[0]
-        competitor_title_embeddings = title_embeddings[1:]
-        title_similarities = util.cos_sim(
-            competitor_title_embeddings, seller_title_embedding
-        ).squeeze(1)
+        title_scores = util.cos_sim(title_embeddings[1:], title_embeddings[0]).flatten().tolist()
+        detail_embeddings = _embed_texts(description_texts)
+        detail_scores = util.cos_sim(detail_embeddings[1:], detail_embeddings[0]).flatten().tolist()
+    except SimilarityError:
+        raise
+    except Exception as exc:
+        raise SimilarityError("Failed to score competitor embeddings.") from exc
 
-        if seller_desc_text:
-            description_embeddings = _embed_texts(
-                [_truncate_text(text) for text in description_texts]
-            )
-            seller_desc_embedding = description_embeddings[0]
-            competitor_desc_embeddings = description_embeddings[1:]
-            description_similarities = util.cos_sim(
-                competitor_desc_embeddings, seller_desc_embedding
-            ).squeeze(1)
-        else:
-            description_similarities = torch.zeros(len(candidates))
-    except SimilarityError as exc:
-        logger.warning("Similarity filtering failed: %s", exc)
-        return []
-
-    results: list[dict[str, Any]] = []
-    scored_results: list[dict[str, Any]] = []
-    for competitor, title_score_tensor, desc_score_tensor, metadata in zip(
-        candidates, title_similarities, description_similarities, candidate_metadata
-    ):
-        title_similarity = max(0.0, min(1.0, float(title_score_tensor.item())))
-        description_similarity = max(0.0, min(1.0, float(desc_score_tensor.item())))
-        desc_token_score = _token_overlap_score(
-            _important_tokens(seller_desc_text),
-            _important_tokens(metadata["description_text"]),
-        )
-        description_similarity = max(description_similarity, desc_token_score)
-        keyword_score = metadata["keyword_score"]
-        attribute_score = metadata["attribute_score"]
-        ranking_score = float(competitor.get("ranking_score") or 0.0)
-        category_match = metadata["category_match"]
-
+    results = []
+    for candidate, title, detail in zip(candidates, title_scores, detail_scores, strict=True):
+        title = _bounded_score(title)
+        detail = max(_bounded_score(detail), _token_overlap_score(_important_tokens(seller_desc), _important_tokens(candidate.description)))
         title_weight = TITLE_WEIGHT
-        description_weight = DESCRIPTION_WEIGHT
-        attribute_weight = ATTRIBUTE_WEIGHT
         keyword_weight = KEYWORD_WEIGHT
-        ranking_weight = RANKING_WEIGHT
-
-        if not seller_desc_text or not metadata["description_text"]:
-            title_weight += description_weight
-            description_weight = 0.0
-
-        if not seller_entities["normalized_attributes"] or not metadata["entities"]["normalized_attributes"]:
+        attribute_weight = ATTRIBUTE_WEIGHT
+        if not candidate.has_comparable_attributes:
             title_weight += attribute_weight * 0.6
             keyword_weight += attribute_weight * 0.4
             attribute_weight = 0.0
 
-        final_score = (
-            title_similarity * title_weight
-            + description_similarity * description_weight
-            + attribute_score * attribute_weight
-            + keyword_score * keyword_weight
-            + ranking_score * ranking_weight
-        )
+        score = _bounded_score((
+            title * title_weight + detail * DESCRIPTION_WEIGHT
+            + candidate.keyword * keyword_weight + candidate.attribute * attribute_weight
+        ) / (TITLE_WEIGHT + DESCRIPTION_WEIGHT + KEYWORD_WEIGHT + ATTRIBUTE_WEIGHT))
+        if candidate.exact_identity:
+            score = 1.0
 
-        if category_match is False:
-            final_score *= 0.85
-        final_score = max(0.0, min(1.0, final_score))
-
-        adjusted_threshold = _adjust_threshold(
-            threshold,
-            keyword_score,
-            attribute_score,
-            title_similarity,
-            seller_entities,
-            metadata["entities"],
-        )
-
-        record = {
-            **competitor,
-            "similarity_score": final_score,
-            "title_similarity": title_similarity,
-            "description_similarity": description_similarity,
-            "attribute_similarity": attribute_score,
-            "keyword_score": keyword_score,
-            "ranking_score": ranking_score,
-            "match_confidence": final_score,
-            "category_match": category_match,
-            "matched_attributes": metadata["matched_attributes"],
-        }
-        scored_results.append(record)
-
-        if final_score >= adjusted_threshold:
-            results.append(record)
-
-    if SIMILARITY_MIN_RESULTS > 0 and len(results) < SIMILARITY_MIN_RESULTS:
-        ranked = sorted(
-            scored_results,
-            key=lambda item: item.get("similarity_score", 0.0),
-            reverse=True,
-        )
-        selected_ids = {id(item) for item in results}
-        for item in ranked:
-            if id(item) in selected_ids:
-                continue
-            results.append(item)
-            selected_ids.add(id(item))
-            if len(results) >= SIMILARITY_MIN_RESULTS:
-                break
-
+        title_gate = candidate.exact_identity or title >= SIMILARITY_MIN_TITLE_EVIDENCE
+        if title_gate and score >= threshold:
+            classification = "VERY_STRONG" if score >= SIMILARITY_VERY_STRONG_THRESHOLD else "STRONG"
+        elif score >= SIMILARITY_POSSIBLE_THRESHOLD:
+            classification = "POSSIBLE"
+        else:
+            classification = "NOT_VERIFIED"
+        results.append({
+            **candidate.listing,
+            "similarity_score": score,
+            "title_similarity": title,
+            "description_similarity": detail,
+            "attribute_similarity": candidate.attribute,
+            "keyword_score": candidate.keyword,
+            "ranking_score": float(candidate.listing.get("ranking_score") or 0.0),
+            "match_confidence": score,
+            "category_match": candidate.category_match,
+            "matched_attributes": candidate.matched_attributes,
+            "match_classification": classification,
+            "exact_identity": candidate.exact_identity,
+            "title_gate": title_gate,
+        })
     return results
-
-
-# -----------------------------
-# Example usage
-# -----------------------------
-#
-# seller = "Apple iPad 11th Gen WiFi 128GB"
-# seller_description = "11th Gen iPad with 128GB storage, WiFi, Silver."
-# seller_specs = {"storage": "128GB", "color": "Silver", "ram": "4GB"}
-# candidates = [
-#     {"product_title": "iPad 11th Gen Silicone Cover"},
-#     {"product_title": "Apple iPad 11th Gen WiFi 128GB", "product_attributes": {"storage": "128GB"}},
-#     {"product_title": "iPad 10th Gen 64GB"},
-# ]
-# matches = filter_similar_products(
-#     seller,
-#     candidates,
-#     threshold=0.65,
-#     seller_description=seller_description,
-#     seller_specifications=seller_specs,
-# )

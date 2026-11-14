@@ -3,20 +3,17 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.dependencies.auth import get_current_seller
 from app.dependencies.db import get_db
 from app.models.seller import Seller
-from app.scraper.exceptions import ScraperError
-from app.scraper.schemas import ScrapeResponse
-from app.scraper.services.competitor_service import scrape_daraz_competitors
-from app.core.celery_app import celery_app
+from app.scraper.exceptions import public_failure_message
 from app.scraper.constants import SIMILARITY_THRESHOLD
 from app.schemas.scrape import ScrapeRunDetailResponse, ScrapeRunStatusResponse, ScrapeTaskResponse
 from app.services.scrape_service import (
     ProductAccessError,
+    ScrapeEnqueueError,
     ScrapeProductNotFoundError,
     ScrapeRunNotFoundError,
     ScrapeService,
@@ -25,25 +22,16 @@ from app.services.scrape_service import (
 router = APIRouter(prefix="/scraper", tags=["scraper"])
 
 
-class DarazScrapeRequest(BaseModel):
-    product_title: str = Field(..., min_length=2, max_length=200)
-
-
-@router.post("/daraz", response_model=ScrapeResponse)
-async def scrape_daraz(payload: DarazScrapeRequest) -> ScrapeResponse:
-    try:
-        return await scrape_daraz_competitors(
-            product_title=payload.product_title,
-        )
-    except ScraperError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
+@router.post("/daraz", deprecated=True, status_code=status.HTTP_410_GONE)
+def scrape_daraz() -> None:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Use POST /api/v1/scraper/run/{product_id} with an authenticated seller account.",
+    )
 
 
 @router.post("/run/{product_id}", response_model=ScrapeTaskResponse, status_code=status.HTTP_202_ACCEPTED)
-async def run_scrape(
+def run_scrape(
     product_id: UUID = Path(..., description="Seller product ID"),
     threshold: float = Query(SIMILARITY_THRESHOLD, ge=0, le=1, description="Similarity threshold"),
     db: Session = Depends(get_db),
@@ -51,32 +39,25 @@ async def run_scrape(
 ) -> ScrapeTaskResponse:
     service = ScrapeService(db)
     try:
-        scrape_run, product = service.create_pending_run(
-            seller=current_seller,
+        scrape_run, product, _ = service.enqueue_scrape(
+            seller_id=current_seller.id,
             product_id=product_id,
+            threshold=threshold,
         )
-        try:
-            task = celery_app.send_task(
-                "scraper.run_manual_scrape",
-                args=[str(product.id), str(current_seller.id), str(scrape_run.id), threshold],
-            )
-            scrape_run.celery_task_id = task.id
-            db.commit()
-            return ScrapeTaskResponse(
-                success=True,
-                task_id=task.id,
-                scrape_run_id=scrape_run.id,
-                product_id=product.id,
-                product_title=product.title,
-                threshold=threshold,
-                status="queued",
-            )
-        except Exception as exc:
-            service.mark_run_failed(scrape_run.id, str(exc))
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Failed to enqueue scraper task.",
-            ) from exc
+        return ScrapeTaskResponse(
+            success=True,
+            task_id=scrape_run.celery_task_id,
+            scrape_run_id=scrape_run.id,
+            product_id=product.id,
+            product_title=product.title,
+            threshold=service.run_threshold(scrape_run),
+            status="queued",
+        )
+    except ScrapeEnqueueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to enqueue scraper task.",
+        ) from exc
     except ScrapeProductNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ProductAccessError as exc:
@@ -109,7 +90,8 @@ def get_scrape_run_status(
         finished_at=scrape_run.finished_at,
         total_results=scrape_run.total_results,
         successful_matches=scrape_run.successful_matches,
-        error_message=scrape_run.error_message,
+        error_message=public_failure_message(scrape_run.failure_code)
+        if scrape_run.status == "FAILED" else None,
     )
 
 

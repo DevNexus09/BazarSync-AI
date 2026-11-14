@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -26,24 +26,18 @@ from app.scraper.constants import (
 from app.scraper.exceptions import BrowserError
 
 logger = logging.getLogger(__name__)
+_CLOSE_TIMEOUT_SECONDS = 10
 
 
 class BrowserManager:
-    """
-    Production-safe Playwright browser manager for Celery workers.
-
-    Key design:
-    - No global singleton (Celery-safe)
-    - One browser per worker process
-    - Safe async lifecycle handling
-    """
+    """Own Playwright and an optional Chromium process for one scrape and loop."""
 
     def __init__(self, config: BrowserConfig | None = None) -> None:
         self._config = config or BrowserConfig()
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._browser_lock = asyncio.Lock()
-        self._initialized_pid: int | None = None
+        self._owner: tuple[int, asyncio.AbstractEventLoop] | None = None
 
     def _chromium_launch_args(self) -> list[str]:
         return [
@@ -51,7 +45,6 @@ class BrowserManager:
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
-            "--disable-blink-features=AutomationControlled",
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-extensions",
@@ -64,65 +57,60 @@ class BrowserManager:
             "--js-flags=--max-old-space-size=128",
         ]
 
-    # -----------------------------
-    # Browser lifecycle
-    # -----------------------------
-    async def _ensure_browser(self) -> None:
-        async with self._browser_lock:
-            current_pid = os.getpid()
+    def _check_owner(self) -> None:
+        owner = (os.getpid(), asyncio.get_running_loop())
+        if self._owner is None:
+            self._owner = owner
+        elif owner != self._owner:
+            raise BrowserError("Playwright cannot be reused across processes or event loops.")
 
-            if self._initialized_pid is not None and self._initialized_pid != current_pid:
-                if self._browser:
-                    try:
-                        await self._browser.close()
-                    except Error as exc:
-                        logger.warning("Failed to close forked browser: %s", exc)
-                    self._browser = None
-
-                if self._playwright:
-                    try:
-                        await self._playwright.stop()
-                    except Error as exc:
-                        logger.warning("Failed to stop Playwright after fork: %s", exc)
-                    self._playwright = None
-
-                self._initialized_pid = None
-
-            # Reuse healthy browser
-            if self._browser and self._browser.is_connected():
-                self._initialized_pid = current_pid
-                return
-
-            # Cleanup stale browser
-            if self._browser:
+    async def _start_playwright(self) -> Playwright:
+        # The caller holds the lifecycle lock.
+        if self._playwright is None:
+            start = time.monotonic()
+            startup = asyncio.create_task(async_playwright().start())
+            try:
+                self._playwright = await asyncio.shield(startup)
+            except asyncio.CancelledError:
+                # Keep ownership of a driver that is already starting so close() can stop it.
                 try:
-                    await self._browser.close()
-                except Error as exc:
-                    logger.warning("Failed to close stale browser: %s", exc)
+                    self._playwright = await asyncio.wait_for(startup, timeout=10)
+                except Exception:
+                    logger.warning("daraz_playwright_start_cancelled_cleanup_failed", exc_info=True)
+                raise
+            except Exception as exc:
+                raise BrowserError("Playwright initialization failed") from exc
+            logger.info("daraz_playwright_started pid=%s elapsed_ms=%.1f", os.getpid(), (time.monotonic() - start) * 1000)
+        return self._playwright
+
+    async def _ensure_browser(self) -> Browser:
+        self._check_owner()
+        async with self._browser_lock:
+            if self._browser and self._browser.is_connected():
+                return self._browser
+
+            if self._browser:
+                logger.warning("daraz_chromium_disconnected pid=%s", os.getpid())
+                try:
+                    async with asyncio.timeout(_CLOSE_TIMEOUT_SECONDS):
+                        await self._browser.close()
+                except (Error, TimeoutError):
+                    logger.warning("daraz_chromium_stale_close_failed", exc_info=True)
                 self._browser = None
 
-            # Start Playwright once per process
-            if self._playwright is None:
-                try:
-                    self._playwright = await async_playwright().start()
-                except Exception as exc:
-                    logger.exception("Failed to start Playwright runtime")
-                    raise BrowserError("Playwright initialization failed") from exc
-
-            # Launch Chromium (IMPORTANT: no executable_path)
+            playwright = await self._start_playwright()
+            start = time.monotonic()
             try:
-                launch_options: dict[str, object] = {
-                    "headless": self._config.headless,
-                    "args": self._chromium_launch_args(),
-                }
-                if self._config.proxy:
-                    launch_options["proxy"] = self._config.proxy
-
-                self._browser = await self._playwright.chromium.launch(**launch_options)
-                self._initialized_pid = current_pid
+                self._browser = await playwright.chromium.launch(
+                    headless=self._config.headless,
+                    args=self._chromium_launch_args(),
+                    proxy=self._config.proxy,
+                    timeout=self._config.navigation_timeout_ms,
+                )
             except Error as exc:
-                logger.exception("Failed to launch Playwright browser")
                 raise BrowserError("Failed to launch Playwright browser") from exc
+            logger.info("daraz_chromium_started pid=%s elapsed_ms=%.1f", os.getpid(), (time.monotonic() - start) * 1000)
+            return self._browser
 
     # -----------------------------
     # Browser Context (scraping)
@@ -133,18 +121,15 @@ class BrowserManager:
         user_agent: str,
         extra_headers: dict[str, str] | None = None,
     ) -> BrowserContext:
-        await self._ensure_browser()
-
-        if not self._browser:
-            raise BrowserError("Browser is unavailable")
-
-        context = await self._browser.new_context(
+        browser = await self._ensure_browser()
+        context = await browser.new_context(
             user_agent=user_agent,
             viewport=DEFAULT_VIEWPORT,
             locale=LOCALE,
             timezone_id=TIMEZONE_ID,
             extra_http_headers=extra_headers,
             java_script_enabled=True,
+            service_workers="block",
         )
 
         context.set_default_timeout(self._config.timeout_ms)
@@ -162,23 +147,25 @@ class BrowserManager:
         user_agent: str,
         extra_headers: dict[str, str] | None = None,
     ) -> AsyncIterator[APIRequestContext]:
-        await self._ensure_browser()
+        self._check_owner()
+        async with self._browser_lock:
+            playwright = await self._start_playwright()
 
-        if not self._playwright:
-            raise BrowserError("Playwright not initialized")
-
-        context = await self._playwright.request.new_context(
+        context = await playwright.request.new_context(
             user_agent=user_agent,
             extra_http_headers=extra_headers,
         )
 
+        logger.debug("daraz_playwright_request_context_open pid=%s", os.getpid())
         try:
             yield context
         finally:
             try:
-                await context.dispose()
-            except Error as exc:
-                logger.warning("Failed to dispose request context: %s", exc)
+                async with asyncio.timeout(_CLOSE_TIMEOUT_SECONDS):
+                    await context.dispose()
+                logger.debug("daraz_playwright_request_context_closed pid=%s", os.getpid())
+            except (Error, TimeoutError):
+                logger.warning("daraz_playwright_request_context_close_failed", exc_info=True)
 
     # -----------------------------
     # Page helper
@@ -195,34 +182,40 @@ class BrowserManager:
             extra_headers=extra_headers,
         )
 
-        page = await context.new_page()
-
+        logger.debug("daraz_browser_context_open pid=%s", os.getpid())
         try:
-            yield page
+            yield await context.new_page()
         finally:
             try:
-                await page.close()
-            except Error as exc:
-                logger.warning("Failed to close page: %s", exc)
-            try:
-                await context.close()
-            except Error as exc:
-                logger.warning("Failed to close context: %s", exc)
+                async with asyncio.timeout(_CLOSE_TIMEOUT_SECONDS):
+                    await context.close()
+                logger.debug("daraz_browser_context_closed pid=%s", os.getpid())
+            except (Error, TimeoutError):
+                logger.warning("daraz_browser_context_close_failed", exc_info=True)
 
     # -----------------------------
     # Shutdown
     # -----------------------------
     async def close(self) -> None:
-        if self._browser:
+        if self._owner is None:
+            return
+        self._check_owner()
+        async with self._browser_lock:
+            browser, self._browser = self._browser, None
+            playwright, self._playwright = self._playwright, None
             try:
-                await self._browser.close()
-            except Error as exc:
-                logger.warning("Failed to close browser: %s", exc)
-            self._browser = None
-
-        if self._playwright:
-            try:
-                await self._playwright.stop()
-            except Error as exc:
-                logger.warning("Failed to stop Playwright: %s", exc)
-            self._playwright = None
+                if browser is not None:
+                    try:
+                        async with asyncio.timeout(_CLOSE_TIMEOUT_SECONDS):
+                            await browser.close()
+                        logger.info("daraz_chromium_closed pid=%s", os.getpid())
+                    except (Error, TimeoutError):
+                        logger.warning("daraz_chromium_close_failed", exc_info=True)
+            finally:
+                if playwright is not None:
+                    try:
+                        async with asyncio.timeout(_CLOSE_TIMEOUT_SECONDS):
+                            await playwright.stop()
+                        logger.info("daraz_playwright_stopped pid=%s", os.getpid())
+                    except (Error, TimeoutError):
+                        logger.warning("daraz_playwright_stop_failed", exc_info=True)

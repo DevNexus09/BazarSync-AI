@@ -302,6 +302,10 @@ Never define `VITE_GROQ_API_KEY`, `VITE_SUPABASE_KEY`, or any frontend variable 
 | `REDIS_URL` | Recommended | Redis connection URL. |
 | `REDIS_BROKER_URL` | Recommended | Celery broker URL; falls back to `REDIS_URL`. |
 | `SCRAPER_SCHEDULE_ENABLED` | No | Enables scheduled scraper jobs. |
+| `DARAZ_SCRAPING_AUTHORIZED` | No | Defaults to false. Enable only with authorization covering the configured Daraz search and detail paths. See [Daraz scraping](docs/daraz-scraping.md). |
+| `SCRAPER_HTTPX_ENABLED` | No | Defaults to true. Set false on workers to start with the Playwright API strategy. |
+| `SCRAPER_DETAIL_CONCURRENCY` | No | Defaults to three per scrape. The shared Daraz limit also applies. |
+| `SCRAPER_DARAZ_MIN_INTERVAL_SECONDS`, `SCRAPER_DARAZ_MAX_IN_FLIGHT` | No | Shared limits across workers using the same Redis database. Configure to the authorized quota. |
 | `RAG_MEMORY_SCHEDULE_ENABLED` | No | Enables scheduled memory indexing. |
 | `INVENTORY_INTELLIGENCE_SCHEDULE_ENABLED` | No | Enables scheduled inventory jobs. |
 | `DEAD_STOCK_WORKFLOW_SCHEDULE_ENABLED` | No | Enables scheduled dead-stock workflows. |

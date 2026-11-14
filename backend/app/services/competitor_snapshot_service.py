@@ -19,16 +19,15 @@ from app.repositories.competitor_snapshot_repository import (
     ScrapeRunRepository,
 )
 
+from app.scraper.utils import normalize_stock_status as normalize_stock_status
+
 logger = logging.getLogger(__name__)
 
 TERMINAL_STATUSES = {"COMPLETED", "FAILED", "PARTIAL"}
 VALID_TRANSITIONS = {
-    "PENDING": {"RUNNING"},
+    "PENDING": {"RUNNING", "FAILED"},
     "RUNNING": {"COMPLETED", "FAILED", "PARTIAL"},
 }
-STOCK_IN_STOCK = "IN_STOCK"
-STOCK_OUT_OF_STOCK = "OUT_OF_STOCK"
-STOCK_UNKNOWN = "UNKNOWN"
 
 
 class InvalidScrapeRunTransitionError(Exception):
@@ -40,6 +39,14 @@ class ScrapeRunResult:
     scrape_run: ScrapeRun
     created: bool
     already_completed: bool = False
+
+
+@dataclass(frozen=True)
+class CompetitorObservation:
+    price: Decimal | None
+    rating: float | None
+    review_count: int | None
+    stock_status: str | None
 
 
 class CompetitorSnapshotService:
@@ -132,11 +139,13 @@ class CompetitorSnapshotService:
         captured_at: datetime,
         discovered_count: int,
         matched_count: int,
+        observations: dict[UUID, CompetitorObservation] | None = None,
     ) -> list[CompetitorSnapshot]:
         snapshots = self._build_snapshots(
             scrape_run=scrape_run,
             competitors=competitors,
             captured_at=captured_at,
+            observations=observations,
         )
         self._snapshots.add_all(snapshots)
         self._db.flush()
@@ -272,14 +281,23 @@ class CompetitorSnapshotService:
         scrape_run: ScrapeRun,
         competitors: Iterable[Competitor],
         captured_at: datetime,
+        observations: dict[UUID, CompetitorObservation] | None = None,
     ) -> list[CompetitorSnapshot]:
         normalized_captured_at = ensure_utc(captured_at)
         snapshots: list[CompetitorSnapshot] = []
         for competitor in competitors:
-            price = _nonnegative_decimal(competitor.competitor_price, "price")
-            rating = _rating_decimal(competitor.competitor_rating)
-            review_count = _nonnegative_int(competitor.rating_count, "review_count")
-            stock_status = normalize_stock_status(competitor.stock_status)
+            if competitor.product_id != scrape_run.product_id:
+                raise ValueError("Competitor does not belong to the scrape product.")
+            observation = observations[competitor.id] if observations is not None else CompetitorObservation(
+                price=competitor.competitor_price,
+                rating=competitor.competitor_rating,
+                review_count=competitor.rating_count,
+                stock_status=competitor.stock_status,
+            )
+            price = _nonnegative_decimal(observation.price, "price")
+            rating = _rating_decimal(observation.rating)
+            review_count = _nonnegative_int(observation.review_count, "review_count")
+            stock_status = normalize_stock_status(observation.stock_status)
             external_listing_id = competitor.product_url or str(competitor.id)
             content_hash = _content_hash(
                 competitor_id=competitor.id,
@@ -300,7 +318,7 @@ class CompetitorSnapshotService:
                     rating=rating,
                     review_count=review_count,
                     stock_status=stock_status,
-                    raw_stock_text=competitor.stock_status,
+                    raw_stock_text=observation.stock_status,
                     source_url=competitor.product_url,
                     external_listing_id=external_listing_id,
                     content_hash=content_hash,
@@ -323,17 +341,6 @@ class CompetitorSnapshotService:
                 f"Invalid scrape run transition from {scrape_run.status} to {next_status}."
             )
         scrape_run.status = next_status
-
-
-def normalize_stock_status(value: str | None) -> str:
-    normalized = (value or "").strip().lower().replace("-", "_").replace(" ", "_")
-    if not normalized:
-        return STOCK_UNKNOWN
-    if "out_of_stock" in normalized or ("out" in normalized and "stock" in normalized):
-        return STOCK_OUT_OF_STOCK
-    if "in_stock" in normalized or ("available" in normalized and "unavailable" not in normalized):
-        return STOCK_IN_STOCK
-    return STOCK_UNKNOWN
 
 
 def utc_now() -> datetime:

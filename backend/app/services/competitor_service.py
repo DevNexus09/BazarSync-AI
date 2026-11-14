@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from math import isfinite
 from typing import Any
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from app.models.competitor_ranking import CompetitorRanking
 from app.models.price_history import PriceHistory
 from app.models.product import Product
 from app.models.scrape_run import ScrapeRun
+from app.scraper.utils import first_present, normalize_sold_count, normalize_text
+from app.services.competitor_snapshot_service import CompetitorObservation, normalize_stock_status
 
 
 class ProductNotFoundError(Exception):
@@ -34,11 +37,14 @@ class CompetitorService:
         marketplace: str,
         competitors: list[dict[str, Any]],
         observed_at: datetime | None = None,
-    ) -> list[Competitor]:
+        price_observed_at_by_url: dict[str, datetime] | None = None,
+    ) -> tuple[list[Competitor], dict[UUID, CompetitorObservation]]:
+        if (scrape_run.product_id, scrape_run.seller_id) != (product.id, product.seller_id):
+            raise ValueError("Scrape run does not belong to the seller product.")
         observed_timestamp = observed_at or datetime.now(timezone.utc)
 
-        competitor_rows: list[Competitor] = []
-        price_rows: list[PriceHistory] = []
+        observed: dict[Competitor, CompetitorObservation] = {}
+        seen_listings: set[str | tuple[str, str | None]] = set()
 
         for item in competitors:
             title = (
@@ -51,31 +57,64 @@ class CompetitorService:
                 continue
 
             product_url = item.get("product_url") or item.get("daraz_product_url")
+            store = item.get("competitor_store") or item.get("store_name") or None
+            listing_key = product_url or (title, store)
+            if listing_key in seen_listings:
+                continue
+            seen_listings.add(listing_key)
             competitor = self._find_existing_competitor(
                 product_id=product.id,
                 marketplace=marketplace,
                 product_url=product_url,
                 title=title,
-                store=item.get("competitor_store") or item.get("store_name"),
+                store=store,
             )
+            if competitor in observed:
+                continue
             if competitor is None:
                 competitor = Competitor(product_id=product.id)
                 self._db.add(competitor)
 
+            price = self._to_decimal(first_present(item.get("competitor_price"), item.get("product_price")))
+            rating = self._to_float(first_present(item.get("competitor_rating"), item.get("rating")))
+            if rating is not None and not 0 <= rating <= 5:
+                rating = None
+            raw_stock = normalize_text(item.get("stock_status")) or None
+            observation = CompetitorObservation(
+                price=price,
+                rating=rating,
+                review_count=self._to_int(item.get("rating_count")),
+                stock_status=raw_stock,
+            )
+            sold_count = first_present(item.get("competitor_sold"), item.get("sold_count"))
+            if sold_count is not None:
+                sold_count = normalize_sold_count(str(sold_count))
+
             competitor.scrape_run_id = scrape_run.id
             competitor.competitor_title = title
-            competitor.competitor_description = item.get("product_description") or item.get("competitor_description")
-            competitor.competitor_category = item.get("product_category") or item.get("competitor_category")
-            competitor.competitor_brand = item.get("product_brand") or item.get("competitor_brand")
-            competitor.competitor_attributes = item.get("product_attributes") or item.get("competitor_attributes")
-            competitor.competitor_price = self._to_decimal(item.get("competitor_price") or item.get("product_price"))
-            competitor.original_price = self._to_decimal(item.get("original_price"))
-            competitor.discount_percentage = self._to_int(item.get("discount_percentage"))
-            competitor.competitor_rating = self._to_float(item.get("competitor_rating") or item.get("rating"))
-            competitor.rating_count = self._to_int(item.get("rating_count"))
-            competitor.competitor_sold = item.get("competitor_sold") or item.get("sold_count")
-            competitor.competitor_store = item.get("competitor_store") or item.get("store_name")
-            competitor.stock_status = item.get("stock_status")
+            fresh_values = {
+                "competitor_description": item.get("product_description") or item.get("competitor_description"),
+                "competitor_category": item.get("product_category") or item.get("competitor_category"),
+                "competitor_brand": item.get("product_brand") or item.get("competitor_brand"),
+                "competitor_attributes": item.get("product_attributes") or item.get("competitor_attributes"),
+                "competitor_price": observation.price,
+                "original_price": self._to_decimal(item.get("original_price")),
+                "discount_percentage": self._to_int(item.get("discount_percentage"), maximum=100),
+                "competitor_rating": observation.rating,
+                "rating_count": observation.review_count,
+                "competitor_sold": sold_count,
+                "competitor_store": store,
+                "stock_status": raw_stock if normalize_stock_status(raw_stock) != "UNKNOWN" else None,
+                "product_url": product_url,
+                "image_url": item.get("image_url") or item.get("product_image_url"),
+            }
+            if fresh_values["competitor_attributes"] and competitor.competitor_attributes:
+                fresh_values["competitor_attributes"] = {
+                    **competitor.competitor_attributes, **fresh_values["competitor_attributes"],
+                }
+            for field, value in fresh_values.items():
+                if value is not None and value != "" and value != {}:
+                    setattr(competitor, field, value)
             competitor.similarity_score = self._to_float(item.get("similarity_score"))
             competitor.title_similarity = self._to_float(item.get("title_similarity"))
             competitor.description_similarity = self._to_float(item.get("description_similarity"))
@@ -86,33 +125,23 @@ class CompetitorService:
             competitor.category_match = item.get("category_match")
             competitor.matched_attributes = item.get("matched_attributes")
             competitor.marketplace = marketplace
-            competitor.product_url = product_url
-            competitor.image_url = item.get("image_url") or item.get("product_image_url")
             competitor.search_position = self._to_int(item.get("search_position"))
-            competitor_rows.append(competitor)
+            observed[competitor] = observation
 
-        if not competitor_rows:
-            return []
+        if not observed:
+            return [], {}
 
-        self._db.add_all(competitor_rows)
         self._db.flush()  # ensures IDs are generated
-
-        for competitor in competitor_rows:
-            if competitor.competitor_price is None:
-                continue
-
-            price_rows.append(
-                PriceHistory(
-                    competitor_id=competitor.id,
-                    observed_price=competitor.competitor_price,
-                    observed_at=observed_timestamp,
-                )
+        self._db.add_all([
+            PriceHistory(
+                competitor_id=competitor.id,
+                observed_price=observation.price,
+                observed_at=(price_observed_at_by_url or {}).get(competitor.product_url, observed_timestamp),
             )
-
-        if price_rows:
-            self._db.add_all(price_rows)
-
-        return competitor_rows
+            for competitor, observation in observed.items()
+            if observation.price is not None
+        ])
+        return list(observed), {competitor.id: observation for competitor, observation in observed.items()}
 
     # -----------------------------
     # Fetch latest competitors
@@ -194,17 +223,21 @@ class CompetitorService:
         if value is None or value == "":
             return None
         try:
-            return Decimal(str(value))
+            price = Decimal(str(value))
+            if price.is_finite() and 0 <= price <= Decimal("9999999999.99"):
+                return price
+            return None
         except (InvalidOperation, ValueError, TypeError):
             return None
 
     @staticmethod
-    def _to_int(value: Any) -> int | None:
+    def _to_int(value: Any, *, maximum: int = 2_147_483_647) -> int | None:
         if value is None or value == "":
             return None
         try:
-            return int(value)
-        except (ValueError, TypeError):
+            number = int(value)
+            return number if 0 <= number <= maximum else None
+        except (ValueError, TypeError, OverflowError):
             return None
 
     @staticmethod
@@ -212,7 +245,8 @@ class CompetitorService:
         if value is None or value == "":
             return None
         try:
-            return float(value)
+            number = float(value)
+            return number if isfinite(number) else None
         except (ValueError, TypeError):
             return None
 

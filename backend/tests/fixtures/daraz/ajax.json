@@ -1,0 +1,11 @@
+{
+  "mods": {
+    "listItems": [
+      {"name": "  Apple iPad 11th Gen 128GB  ", "itemUrl": "/products/ipad-i1.html", "price": "৳১,২৫০.২৫", "originalPrice": "Tk 1,500", "discount": "-17%", "sellerName": " Trusted  Store ", "ratingScore": "4.8", "review": "1,250", "itemSoldCntShow": "1.2k sold", "inStock": true, "image": "//images.example.test/ipad.jpg"},
+      {"name": "Apple iPad 11th Gen Case", "itemUrl": "/products/case-i2.html", "price": "250", "soldCount": 90000},
+      {"name": "Apple iPad 10th Gen 128GB", "itemUrl": "/products/older-i3.html", "price": "500", "soldCount": 80000},
+      {"name": "iPad 11th Gen", "itemUrl": "/products/partial-i4.html", "price": "USD 70", "ratingScore": "6", "review": "-1", "itemSoldCntShow": "N/A"},
+      {"name": "Unusable listing", "itemUrl": "https://example.test/products/unknown.html", "price": 0}
+    ]
+  }
+}

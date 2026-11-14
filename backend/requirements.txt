@@ -27,7 +27,6 @@ distro
 dnspython
 ecdsa
 email-validator
-fake-useragent
 fastapi
 fastapi-socketio
 filelock
