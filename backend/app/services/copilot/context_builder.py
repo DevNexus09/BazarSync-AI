@@ -69,9 +69,9 @@ class CopilotAnswerContext:
             "language": self.language,
             "domains_used": self.domains_used,
             "tools_used": self.tools_used,
-            "evidence": self.evidence,
+            "evidence": _prompt_evidence(self.evidence),
             "missing_data": self.missing_data,
-            "data_freshness": self.data_freshness,
+            "data_freshness": _prompt_freshness(self.data_freshness),
             "facts": self.facts,
             "context_priority": [
                 "current direct database facts",
@@ -284,6 +284,22 @@ def _numbers_from_payload(value: Any) -> set[str]:
 
 LIST_CAPS = (50, 20, 10, 5, 3, 1)
 MEMORY_TOOL = "retrieve_business_memory"
+
+
+# Evidence is one item per source row (a week of sales is hundreds) and is not budgeted with facts.
+# The model only needs a few IDs to cite; validation still checks against the full list.
+PROMPT_EVIDENCE_LIMIT = 12
+
+
+def _prompt_evidence(evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """First items only, without empty fields, so small-quota LLM tiers stay under their token limit."""
+    return [{key: value for key, value in item.items() if value not in (None, "", [], {})} for item in evidence[:PROMPT_EVIDENCE_LIMIT]]
+
+
+def _prompt_freshness(freshness: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Distinct domain/status pairs: per-table messages repeat and are never shown to the seller."""
+    pairs = dict.fromkeys((str(item.get("domain")), str(item.get("status"))) for item in freshness if isinstance(item, dict))
+    return [{"domain": domain, "status": status} for domain, status in pairs]
 
 
 def budget_facts(facts: dict[str, Any], *, tool_chars: int, total_chars: int) -> tuple[dict[str, Any], list[str]]:

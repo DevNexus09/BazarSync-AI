@@ -440,7 +440,7 @@ describe("CopilotWidget", () => {
     )
   })
 
-  it("calls POST ask service, shows loading, answer, confidence, tools, evidence, and missing data", async () => {
+  it("calls POST ask service, shows loading and only the answer", async () => {
     vi.mocked(copilotService.askCopilot).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -457,10 +457,9 @@ describe("CopilotWidget", () => {
 
     await screen.findByText(/restock product a today/i)
     expect(copilotService.askCopilot).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/confidence: high/i)).toBeInTheDocument()
-    expect(screen.getByText(/restock recommendations/i)).toBeInTheDocument()
-    expect(screen.getByText(/evidence \(1\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/supplier lead time is missing/i)).toBeInTheDocument()
+    expect(screen.queryByText(/confidence: high/i)).toBeNull()
+    expect(screen.queryByText(/evidence \(1\)/i)).toBeNull()
+    expect(screen.queryByText(/supplier lead time is missing/i)).toBeNull()
   })
 
   it("clicking a suggested question sends it directly", async () => {
@@ -624,12 +623,9 @@ describe("CopilotWidget", () => {
 
     expect(await screen.findByText("Revenue is up this week.")).toBeInTheDocument()
     expect(screen.getByText("What is my revenue this week?")).toBeInTheDocument()
-    expect(screen.getByText(/confidence: high/i)).toBeInTheDocument()
-    expect(screen.getByText(/revenue summary/i)).toBeInTheDocument()
-    expect(screen.getByText(/evidence \(1\)/i)).toBeInTheDocument()
-    expect(screen.getByText(/sales completeness is partial/i)).toBeInTheDocument()
-    expect(screen.getAllByText(/sales_records/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/review sales import coverage/i)).toBeInTheDocument()
+    expect(screen.queryByText(/confidence: high/i)).toBeNull()
+    expect(screen.queryByText(/evidence \(1\)/i)).toBeNull()
+    expect(screen.queryByText(/sales completeness is partial/i)).toBeNull()
     expect(screen.getByText(/action proposal: promotion_plan/i)).toBeInTheDocument()
     expect(window.localStorage.getItem("bazarsync:copilot:conversation-id")).toBe(
       "conversation-2"
@@ -824,16 +820,11 @@ describe("CopilotWidget", () => {
     await userEvent.click(screen.getByRole("button", { name: /send question/i }))
 
     await screen.findByText(/not find enough seller-specific/i)
-    expect(screen.getByText(/confidence: no context/i)).toBeInTheDocument()
-    expect(
-      screen.getByText(/not enough seller-specific business data was found/i)
-    ).toBeInTheDocument()
-    expect(screen.getByText(/add product setup data/i)).toBeInTheDocument()
-    expect(screen.getByText(/import sales records/i)).toBeInTheDocument()
-    expect(screen.getByText(/run memory indexing/i)).toBeInTheDocument()
+    expect(screen.queryByText(/confidence: no context/i)).toBeNull()
+    expect(screen.queryByText(/run memory indexing/i)).toBeNull()
   })
 
-  it("renders memory coverage warnings from backend", async () => {
+  it("does not show memory coverage warnings in the answer", async () => {
     vi.mocked(copilotService.askCopilot).mockResolvedValueOnce({
       ...askResponse,
       message_id: "message-memory-warning",
@@ -843,9 +834,8 @@ describe("CopilotWidget", () => {
 
     await submitQuestion("What happened last time sales dropped?")
 
-    expect(
-      await screen.findByText(/some business history is not indexed yet/i)
-    ).toBeInTheDocument()
+    await screen.findByText(/restock product a today/i)
+    expect(screen.queryByText(/some business history is not indexed yet/i)).toBeNull()
   })
 
   it("renders action proposal card and approve/reject call the API without execution claims", async () => {

@@ -1335,10 +1335,8 @@ def _apply_source_mode_warnings(
         missing_data.insert(0, warning)
     response_payload["missing_data"] = missing_data
 
-    answer = str(response_payload.get("answer") or "").strip()
-    if answer and warning not in answer:
-        response_payload["answer"] = f"{warning}\n\n{answer}"
-    elif not answer:
+    # The seller sees the warning only when it blocks the answer; otherwise it stays in missing_data.
+    if not str(response_payload.get("answer") or "").strip():
         response_payload["answer"] = warning
 
     summary = str(response_payload.get("summary") or "").strip()

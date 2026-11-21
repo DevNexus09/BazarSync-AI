@@ -3,22 +3,10 @@ import type { ReactNode } from "react"
 import { Check, Copy, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react"
 
 import { CopilotActionProposalCard } from "@/components/copilot/CopilotActionProposalCard"
-import { CopilotConfidenceBadge } from "@/components/copilot/CopilotConfidenceBadge"
-import { CopilotEvidenceList } from "@/components/copilot/CopilotEvidenceList"
 import { CopilotMarkdown } from "@/components/copilot/CopilotMarkdown"
-import { CopilotMissingDataPanel } from "@/components/copilot/CopilotMissingDataPanel"
-import { CopilotToolUsageBadge } from "@/components/copilot/CopilotToolUsageBadge"
-import { domainLabel, langAttribute, t, type CopilotUiLanguage } from "@/components/copilot/copilot-i18n"
+import { langAttribute, t, type CopilotUiLanguage } from "@/components/copilot/copilot-i18n"
 import { cn } from "@/lib/utils"
 import type { CopilotActionProposal, CopilotFeedbackRating, CopilotLocalMessage } from "@/types/copilot"
-
-const noContextNextActions = [
-  "Add product setup data",
-  "Import sales records",
-  "Run memory indexing",
-  "Set up marketplace fees",
-  "Add visibility metrics",
-]
 
 export type CopilotAssistantActions = {
   onRegenerate?: (messageId: string) => void
@@ -26,8 +14,6 @@ export type CopilotAssistantActions = {
   onFollowUp?: (question: string) => void
   disabled?: boolean
 }
-
-const warningBox = "rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-foreground"
 
 export function CopilotAssistantMessage({
   message,
@@ -43,9 +29,6 @@ export function CopilotAssistantMessage({
   isLatest?: boolean
 }) {
   const [copied, setCopied] = useState(false)
-  const staleFreshness = message.dataFreshness.filter((item) =>
-    ["STALE", "MISSING", "UNKNOWN"].includes(item.status?.toUpperCase?.() ?? "")
-  )
 
   const copy = async () => {
     try {
@@ -59,73 +42,14 @@ export function CopilotAssistantMessage({
 
   return (
     <article className="rounded-2xl rounded-bl-md border border-border/60 bg-card p-3 text-sm text-foreground shadow-sm">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <CopilotConfidenceBadge confidence={message.confidence} />
-        {message.domainsUsed.map((domain) => (
-          <span
-            key={domain}
-            title={domain}
-            className="rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground"
-          >
-            {domainLabel(domain, language)}
-          </span>
-        ))}
-      </div>
       <div lang={langAttribute(message.replyLanguage, message.content)}>
         <CopilotMarkdown text={message.content} />
       </div>
-      {message.memoryCoverageWarning ? (
-        <div className={cn(warningBox, "mt-3")}>
-          Some business history is not indexed yet. Answers may rely on current database data only.
-        </div>
-      ) : null}
-      {message.confidence === "NO_CONTEXT" ? (
-        <div className={cn(warningBox, "mt-3")}>
-          <p className="font-semibold">Not enough seller-specific business data was found to answer this reliably.</p>
-          <ul className="mt-1 list-disc space-y-1 pl-4">
-            {noContextNextActions.map((action) => (
-              <li key={action}>{action}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {message.recommendedNextSteps.length ? (
-        <div className="mt-3" lang={langAttribute(message.replyLanguage, message.recommendedNextSteps.join(" "))}>
-          <p className="text-xs font-semibold text-muted-foreground">{t(language, "nextSteps")}</p>
-          <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-            {message.recommendedNextSteps.map((step, index) => (
-              <li key={`${step}-${index}`}>{step}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      <div className="mt-3 space-y-2">
-        <CopilotMissingDataPanel missingData={message.missingData} language={language} />
-        {staleFreshness.length ? (
-          <div className={warningBox}>
-            <p className="font-semibold">Data freshness warnings</p>
-            <ul className="mt-1 space-y-1">
-              {staleFreshness.map((item, index) => (
-                <li key={`${item.domain}-${item.source_table ?? "source"}-${index}`}>
-                  {domainLabel(item.domain, language)}
-                  {item.source_table ? ` · ${item.source_table}` : ""}: {item.message}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {message.toolsUsed.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {message.toolsUsed.map((tool) => (
-              <CopilotToolUsageBadge key={`${tool.name ?? tool.tool_name}-${tool.status}`} tool={tool} />
-            ))}
-          </div>
-        ) : null}
-        <CopilotEvidenceList evidence={message.evidence} />
-        {message.actionProposal ? (
+      {message.actionProposal ? (
+        <div className="mt-3">
           <CopilotActionProposalCard proposal={message.actionProposal} onStatusChange={onProposalChange} />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {isLatest && message.followUps?.length && actions?.onFollowUp ? (
         <div className="mt-3" lang={langAttribute(message.replyLanguage, message.followUps.join(" "))}>
           <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t(language, "followUps")}</p>

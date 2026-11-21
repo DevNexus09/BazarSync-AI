@@ -158,6 +158,23 @@ class ProductMarketplaceListingTests(unittest.TestCase):
         self.assertEqual(["Daraz item"], [item["title"] for item in listed["products"]])
         self.assertEqual("Daraz", listed["products"][0]["marketplace"])
 
+    def test_listed_filter_reports_account_total_when_no_listings_exist(self) -> None:
+        # Regression: "koyta product listed ache?" with 2 products and no listing rows was answered "0 products".
+        self.db.add_all([self._product(title="Shoe", sku="A1"), self._product(title="Sandal", sku="A2")])
+        self.db.add(self._product(title="Other seller item", sku="O1", seller=self.other_seller))
+        self.db.commit()
+
+        data = _ListingTestDataAccess(self.db)
+        count, _ = data.count_products(seller_id=self.seller.id, filters={"listed": True})
+        listed, _ = data.list_products(seller_id=self.seller.id, filters={"listed": True}, sort_by="created_at_desc", limit=10, offset=0)
+        unfiltered, _ = data.count_products(seller_id=self.seller.id, filters={})
+
+        expected = {"total_products_in_account": 2, "products_with_active_marketplace_listing": 0}
+        self.assertEqual(0, count["count"])
+        self.assertLessEqual(expected.items(), count["listing_summary"].items())
+        self.assertLessEqual(expected.items(), listed["listing_summary"].items())
+        self.assertNotIn("listing_summary", unfiltered)
+
     def test_product_profile_includes_listing_data(self) -> None:
         product = self._product(title="Alpha", sku="SKU-1")
         self.db.add(product)

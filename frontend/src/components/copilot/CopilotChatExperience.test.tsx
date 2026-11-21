@@ -123,13 +123,13 @@ describe("Copilot chat experience", () => {
     expect(screen.queryByRole("option", { name: "Banglish" })).toBeNull()
   })
 
-  it("renders markdown answers, readable tool names and follow-up chips that ask again", async () => {
+  it("renders markdown answers without tool badges and follow-up chips that ask again", async () => {
     renderWidget()
     await open()
     await ask("What should I restock?")
 
     expect((await screen.findByText("Quick recommendation")).tagName).toBe("STRONG")
-    expect(screen.getByText("Restock recommendations")).toBeInTheDocument()
+    expect(screen.queryByText("Restock recommendations")).toBeNull()
 
     await userEvent.click(screen.getByRole("button", { name: "Which products are closest to stocking out?" }))
     await waitFor(() => expect(copilotService.askCopilot).toHaveBeenCalledTimes(2))

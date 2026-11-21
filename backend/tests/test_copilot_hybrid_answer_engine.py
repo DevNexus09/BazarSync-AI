@@ -229,5 +229,26 @@ def _payload(answer: str, evidence_id: str, *, language: str = "en") -> dict:
     }
 
 
+class PromptSizeTests(unittest.TestCase):
+    """Groq's on_demand tier rejects requests over 8000 tokens/minute, so unbounded prompt lists must stay capped."""
+
+    def test_evidence_is_capped_and_empty_fields_dropped(self):
+        from app.services.copilot.context_builder import PROMPT_EVIDENCE_LIMIT, _prompt_evidence
+
+        evidence = [{"evidence_id": f"sales_records:{index}", "snippet": None, "url": ""} for index in range(300)]
+
+        trimmed = _prompt_evidence(evidence)
+
+        self.assertEqual(PROMPT_EVIDENCE_LIMIT, len(trimmed))
+        self.assertEqual({"evidence_id": "sales_records:0"}, trimmed[0])
+
+    def test_freshness_is_reduced_to_distinct_domain_status_pairs(self):
+        from app.services.copilot.context_builder import _prompt_freshness
+
+        freshness = [{"domain": "SALES_REVENUE", "status": "MISSING", "message": f"tool {index} freshness is missing."} for index in range(20)]
+
+        self.assertEqual([{"domain": "SALES_REVENUE", "status": "MISSING"}], _prompt_freshness(freshness))
+
+
 if __name__ == "__main__":
     unittest.main()

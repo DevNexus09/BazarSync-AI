@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.services.copilot.answer_builder import CopilotAnswerBuilder
+from app.services.copilot.answer_builder import CopilotAnswerBuilder, clean_answer_text
 from app.services.copilot.intent_classifier import (
     CopilotIntent,
     CopilotIntentConfidence,
@@ -38,45 +38,39 @@ def _result(tool_name: str, rows_key: str, rows: list[dict], *, missing: list[st
     )
 
 
+JUNK = ("**", "Confidence", "Evidence", "Missing data", "Next steps", "Safety", "Risk level", "SUCCEEDED", "FAILED", "execute automatically")
+
+
 class CopilotAnswerBuilderTests(unittest.TestCase):
     def setUp(self) -> None:
         self.builder = CopilotAnswerBuilder()
 
-    def test_restock_answer_returns_expected_structure(self):
+    def assert_clean(self, text: str) -> None:
+        for junk in JUNK:
+            self.assertNotIn(junk, text)
+
+    def test_restock_answer_is_direct_list_with_one_next_step(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.RESTOCK_ADVICE),
             tool_results=[
-                _result("get_restock_recommendations", "recommendations", [{"product": {"title": "Product A"}, "risk_level": "HIGH", "reorder_quantity": 12}]),
-                _result("get_inventory_risks", "risks", [{"product": {"title": "Product A"}, "risk_level": "HIGH"}]),
+                _result("get_restock_recommendations", "recommendations", [{"product": {"title": "Black Casual Shoes For Men"}, "risk_level": "HIGH", "reorder_quantity": 72}]),
+                _result("get_inventory_risks", "risks", [{"product": {"title": "Black Casual Shoes For Men"}, "risk_level": "HIGH"}]),
             ],
             evidence=[],
             missing_data=["Supplier lead time is stale."],
         )
 
-        for section in ("Quick recommendation", "Products to restock", "Why now", "Risk level", "Suggested quantity", "Missing data", "Next steps"):
-            self.assertIn(f"**{section}**", answer.answer)
-        self.assertIn("Supplier lead time is stale.", answer.answer)
-        self.assertTrue(answer.evidence)
-
-    def test_revenue_diagnosis_returns_expected_structure(self):
-        answer = self.builder.build(
-            classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS),
-            tool_results=[
-                _result("explain_revenue_drop", "recommendations", [{"likely_factors": [{"reason": "Inventory risk"}]}]),
-                _result("get_competitor_threats", "threats", [{"affected_product": {"title": "Product A"}, "threat_reason": "PRICE_DROP"}]),
-                _result("get_inventory_risks", "risks", [{"product": {"title": "Product A"}, "risk_level": "HIGH"}]),
-                _result("get_pricing_recommendations", "recommendations", [{"product": {"title": "Product A"}, "recommended_action": "HOLD"}]),
-                _result("get_promotion_recommendations", "promotions", [{"product": {"title": "Product A"}, "promotion_type": "DISCOUNT"}]),
-            ],
-            evidence=[],
-            missing_data=[],
+        self.assertEqual(
+            "These products need restocking:\n- Black Casual Shoes For Men: reorder 72\n\nCheck supplier lead time, then place the order.",
+            answer.answer,
         )
+        self.assert_clean(answer.answer)
+        self.assertNotIn("Supplier lead time is stale.", answer.answer)
+        # Metadata stays available to the API even though it is not shown.
+        self.assertTrue(answer.evidence)
+        self.assertIn("Supplier lead time is stale.", answer.missing_data)
 
-        for section in ("Main likely causes", "Evidence", "Product-level impact", "Competitor, pricing, inventory, and promotion factors", "Confidence", "What to do next"):
-            self.assertIn(f"**{section}**", answer.answer)
-        self.assertIn("Competitor pressure", answer.answer)
-
-    def test_competitor_threat_returns_expected_structure(self):
+    def test_duplicate_products_across_tools_are_merged(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.COMPETITOR_THREAT_ANALYSIS),
             tool_results=[
@@ -87,109 +81,142 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
             missing_data=[],
         )
 
-        for section in ("Competitors hurting you most", "Affected products", "Evidence", "Price gap or stock advantage", "Recommended response", "Safety notes"):
-            self.assertIn(f"**{section}**", answer.answer)
-        self.assertIn("Recommendations do not execute automatically", answer.answer)
+        self.assertEqual(1, answer.answer.count("Product A"))
+        self.assertIn("- Product A: price gap -10", answer.answer)
+        self.assert_clean(answer.answer)
 
-    def test_today_actions_returns_expected_structure(self):
+    def test_today_actions_lists_at_most_three(self):
+        rows = [{"product": {"title": f"Product {name}"}, "action_type": "REORDER"} for name in "ABCD"]
         answer = self.builder.build(
             classification=_classification(CopilotIntent.TODAY_ACTIONS),
-            tool_results=[
-                _result("get_today_actions", "actions", [{"product": {"title": "Product A"}, "action_type": "REORDER", "urgency": "HIGH"}]),
-                _result("get_dead_stock_recovery", "recovery", [{"product": {"title": "Product B"}, "recovery_action": "DISCOUNT"}]),
-            ],
+            tool_results=[_result("get_today_actions", "actions", rows)],
             evidence=[],
             missing_data=[],
         )
 
-        for section in ("Top 3 actions", "Expected impact", "Urgency", "Confidence", "Evidence", "What not to do yet"):
-            self.assertIn(f"**{section}**", answer.answer)
-        self.assertIn("REORDER", answer.answer)
+        self.assertIn("- Product A: reorder", answer.answer)
+        self.assertNotIn("Product D", answer.answer)
+        self.assert_clean(answer.answer)
 
-    def test_pricing_answer_returns_expected_structure(self):
+    def test_financial_answer_uses_plain_labels(self):
         answer = self.builder.build(
-            classification=_classification(CopilotIntent.PRICING_ADVICE),
-            tool_results=[
-                _result("get_pricing_recommendations", "recommendations", [{"product": {"title": "Product A"}, "recommended_action": "PRICE_LOWER", "margin_safety": {"safe": True}, "expected_impact": {"profit": "tool-value"}}]),
-            ],
-            evidence=[],
-            missing_data=["Marketplace fee policy missing."],
-        )
-
-        for section in ("Recommended pricing decision", "Margin safety", "Expected impact", "Blocked reasons", "Required missing setup"):
-            self.assertIn(f"**{section}**", answer.answer)
-        self.assertIn("Marketplace fee policy missing.", answer.answer)
-
-    def test_promotion_answer_returns_expected_structure(self):
-        answer = self.builder.build(
-            classification=_classification(CopilotIntent.PROMOTION_ADVICE),
-            tool_results=[
-                _result("get_promotion_recommendations", "promotions", [{"product": {"title": "Product A"}, "promotion_type": "DISCOUNT", "expected_impact": {"revenue": "tool-value"}}]),
-                _result("get_pricing_recommendations", "recommendations", [{"product": {"title": "Product A"}, "margin_safety": {"safe": True}}]),
-            ],
+            classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS),
+            tool_results=[_result("get_revenue_summary", "time_series", [{"gross_revenue": "1200.00", "units_sold": 30}])],
             evidence=[],
             missing_data=[],
         )
 
-        for section in ("Promotion recommendation", "Product/category", "Why this promotion", "Safety checks", "Expected impact", "Missing data"):
-            self.assertIn(f"**{section}**", answer.answer)
+        self.assertIn("- gross revenue: 1200.00", answer.answer)
+        self.assertIn("- units sold: 30", answer.answer)
+        self.assert_clean(answer.answer)
 
-    def test_dead_stock_answer_returns_expected_structure(self):
-        answer = self.builder.build(
-            classification=_classification(CopilotIntent.DEAD_STOCK_RECOVERY),
-            tool_results=[
-                _result("get_dead_stock_recovery", "recovery", [{"product": {"title": "Product A"}, "locked_capital": "tool-value", "recovery_action": "BUNDLE", "potential_recovery_range": {"low": "tool-low"}}]),
-            ],
-            evidence=[],
-            missing_data=[],
-        )
-
-        for section in ("Dead/at-risk products", "Locked capital", "Recovery action", "Expected recovery range", "Missing data"):
-            self.assertIn(f"**{section}**", answer.answer)
-
-    def test_seo_answer_returns_expected_structure(self):
+    def test_rows_without_usable_facts_say_so_plainly(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.SEO_ADVICE),
-            tool_results=[
-                _result("get_seo_opportunities", "opportunities", [{"product": {"title": "Product A"}, "issue": "Low quality score", "suggested_improvement": "Improve title"}]),
-            ],
+            tool_results=[_result("get_seo_opportunities", "opportunities", [{"note": "nothing"}])],
             evidence=[],
             missing_data=["Visibility history is incomplete."],
         )
 
-        for section in ("Listing issues", "Suggested improvements", "Evidence", "Priority", "Missing visibility data"):
-            self.assertIn(f"**{section}**", answer.answer)
-        self.assertIn("Visibility history is incomplete.", answer.answer)
+        self.assertEqual("I could not find a clear answer in your data yet.", answer.answer)
 
-    def test_bangla_answer_quality(self):
-        answer = self.builder.build(
-            classification=_classification(CopilotIntent.RESTOCK_ADVICE, language="bn"),
-            tool_results=[
-                _result("get_restock_recommendations", "recommendations", [{"product": {"title": "Product A"}, "risk_level": "HIGH", "reorder_quantity": 12}]),
-            ],
-            evidence=[],
-            missing_data=["Supplier lead time নেই।"],
-        )
-
-        self.assertIn("**দ্রুত পরামর্শ**", answer.answer)
-        self.assertIn("automatic execute হবে না", answer.answer)
-        self.assertEqual("bn", answer.language)
-
-    def test_english_answer_quality_missing_data_evidence_and_no_fake_numbers(self):
+    def test_no_context_answer_is_one_plain_sentence(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.RESTOCK_ADVICE),
-            tool_results=[
-                _result("get_restock_recommendations", "recommendations", [{"product": {"title": "Product A"}, "risk_level": "HIGH", "reorder_quantity": 12}]),
-            ],
+            tool_results=[],
             evidence=[],
             missing_data=["Sales velocity is missing."],
         )
 
-        self.assertIn("**Evidence**", answer.answer)
-        self.assertIn("Sales velocity is missing.", answer.answer)
-        self.assertNotIn("999", answer.answer)
-        self.assertNotIn("{", answer.answer)
-        self.assertTrue(answer.evidence)
+        self.assertEqual("NO_CONTEXT", answer.confidence)
+        self.assertNotIn("\n", answer.answer)
+        self.assertNotIn("Sales velocity", answer.answer)
+
+    def test_bangla_answer(self):
+        answer = self.builder.build(
+            classification=_classification(CopilotIntent.RESTOCK_ADVICE, language="bn"),
+            tool_results=[
+                _result("get_restock_recommendations", "recommendations", [{"product": {"title": "Product A"}, "reorder_quantity": 12}]),
+            ],
+            evidence=[],
+            missing_data=[],
+        )
+
+        self.assertTrue(answer.answer.startswith("এই পণ্যগুলো রিস্টক করা দরকার:"))
+        self.assertIn("- Product A: reorder 12", answer.answer)
+        self.assertEqual("bn", answer.language)
+
+    def _mixed_tool_results(self) -> list[ToolExecutionResult]:
+        return [
+            _result("get_revenue_summary", "time_series", [{"gross_revenue": "22750.00", "net_revenue": "22750.00", "units_sold": 13, "estimated_profit": "6142.50000000"}]),
+            _result("get_inventory_risks", "risks", [{"product": {"title": "Bata Sandal"}, "risk_level": "CRITICAL"}]),
+            _result("get_restock_recommendations", "recommendations", [{"product": {"title": "Black Casual Shoes For Men"}, "reorder_quantity": 72}]),
+            _result("get_pricing_recommendations", "recommendations", [{"product": {"title": "Black Casual Shoes For Men"}, "recommended_action": "HOLD"}]),
+        ]
+
+    def test_restock_question_shows_only_restock_products(self):
+        answer = self.builder.build(
+            classification=_classification(CopilotIntent.RESTOCK_ADVICE, language="bn"),
+            tool_results=self._mixed_tool_results(),
+            evidence=[],
+            missing_data=[],
+        )
+
+        self.assertEqual(
+            "এই পণ্যগুলো রিস্টক করা দরকার:\n- Black Casual Shoes For Men: reorder 72\n\nSupplier lead time দেখে order দিন।",
+            answer.answer,
+        )
+
+    def test_business_health_question_has_no_unrelated_next_step(self):
+        answer = self.builder.build(
+            classification=_classification(CopilotIntent.GENERAL_HELP, language="bn"),
+            tool_results=self._mixed_tool_results(),
+            evidence=[],
+            missing_data=[],
+        )
+
+        self.assertIn("- gross revenue: 22750.00", answer.answer)
+        self.assertNotIn("net revenue", answer.answer)
+        self.assertIn("- estimated profit: 6142.50\n", answer.answer)
+        self.assertNotIn("6142.500", answer.answer)
+        self.assertNotIn("approve", answer.answer)
+        self.assertEqual([], answer.recommended_next_steps)
+
+
+    def test_top_selling_products_show_units_sold(self):
+        answer = self.builder.build(
+            classification=_classification(CopilotIntent.UNKNOWN),
+            tool_results=[
+                _result("get_top_products_by_revenue", "products", [{"product": {"title": "NORTH STAR HAFSA"}, "gross_revenue": "22750.00", "units_sold": 13}]),
+            ],
+            evidence=[],
+            missing_data=[],
+        )
+
+        self.assertIn("- NORTH STAR HAFSA: sold 13", answer.answer)
+
+
+class CleanAnswerTextTests(unittest.TestCase):
+    def test_strips_headers_internals_and_duplicates(self):
+        raw = (
+            "**Answer**\n"
+            "Black Casual Shoes For Men: reorder 72\n"
+            "- Black Casual Shoes For Men: reorder 72\n\n"
+            "**Confidence**: HIGH\n"
+            "Evidence: inventory_risk:abc\n"
+            "Tools used: get_restock_recommendations (SUCCEEDED)\n"
+            "Data freshness: stale\n"
+            "**Next steps**\n"
+            "Next step: Supplier lead time check kore order din"
+        )
+
+        self.assertEqual(
+            "Black Casual Shoes For Men: reorder 72\n\nSupplier lead time check kore order din",
+            clean_answer_text(raw, evidence_ids=["inventory_risk:abc"]),
+        )
+
+    def test_keeps_prose_that_starts_with_a_label_word(self):
+        self.assertEqual("Risk is low because stock is fine.", clean_answer_text("Risk is low because stock is fine."))
 
 
 if __name__ == "__main__":

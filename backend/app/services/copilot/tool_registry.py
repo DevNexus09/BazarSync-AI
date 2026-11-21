@@ -1921,11 +1921,12 @@ class SqlAlchemyCopilotToolDataAccess:
 
     def count_products(self, *, seller_id: UUID, filters: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         missing = self._unsupported_filter_notes(filters)
+        count = self._product_count(seller_id=seller_id, filters=filters)
         return {
-            "count": self._product_count(seller_id=seller_id, filters=filters),
+            "count": count,
             "filters_used": _clean_filter_payload(filters),
             "evidence": [_evidence("products", "seller_scope", {"filters": _clean_filter_payload(filters)})],
-        }, missing
+        } | self._listing_summary(seller_id=seller_id, filters=filters, listed_count=count), missing
 
     def list_products(self, *, seller_id: UUID, filters: dict[str, Any], sort_by: str | None, limit: int, offset: int) -> tuple[dict[str, Any], list[str]]:
         statement = self._product_statement(seller_id=seller_id, filters=filters)
@@ -1952,7 +1953,27 @@ class SqlAlchemyCopilotToolDataAccess:
             "pagination": {"total": total, "limit": limit, "offset": offset, "has_next": offset + limit < total},
             "filters_used": _clean_filter_payload(filters),
             "evidence": [_evidence("products", "seller_scope", {"product_ids": [str(item.id) for item in rows]})],
-        }, self._unsupported_filter_notes(filters, seller_id=seller_id, product_ids=product_ids)
+        } | self._listing_summary(seller_id=seller_id, filters=filters, listed_count=total), self._unsupported_filter_notes(filters, seller_id=seller_id, product_ids=product_ids)
+
+    def _listing_summary(self, *, seller_id: UUID, filters: dict[str, Any], listed_count: int) -> dict[str, Any]:
+        """Sellers say "listed" for products in their account; the filter means an active marketplace listing.
+
+        Without the account total, a seller with products but no listing rows was told they have no products.
+        """
+        if not filters.get("listed"):
+            return {}
+        unlisted_filters = {key: value for key, value in filters.items() if key != "listed"}
+        total = self._product_count(seller_id=seller_id, filters=unlisted_filters)
+        return {
+            "listing_summary": {
+                "total_products_in_account": total,
+                "products_with_active_marketplace_listing": listed_count,
+                "how_to_answer": (
+                    f"Sellers usually mean products in their account: state that they have {total} products first, "
+                    f"then that {listed_count} of them are linked to an active marketplace listing."
+                ),
+            }
+        }
 
     def search_products(self, *, seller_id: UUID, query: str, category: str | None, marketplace: str | None, limit: int) -> tuple[dict[str, Any], list[str]]:
         filters = {"category": category, "marketplace": marketplace}
