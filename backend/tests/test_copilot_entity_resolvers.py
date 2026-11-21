@@ -151,6 +151,22 @@ class EntityResolverUnitTests(unittest.TestCase):
         self.assertFalse(own.competitor_resolution.ambiguous)
         self.assertIsNotNone(asked.clarification_question)
 
+    def test_exact_category_is_not_narrowed_by_a_fuzzy_product_match(self) -> None:
+        # Baseline eval: "revenue of Men's Footwear" fuzzily picked a women's product whose title says "Footwear",
+        # so the category total came back as 0.
+        products = [ProductEntityCandidate(id=PRODUCT_B_ID, title="Venus Women's Flat Sandal Fashion Footwear", category="Women's Footwear")]
+        resolver = CopilotEntityResolver(
+            product_resolver=ProductResolver(source=_ProductSource(products)),
+            category_resolver=CategoryResolver(categories=["Men's Footwear", "Women's Footwear"]),
+            marketplace_resolver=MarketplaceResolver(marketplaces=[]),
+            competitor_resolver=CompetitorResolver(competitors=[]),
+        )
+
+        result = resolver.resolve(seller_id=SELLER_ID, question="How much revenue did Men's Footwear make last month?")
+
+        self.assertEqual(["Men's Footwear"], result.categories)
+        self.assertEqual([], result.products)
+
     def test_follow_up_inherits_entity_and_explicit_entity_overrides_it(self) -> None:
         resolver = CopilotEntityResolver(
             product_resolver=self.product_resolver,

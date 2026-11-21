@@ -161,6 +161,14 @@ class CopilotEntityResolver:
         category_resolution = self._category_resolver.resolve(seller_id=seller_id, query_text=question)
         marketplace_resolution = self._marketplace_resolver.resolve(seller_id=seller_id, query_text=question)
         competitor_resolution = self._competitor_resolver.resolve(seller_id=seller_id, query_text=question)
+        if (
+            product_id is None
+            and category_resolution.confidence == EntityConfidence.HIGH
+            and product_resolution.matches
+            and all(match.match_type == "TOKEN_FUZZY" for match in product_resolution.matches)
+        ):
+            # The shared words name the category exactly; a fuzzy product guess would narrow a category total.
+            product_resolution = EntityResolution("PRODUCT", question)
         if competitor_resolution.ambiguous and product_resolution.selected_id and not self._competitor_resolver.has_explicit_mention(question):
             # A question about the seller's own product is not about a competitor just because competitors track it.
             competitor_resolution = EntityResolution("COMPETITOR", question)
