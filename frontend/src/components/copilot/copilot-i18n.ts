@@ -35,6 +35,20 @@ const strings = {
   stagePlanning: { en: "Choosing data sources...", bn: "তথ্যের উৎস বাছাই হচ্ছে...", banglish: "Data source bachai korchi..." },
   stageTool: { en: "Checked", bn: "দেখা হয়েছে", banglish: "Check kora hoyeche" },
   stageWriting: { en: "Writing a grounded answer...", bn: "যাচাই করা উত্তর লেখা হচ্ছে...", banglish: "Jachai kora uttor likhchi..." },
+  stepUnderstand: { en: "Understanding", bn: "বোঝা হচ্ছে", banglish: "Bujhchi" },
+  stepLookup: { en: "Looking up", bn: "খোঁজা হচ্ছে", banglish: "Khujchi" },
+  stepLookupData: { en: "your data", bn: "আপনার তথ্য", banglish: "apnar data" },
+  stepWrite: { en: "Writing", bn: "লেখা হচ্ছে", banglish: "Likhchi" },
+  progress: { en: "Answer progress", bn: "উত্তরের অগ্রগতি", banglish: "Uttorer progress" },
+  sources: { en: "Sources", bn: "উৎস", banglish: "Source" },
+  sourcesData: { en: "Business data checked", bn: "যে তথ্য দেখা হয়েছে", banglish: "Je data check kora hoyeche" },
+  sourcesMemory: { en: "From your history", bn: "আপনার আগের তথ্য থেকে", banglish: "Apnar ager data theke" },
+  notRecorded: { en: "Not recorded", bn: "রেকর্ড নেই", banglish: "Record nei" },
+  unavailable: { en: "unavailable", bn: "পাওয়া যায়নি", banglish: "pawa jayni" },
+  freshFRESH: { en: "Fresh", bn: "হালনাগাদ", banglish: "Fresh" },
+  freshSTALE: { en: "Stale", bn: "পুরনো", banglish: "Purono" },
+  freshMISSING: { en: "Missing", bn: "নেই", banglish: "Nei" },
+  freshUNKNOWN: { en: "Unknown age", bn: "সময় অজানা", banglish: "Shomoy ojana" },
   answerReady: { en: "New Copilot answer", bn: "Copilot নতুন উত্তর দিয়েছে", banglish: "Copilot notun uttor diyeche" },
   copy: { en: "Copy answer", bn: "উত্তর কপি করুন", banglish: "Answer copy korun" },
   copied: { en: "Copied", bn: "কপি হয়েছে", banglish: "Copy hoyeche" },
@@ -182,4 +196,18 @@ const errorKeys: Record<CopilotErrorKind, CopilotStringKey> = {
 
 export function errorText(kind: CopilotErrorKind, language: CopilotUiLanguage): string {
   return t(language, errorKeys[kind])
+}
+
+const NUMBER = "[\\d০-৯][\\d০-৯,]*(?:\\.[\\d০-৯]+)?"
+// Money (BDT, Tk, ৳, টাকা) or a counted quantity. Bare numbers, dates and percentages never qualify.
+const FIGURE = new RegExp(
+  // "top 3 products" is a rank, not a result.
+  `(?<!\\btop\\s)(?:(?:BDT|Tk\\.?|৳)\\s?${NUMBER}|${NUMBER}\\s?(?:BDT|টাকা|taka|units?|orders?|products?|items?|টি|ইউনিট|অর্ডার))`,
+  "gi"
+)
+
+/** The one money or count figure a sentence states, for the answer headline; null when there are none or several. */
+export function headlineFigure(text?: string | null): string | null {
+  const figures = new Set((text ?? "").match(FIGURE)?.map((figure) => figure.trim().replace(/,+$/, "")) ?? [])
+  return figures.size === 1 ? [...figures][0] : null
 }

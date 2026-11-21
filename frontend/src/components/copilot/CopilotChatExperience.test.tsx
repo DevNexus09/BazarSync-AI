@@ -125,7 +125,8 @@ describe("Copilot chat experience", () => {
     await ask("What should I restock?")
 
     expect((await screen.findByText("Quick recommendation")).tagName).toBe("STRONG")
-    expect(screen.queryByText("Restock recommendations")).toBeNull()
+    // Tool names live only in the collapsed Sources section, never in the answer itself.
+    expect(screen.getByText("Restock recommendations")).not.toBeVisible()
 
     await userEvent.click(screen.getByRole("button", { name: "Which products are closest to stocking out?" }))
     await waitFor(() => expect(copilotService.askCopilot).toHaveBeenCalledTimes(2))

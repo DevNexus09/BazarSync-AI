@@ -60,12 +60,13 @@ export const CopilotQuestionInput = forwardRef<
 
   return (
     <form
-      className="border-t border-border/60 bg-card p-3"
+      className="border-t border-border/60 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       onSubmit={(event) => {
         event.preventDefault()
         submit()
       }}
     >
+      <div className="copilot-column">
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
@@ -108,6 +109,7 @@ export const CopilotQuestionInput = forwardRef<
             {value.length}/{MAX_QUESTION_LENGTH}
           </span>
         ) : null}
+      </div>
       </div>
     </form>
   )

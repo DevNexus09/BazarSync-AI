@@ -2,20 +2,22 @@ import { useEffect, useRef } from "react"
 import { Bot } from "lucide-react"
 
 import { CopilotAssistantMessage, type CopilotAssistantActions } from "@/components/copilot/CopilotAssistantMessage"
+import { CopilotStageSteps } from "@/components/copilot/CopilotStageSteps"
 import { langAttribute, t, type CopilotUiLanguage } from "@/components/copilot/copilot-i18n"
-import type { CopilotActionProposal, CopilotLocalMessage } from "@/types/copilot"
+import type { CopilotActionProposal, CopilotLocalMessage, CopilotStreamStage } from "@/types/copilot"
 
 export function CopilotMessageList({
   messages,
   isLoading,
-  loadingText,
+  stage,
   onProposalChange,
   language = "en",
   actions,
 }: {
   messages: CopilotLocalMessage[]
   isLoading: boolean
-  loadingText?: string
+  /** Streamed stage; without one (non-streaming) a single "checking" line shows. */
+  stage?: CopilotStreamStage | null
   onProposalChange?: (proposal: CopilotActionProposal) => void
   language?: CopilotUiLanguage
   actions?: CopilotAssistantActions
@@ -25,10 +27,11 @@ export function CopilotMessageList({
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end", behavior: "smooth" })
-  }, [messages.length, isLoading, loadingText])
+  }, [messages.length, isLoading, stage])
 
   return (
-    <div className="flex-1 space-y-3 overflow-y-auto bg-background/35 px-3 py-3">
+    <div className="copilot-scroll flex-1 overflow-y-auto bg-background/35 px-3 py-3">
+      <div className="copilot-column space-y-3">
       {messages.map((message) =>
         message.role === "user" ? (
           <article
@@ -52,10 +55,11 @@ export function CopilotMessageList({
           />
         )
       )}
-      {isLoading ? (
+      {isLoading && stage ? <CopilotStageSteps stage={stage} language={language} /> : null}
+      {isLoading && !stage ? (
         <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card p-3 text-sm text-muted-foreground">
-          <Bot className="size-4 animate-pulse text-primary" aria-hidden="true" />
-          {loadingText ?? t(language, "thinking")}
+          <Bot className="size-4 animate-pulse text-primary motion-reduce:animate-none" aria-hidden="true" />
+          {t(language, "thinking")}
         </div>
       ) : null}
       {/* Announce only the newest answer, not the whole list, to screen readers. */}
@@ -63,6 +67,7 @@ export function CopilotMessageList({
         {isLoading ? "" : latestAssistant ? t(language, "answerReady") : ""}
       </div>
       <div ref={endRef} />
+      </div>
     </div>
   )
 }

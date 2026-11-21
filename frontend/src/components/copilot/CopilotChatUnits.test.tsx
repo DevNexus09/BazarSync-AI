@@ -94,3 +94,49 @@ describe("CopilotQuestionInput", () => {
     expect(screen.queryByText(/\/2000/)).toBeNull()
   })
 })
+
+describe("CopilotStageSteps", () => {
+  it("marks earlier steps done, the current step active, and names the data being looked up", async () => {
+    const { CopilotStageSteps } = await import("@/components/copilot/CopilotStageSteps")
+    const { rerender } = render(<CopilotStageSteps stage={{ stage: "understanding" }} language="en" />)
+
+    let steps = screen.getAllByRole("listitem")
+    expect(steps.map((step) => step.dataset.state)).toEqual(["active", "todo", "todo"])
+    expect(steps[0]).toHaveAttribute("aria-current", "step")
+
+    rerender(<CopilotStageSteps stage={{ stage: "tool", tool: "Revenue summary", status: "SUCCEEDED" }} language="en" />)
+    steps = screen.getAllByRole("listitem")
+    expect(steps.map((step) => step.dataset.state)).toEqual(["done", "active", "todo"])
+    expect(steps[1]).toHaveTextContent("Looking up revenue summary")
+
+    rerender(<CopilotStageSteps stage={{ stage: "writing" }} language="bn" />)
+    steps = screen.getAllByRole("listitem")
+    expect(steps.map((step) => step.dataset.state)).toEqual(["done", "done", "active"])
+  })
+})
+
+describe("CopilotChatPanel full-page mode", () => {
+  it("switches between side panel and full page", async () => {
+    const { CopilotChatPanel } = await import("@/components/copilot/CopilotChatPanel")
+    const onToggle = vi.fn()
+    const { rerender } = render(
+      <CopilotChatPanel open onClose={() => {}} expanded={false} onToggleExpanded={onToggle}>
+        <p>body</p>
+      </CopilotChatPanel>
+    )
+
+    const toggle = screen.getByRole("button", { name: /full page/i })
+    expect(toggle).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByTestId("copilot-chat-panel")).not.toHaveAttribute("data-expanded")
+    await userEvent.click(toggle)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <CopilotChatPanel open onClose={() => {}} expanded onToggleExpanded={onToggle}>
+        <p>body</p>
+      </CopilotChatPanel>
+    )
+    expect(screen.getByRole("button", { name: /full page/i })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByTestId("copilot-chat-panel")).toHaveAttribute("data-expanded")
+  })
+})

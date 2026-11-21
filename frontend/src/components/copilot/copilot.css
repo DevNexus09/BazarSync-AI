@@ -3,9 +3,32 @@
 
 .copilot-root {
   font-family: "Inter Variable", "Noto Sans Bengali", sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .copilot-root :lang(bn) {
   font-family: "Noto Sans Bengali", "Inter Variable", sans-serif;
   line-height: 1.7;
+}
+
+.copilot-root ::selection {
+  background: rgb(var(--primary) / 0.3);
+  color: rgb(var(--foreground));
+}
+
+.copilot-root textarea {
+  caret-color: rgb(var(--primary));
+}
+
+.copilot-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--muted-foreground) / 0.35) transparent;
+  overscroll-behavior: contain;
+}
+
+/* Full-page mode keeps a readable column instead of stretching answers edge to edge. */
+[data-expanded] .copilot-column {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
 }

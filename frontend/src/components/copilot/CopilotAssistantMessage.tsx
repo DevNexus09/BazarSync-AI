@@ -4,7 +4,8 @@ import { Check, Copy, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react"
 
 import { CopilotActionProposalCard } from "@/components/copilot/CopilotActionProposalCard"
 import { CopilotMarkdown } from "@/components/copilot/CopilotMarkdown"
-import { langAttribute, t, type CopilotUiLanguage } from "@/components/copilot/copilot-i18n"
+import { CopilotSources } from "@/components/copilot/CopilotSources"
+import { headlineFigure, langAttribute, t, type CopilotUiLanguage } from "@/components/copilot/copilot-i18n"
 import { cn } from "@/lib/utils"
 import type { CopilotActionProposal, CopilotFeedbackRating, CopilotLocalMessage } from "@/types/copilot"
 
@@ -29,6 +30,8 @@ export function CopilotAssistantMessage({
   isLatest?: boolean
 }) {
   const [copied, setCopied] = useState(false)
+  // A restated figure from the answer itself; the card never computes or invents one.
+  const headline = headlineFigure(message.summary ?? message.content)
 
   const copy = async () => {
     try {
@@ -41,10 +44,16 @@ export function CopilotAssistantMessage({
   }
 
   return (
-    <article className="rounded-2xl rounded-bl-md border border-border/60 bg-card p-3 text-sm text-foreground shadow-sm">
+    <article className="rounded-2xl rounded-bl-md border border-border/60 bg-card p-3.5 text-sm leading-6 text-foreground shadow-[0_1px_2px_rgb(var(--overlay)/.25)]">
       <div lang={langAttribute(message.replyLanguage, message.content)}>
+        {headline ? (
+          <p data-testid="copilot-headline" className="mb-1.5 text-2xl font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground">
+            {headline}
+          </p>
+        ) : null}
         <CopilotMarkdown text={message.content} />
       </div>
+      <CopilotSources message={message} language={language} />
       {message.actionProposal ? (
         <div className="mt-3">
           <CopilotActionProposalCard proposal={message.actionProposal} onStatusChange={onProposalChange} />

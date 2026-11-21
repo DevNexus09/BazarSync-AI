@@ -312,7 +312,7 @@ describe("CopilotWidget", () => {
     expect(copilotService.askCopilot).toHaveBeenCalledTimes(1)
     expect(screen.queryByText(/confidence: high/i)).toBeNull()
     expect(screen.queryByText(/evidence \(1\)/i)).toBeNull()
-    expect(screen.queryByText(/supplier lead time is missing/i)).toBeNull()
+    expect(screen.getByText(/supplier lead time is missing/i)).not.toBeVisible()
   })
 
   it("clicking a suggested question sends it directly", async () => {
@@ -478,7 +478,7 @@ describe("CopilotWidget", () => {
     expect(screen.getByText("What is my revenue this week?")).toBeInTheDocument()
     expect(screen.queryByText(/confidence: high/i)).toBeNull()
     expect(screen.queryByText(/evidence \(1\)/i)).toBeNull()
-    expect(screen.queryByText(/sales completeness is partial/i)).toBeNull()
+    expect(screen.getByText(/sales completeness is partial/i)).not.toBeVisible()
     expect(screen.getByText(/action proposal: promotion_plan/i)).toBeInTheDocument()
     expect(window.localStorage.getItem("bazarsync:copilot:conversation-id")).toBe(
       "conversation-2"
@@ -728,16 +728,18 @@ describe("CopilotWidget", () => {
     )
   })
 
-  it("uses mobile contained and desktop compact panel classes", async () => {
+  it("is a full-screen sheet on phones, a side panel on desktop, and can go full page", async () => {
     renderWidget()
     await openWidget()
 
     const panel = screen.getByTestId("copilot-chat-panel")
-    expect(panel).toHaveClass("h-[86dvh]")
-    expect(panel).toHaveClass("w-screen")
-    expect(panel).toHaveClass("sm:h-[620px]")
-    expect(panel).toHaveClass("sm:w-[420px]")
-    expect(panel).toHaveClass("sm:max-h-[calc(100dvh-3rem)]")
+    expect(panel).toHaveClass("inset-0", "h-[100dvh]", "w-screen", "sm:h-[640px]", "sm:w-[440px]", "sm:max-h-[calc(100dvh-3rem)]")
+
+    await userEvent.click(screen.getByRole("button", { name: /full page/i }))
+
+    expect(panel).toHaveAttribute("data-expanded")
+    expect(panel).toHaveClass("sm:inset-4")
+    expect(panel).not.toHaveClass("sm:w-[440px]")
   })
 
   it("does not create a dedicated copilot page route", () => {

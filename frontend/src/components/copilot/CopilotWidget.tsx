@@ -14,7 +14,6 @@ import {
   errorText,
   languageOptions,
   resolveUiLanguage,
-  stageText,
   t,
   type CopilotErrorKind,
 } from "@/components/copilot/copilot-i18n"
@@ -309,6 +308,7 @@ export function CopilotWidget() {
   )
   const [messages, setMessages] = useState<CopilotLocalMessage[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   // After "New chat" the widget must not jump back to the latest stored conversation.
   const [freshChat, setFreshChat] = useState(false)
   const [language, setLanguage] = useState<CopilotLanguage>(() => languagePreference.get())
@@ -631,6 +631,8 @@ export function CopilotWidget() {
       <CopilotChatPanel
         open={open}
         onClose={close}
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded((current) => !current)}
         title={t(uiLanguage, "title")}
         subtitle={t(uiLanguage, "subtitle")}
         actions={headerActions}
@@ -666,20 +668,22 @@ export function CopilotWidget() {
         ) : null}
         <div data-testid="copilot-message-area" className="flex min-h-0 flex-1 flex-col">
           {messages.length === 0 ? (
-            <div className="flex-1 overflow-y-auto p-3">
-              <CopilotEmptyState
-                onSuggestedQuestion={submitQuestion}
-                disabled={ask.isPending}
-                language={uiLanguage}
-              />
-              {errorBox ? <div className="mt-3">{errorBox}</div> : null}
+            <div className="copilot-scroll flex-1 overflow-y-auto p-3">
+              <div className="copilot-column">
+                <CopilotEmptyState
+                  onSuggestedQuestion={submitQuestion}
+                  disabled={ask.isPending}
+                  language={uiLanguage}
+                />
+                {errorBox ? <div className="mt-3">{errorBox}</div> : null}
+              </div>
             </div>
           ) : (
             <>
               <CopilotMessageList
                 messages={messages}
                 isLoading={ask.isPending}
-                loadingText={stage ? stageText(stage, uiLanguage) : undefined}
+                stage={stage}
                 onProposalChange={handleProposalChange}
                 language={uiLanguage}
                 actions={{
