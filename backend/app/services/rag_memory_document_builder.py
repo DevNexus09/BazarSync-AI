@@ -25,7 +25,7 @@ class RagMemoryBuildError(ValueError):
 class RagMemoryDocumentBuilder:
     def build_from_product_profile(self, product: Any) -> RagMemoryDocumentCreate:
         definition = get_rag_source_definition(RagMemorySourceType.PRODUCT_PROFILE)
-        sku = _spec_value(product, "sku") or "unknown"
+        sku = _product_sku(product) or "unknown"
         title = f"Product profile for {_name(product, fallback=f'product {product.id}')}"
         content = (
             f"Product {_name(product, fallback=f'product {product.id}')} has SKU {sku}, category {_clean_text(getattr(product, 'category', None) or 'unknown')}, "
@@ -43,6 +43,7 @@ class RagMemoryDocumentBuilder:
             content=content,
             event_time=getattr(product, "updated_at", None) or getattr(product, "created_at", None),
             metadata={"sku": sku, "category": getattr(product, "category", None), "has_cost": getattr(product, "cost_price", None) is not None},
+            product=product,
         )
 
     def build_from_sales_record(self, sale: Any) -> RagMemoryDocumentCreate:
@@ -77,6 +78,7 @@ class RagMemoryDocumentBuilder:
             content=content,
             event_time=getattr(sale, "sold_at", None),
             metadata={"status": status, "net_units": net_units, "revenue": _decimal_text(revenue), "price_source": price_source, "excluded": excluded},
+            product=product,
         )
 
     def build_from_sales_revenue_summary(self, summary: Mapping[str, Any] | Any) -> RagMemoryDocumentCreate:
@@ -105,6 +107,8 @@ class RagMemoryDocumentBuilder:
     def build_from_inventory_lifecycle(self, source: Any) -> RagMemoryDocumentCreate:
         if hasattr(source, "quantity_available") and hasattr(source, "captured_at"):
             return self.build_from_inventory_snapshot_or_risk(source)
+        if hasattr(source, "received_at") and hasattr(source, "unit_cost"):
+            return self.build_from_stock_in(source)
         definition = get_rag_source_definition(RagMemorySourceType.INVENTORY_LIFECYCLE)
         product = getattr(source, "product", None)
         product_id = getattr(source, "product_id", None)
@@ -136,6 +140,53 @@ class RagMemoryDocumentBuilder:
             event_time=event_time,
             metadata={"source_model": type(source).__name__},
             source_table_override=_table_name(source),
+            product=product,
+        )
+
+    def build_from_stock_in(self, row: Any) -> RagMemoryDocumentCreate:
+        """Purchase receipt (inventory_stock_in). Unknown cost stays "unavailable", never zero."""
+        definition = get_rag_source_definition(RagMemorySourceType.INVENTORY_LIFECYCLE)
+        product = getattr(row, "product", None)
+        product_name = _name(product, fallback=f"product {row.product_id}")
+        quantity = int(getattr(row, "quantity", 0) or 0)
+        unit_cost = getattr(row, "unit_cost", None)
+        currency = _clean_text(getattr(row, "currency", None) or "") or None
+        received_at = getattr(row, "received_at", None)
+        if unit_cost is not None:
+            unit_cost = Decimal(str(unit_cost))
+            money_unit = f" {currency}" if currency else ""
+            cost_text = (
+                f"unit cost {unit_cost.quantize(Decimal('0.01'))}{money_unit}, "
+                f"total cost {(unit_cost * quantity).quantize(Decimal('0.01'))}{money_unit}"
+            )
+        else:
+            cost_text = "unit cost unavailable"
+        reference = _clean_text(getattr(row, "source_reference", None) or "")
+        notes = _clean_text(getattr(row, "notes", None) or "")
+        content = (
+            f"Stock-in (purchase receipt): received {quantity} units on {_date_text(received_at)}; {cost_text}."
+            + (f" Reference: {reference}." if reference else "")
+            + (f" Note: {notes}." if notes else "")
+            + " Source: inventory_stock_in."
+        )
+        return self._document(
+            definition=definition,
+            seller_id=row.seller_id,
+            product_id=row.product_id,
+            source_id=row.id,
+            title=f"Stock received for {product_name}",
+            summary=f"{product_name}: {quantity} units received on {_date_text(received_at)}.",
+            content=content,
+            event_time=received_at,
+            metadata={
+                "kind": "stock_in",
+                "quantity": quantity,
+                "unit_cost": _decimal_text(unit_cost),
+                "currency": currency,
+                "sku": _product_sku(product),
+            },
+            source_table_override="inventory_stock_in",
+            product=product,
         )
 
     def build_from_pricing_history(self, row: Any) -> RagMemoryDocumentCreate:
@@ -161,6 +212,7 @@ class RagMemoryDocumentBuilder:
             event_time=getattr(row, "calculated_at", None) or getattr(row, "generated_at", None) or getattr(row, "effective_from", None),
             metadata={"source_model": type(row).__name__, "data_status": _enum_value(getattr(row, "data_status", None))},
             source_table_override=_table_name(row),
+            product=product,
         )
 
     def build_from_dead_stock_history(self, row: Any) -> RagMemoryDocumentCreate:
@@ -187,6 +239,7 @@ class RagMemoryDocumentBuilder:
             event_time=getattr(row, "assessed_at", None) or getattr(row, "calculated_at", None) or getattr(row, "generated_at", None),
             metadata={"source_model": type(row).__name__, "classification": _enum_value(getattr(row, "classification", None))},
             source_table_override=_table_name(row),
+            product=product,
         )
 
     def build_from_visibility_metric(self, metric: Any) -> RagMemoryDocumentCreate:
@@ -212,6 +265,7 @@ class RagMemoryDocumentBuilder:
             content=content,
             event_time=getattr(metric, "metric_date", None),
             metadata={"ctr": _decimal_text(ctr), "listing_quality_score": _decimal_text(getattr(metric, "listing_quality_score", None))},
+            product=product,
         )
 
     def build_from_alert_history(self, row: Any) -> RagMemoryDocumentCreate:
@@ -326,6 +380,7 @@ class RagMemoryDocumentBuilder:
                 "opportunity_score": _decimal_text(getattr(opportunity, "opportunity_score", None)),
                 "opportunity_action": _enum_value(getattr(opportunity, "recommended_action", None)) if opportunity else None,
             },
+            product=product,
         )
 
     def build_from_pricing_recommendation(self, recommendation: Any) -> RagMemoryDocumentCreate:
@@ -371,6 +426,7 @@ class RagMemoryDocumentBuilder:
                 "estimation_method": _enum_value(getattr(recommendation, "estimation_method", None)),
                 "formula_version": getattr(recommendation, "formula_version", None),
             },
+            product=product,
         )
 
     def build_from_inventory_snapshot_or_risk(
@@ -428,6 +484,7 @@ class RagMemoryDocumentBuilder:
                 "reorder_recommendation_id": _optional_uuid(getattr(reorder_recommendation, "id", None)),
                 "risk_level": _enum_value(getattr(risk_assessment, "risk_level", None)),
             },
+            product=product,
         )
 
     def build_from_telegram_inventory_alert(self, alert: Any) -> RagMemoryDocumentCreate:
@@ -460,6 +517,7 @@ class RagMemoryDocumentBuilder:
                 "attempt_count": getattr(alert, "attempt_count", None),
                 "metadata": getattr(alert, "alert_metadata", None),
             },
+            product=product,
         )
 
     def build_from_recommendation(self, recommendation: Any) -> RagMemoryDocumentCreate:
@@ -496,6 +554,7 @@ class RagMemoryDocumentBuilder:
                 "action": action,
                 "confidence": _enum_value(recommendation.confidence),
             },
+            product=product,
         )
 
     def build_from_reorder_recommendation(self, recommendation: Any) -> RagMemoryDocumentCreate:
@@ -531,6 +590,7 @@ class RagMemoryDocumentBuilder:
                 "calculation_version": getattr(recommendation, "calculation_version", None),
             },
             source_table_override="reorder_recommendations",
+            product=product,
         )
 
     def build_from_dead_stock_recovery_recommendation(self, recommendation: Any) -> RagMemoryDocumentCreate:
@@ -565,6 +625,7 @@ class RagMemoryDocumentBuilder:
                 "calculation_version": getattr(recommendation, "calculation_version", None),
             },
             source_table_override="dead_stock_recovery_recommendations",
+            product=product,
         )
 
     def build_from_alert(self, alert: Any) -> RagMemoryDocumentCreate:
@@ -596,6 +657,7 @@ class RagMemoryDocumentBuilder:
                 "delivery_status": _enum_value(alert.delivery_status),
                 "payload": getattr(alert, "payload", None),
             },
+            product=product,
         )
 
     def build_from_promotion_result(self, result: Mapping[str, Any] | Any) -> RagMemoryDocumentCreate:
@@ -632,6 +694,7 @@ class RagMemoryDocumentBuilder:
                 "promotion_name": name,
                 "outcome": _clean_text(outcome),
             },
+            product_name=product_name,
         )
 
     def build_from_promotion_plan(self, plan: Mapping[str, Any] | Any) -> RagMemoryDocumentCreate:
@@ -661,6 +724,7 @@ class RagMemoryDocumentBuilder:
             content=content,
             event_time=data.get("updated_at") or data.get("created_at") or data.get("planned_start_at"),
             metadata={"promotion_type": data.get("promotion_type"), "status": data.get("status"), "marketplace_execution_enabled": False},
+            product_name=product_name,
         )
 
     def build_from_seller_price_history(self, row: Mapping[str, Any] | Any) -> RagMemoryDocumentCreate:
@@ -691,6 +755,7 @@ class RagMemoryDocumentBuilder:
             content=content,
             event_time=data.get("changed_at") or data.get("created_at"),
             metadata={"source": source, "marketplace": data.get("marketplace"), "baseline_not_historical_change": is_baseline},
+            product_name=product_name,
         )
 
     def build_generic_from_registered_source(
@@ -717,10 +782,19 @@ class RagMemoryDocumentBuilder:
         event_time: datetime | date | None,
         metadata: dict[str, Any],
         source_table_override: str | None = None,
+        product: Any = None,
+        product_name: str | None = None,
     ) -> RagMemoryDocumentCreate:
         normalized_title = _clean_text(title)
         normalized_summary = _clean_text(summary)
         normalized_content = _clean_text(content)
+        if product_id is not None and (product is not None or product_name):
+            # Lead with title + SKU so keyword search finds every product document by name or SKU.
+            label = _name(product, fallback=product_name or f"product {product_id}")
+            sku = _product_sku(product)
+            prefix = f"{label} (SKU {sku})." if sku else f"{label}."
+            if not normalized_content.startswith(prefix):
+                normalized_content = f"{prefix} {normalized_content}"
         if not normalized_content:
             raise RagMemoryBuildError("Memory document content is empty after sanitization.")
         business_hash = _content_hash(
@@ -900,6 +974,13 @@ def _spec_value(product: Any, key: str) -> str | None:
         if value:
             return _clean_text(value)
     return None
+
+
+def _product_sku(product: Any) -> str | None:
+    if product is None:
+        return None
+    sku = getattr(product, "sku", None)
+    return _clean_text(sku) if sku else _spec_value(product, "sku")
 
 
 def _transaction_price(sale: Any, product: Any) -> Decimal | None:
