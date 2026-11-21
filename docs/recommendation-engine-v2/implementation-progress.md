@@ -231,3 +231,19 @@ Live Groq, end-to-end worker/WebSocket/RAG delivery, pricing accuracy, productio
 4. Explain the final decision from validated facts and use a deterministic Bangla fallback when the provider fails. Test that unsupported quantities, changes, revenue and profit cannot enter the decision or its explanation. Limit network attempts across retry layers.
 5. Repair the transaction-price evidence adapter and build offline, point-in-time datasets with coverage, stockout, promotion, refund, fee and currency handling. Evaluate on forward time splits against simple baselines. Report error, uncertainty coverage, missing-data behavior and business guard violations across seller/product cohorts.
 6. Run candidate forecasts in shadow mode. Compare coverage, drift, safety, latency and fallback rates before enabling the evidence-backed result for selected sellers. Keep advisory semantics and a flag-based rollback.
+
+## Business Copilot accuracy eval
+
+Plan: [copilot plan](../superpowers/plans/copilot%20plan.md). Golden set: `backend/tests/fixtures/copilot_golden_questions.json` (40 questions on the `demo1@gmail.com` comprehensive demo seed, as_of 2026-11-21, ISO date ranges). Runner: `python scripts/copilot_eval.py --seller-id <uuid>`. A question passes when every expected value appears in the answer.
+
+| Run | Code | Score | Tool match | Notes |
+| --- | --- | --- | --- | --- |
+| Baseline, 2026-11-22 | `develop` + Copilot WIP (before Task 1) | 4/40 (10%) | 62% | Groq free quota was exhausted (HTTP 429 on every call), so nearly every reply was the deterministic fallback. Results: `backend/artifacts/copilot_eval/20261121T193710Z.json`. |
+
+Baseline failure patterns:
+
+- The fallback answer reports a nested top product's `gross_revenue` (59150.00) as the period's gross revenue (290360.28).
+- A Men's Footwear revenue question answered "BDT 0", but `get_revenue_summary` with `category="Men's Footwear"` returns 235260.96.
+- Product-name questions ("Lex Loafer…", SKU lookups, "BUBBLE GUMMERS…") were sent to competitor clarification ("Which competitor do you mean").
+- Stock-in questions had no tool to route to.
+- Count questions (products, alerts) gave "I could not find a clear answer".
