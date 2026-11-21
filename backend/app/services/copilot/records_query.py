@@ -270,8 +270,9 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
 
     currencies = sorted({getattr(row, spec.currency_attr) for row, _ in pairs if spec.currency_attr and getattr(row, spec.currency_attr)})
     measure = spec.measures.get(query.measure or "")
-    if len(currencies) > 1 and measure is not None and measure.unit == "money" and query.aggregate in {"sum", "avg"}:
-        missing_data.append(f"MIXED_CURRENCY: rows use {', '.join(currencies)}; totals mix currencies.")
+    mixed_money = len(currencies) > 1 and measure is not None and measure.unit == "money" and query.aggregate in {"sum", "avg", "min", "max"}
+    if mixed_money:
+        missing_data.append(f"MIXED_CURRENCY: rows use {', '.join(currencies)}; no single money figure is given. Filter to one product or currency.")
     if not pairs:
         missing_data.append(f"NO_MATCHING_RECORDS: no {query.entity} recorded for this scope (observed zero, not missing data).")
 
@@ -280,6 +281,9 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         truncated = len(pairs) > query.limit
     else:
         rows, truncated, rows_without_measure = _aggregate_rows(query, spec, measure, pairs)
+        if mixed_money:
+            # Money in different currencies cannot be added or compared; report it as unavailable, not a blended number.
+            rows = [{**row, "value": None} for row in rows]
         if rows_without_measure:
             missing_data.append(f"MEASURE_UNAVAILABLE: {rows_without_measure} matching row(s) have no {query.measure} value and are excluded from it.")
 

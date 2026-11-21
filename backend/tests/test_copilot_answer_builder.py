@@ -136,6 +136,25 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
         self.assertIn("- order count: 138", answer.answer)
         self.assertNotIn("59150.00", answer.answer)
 
+    def test_empty_period_says_no_sales_recorded_not_zero_revenue(self):
+        # Review Focus 5: an observed zero is "no sales recorded", never "gross revenue: 0".
+        empty = ToolExecutionResult(
+            tool_name="get_revenue_summary",
+            tool_version="v1",
+            status=ToolExecutionStatus.SUCCEEDED,
+            data={"gross_revenue": "0", "units_sold": 0, "order_count": 0, "top_products_by_revenue": [], "evidence": [], "missing_data": []},
+            evidence=[],
+            missing_data=[],
+            error=None,
+            runtime_ms=1,
+        )
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[empty], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[])
+
+        self.assertIn("No sales recorded for this period", answer.answer)
+        self.assertNotIn("gross revenue: 0", answer.answer)
+        self.assertNotIn("order count: 0", answer.answer)
+
     def test_rows_without_usable_facts_say_so_plainly(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.SEO_ADVICE),

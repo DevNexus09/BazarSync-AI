@@ -137,6 +137,21 @@ class RecordsQueryToolTests(unittest.TestCase):
         self.assertIsNone(result.data["rows"][0]["value"])
         self.assertTrue(any(item.startswith("MEASURE_UNAVAILABLE") for item in result.data["missing_data"]))
 
+    def test_mixed_currencies_never_produce_one_money_figure(self):
+        self.db.add(InventoryStockIn(seller_id=self.seller.id, product_id=self.shoe.id, quantity=2, received_at=_utc("2026-11-13T03:00:00"), unit_cost=Decimal("10.00"), currency="USD"))
+        self.db.commit()
+
+        for aggregate in ("sum", "avg", "min", "max"):
+            with self.subTest(aggregate=aggregate):
+                result = self._run(entity="stock_ins", aggregate=aggregate, measure="unit_cost")
+                self.assertIsNone(result.data["rows"][0]["value"])
+                self.assertTrue(any(item.startswith("MIXED_CURRENCY") for item in result.data["missing_data"]))
+                self.assertEqual(["BDT", "USD"], result.data["currency"])
+        # Units are not money, so a quantity total is still exact.
+        self.assertEqual("62", self._run(entity="stock_ins", aggregate="sum", measure="quantity").data["rows"][0]["value"])
+        # Grouping by product keeps each product's single currency usable only when the whole result is one currency.
+        self.assertIsNone(self._run(entity="stock_ins", aggregate="sum", measure="total_cost", group_by="product").data["rows"][0]["value"])
+
     def test_limit_truncation_flagged(self):
         listed = self._run(entity="sales", aggregate="list", limit=2)
         grouped = self._run(entity="sales", aggregate="count", group_by="day", limit=1)

@@ -409,14 +409,19 @@ class CopilotOrchestrator:
         tool_started_ms = now_ms()
         if not selected_tools and self._llm_planner_fallback_enabled:
             selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
-        if self._always_retrieve_memory and request.include_memory and not any(step.tool_name == "retrieve_business_memory" for step in selected_tools):
+        if (
+            self._always_retrieve_memory
+            and request.include_memory
+            and len(selected_tools) < self._max_tool_calls  # memory is optional; it never displaces a planned tool
+            and not any(step.tool_name == "retrieve_business_memory" for step in selected_tools)
+        ):
             memory_step = PlannedToolCall(
                 tool_name="retrieve_business_memory",
                 args=self._arguments_for_tool(tool_name="retrieve_business_memory", request=request, classification=classification),
                 reason="memory is always retrieved (COPILOT_ALWAYS_RETRIEVE_MEMORY)",
                 required=False,
             )
-            selected_tools = [*selected_tools[: self._max_tool_calls - 1], memory_step]
+            selected_tools = [*selected_tools, memory_step]
         await emit({"stage": "planning", "tools": [_tool_label(step.tool_name) for step in selected_tools[: self._max_tool_calls]]})
         if self._parallel_tools_enabled:
             tool_results = await self._run_tools_concurrently(
@@ -740,18 +745,12 @@ class CopilotOrchestrator:
             return tool_results
 
         async def execute(steps: list[PlannedToolCall]) -> list[ToolExecutionResult]:
-            if self._parallel_tools_enabled:
-                return await self._run_tools_concurrently(
-                    request=request, classification=classification, plan=plan, conversation_id=conversation_id,
-                    user_message_id=user_message_id, selected_tools=steps, emit=emit,
-                )
-            results = self._run_tools(
+            # Worker threads with their own sessions, so the loop deadline can stop waiting on a slow query
+            # without blocking the event loop or sharing the request session with a still-running thread.
+            return await self._run_tools_concurrently(
                 request=request, classification=classification, plan=plan, conversation_id=conversation_id,
-                user_message_id=user_message_id, selected_tools=steps,
+                user_message_id=user_message_id, selected_tools=steps, emit=emit,
             )
-            for result in results:
-                await emit(_tool_event(result))
-            return results
 
         return await run_agent_loop(
             question=request.question,

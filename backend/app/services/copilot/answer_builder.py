@@ -251,6 +251,10 @@ def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]
     lines: list[str] = []
     for tool_name in FINANCIAL_TOOLS:
         for row in (rows_by_tool.get(tool_name) or [])[:1]:
+            if row.get("order_count") == 0 and not row.get("units_sold"):
+                # Observed zero: say nothing was recorded instead of listing zero figures.
+                lines.append("No sales recorded for this period")
+                continue
             repeats_gross = row.get("net_revenue") == row.get("gross_revenue")
             lines.extend(
                 f"{_label(key)}: {_safe_value(row[key])}"

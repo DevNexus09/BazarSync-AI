@@ -175,14 +175,14 @@ class _LoopOnlyRouter:
 
 
 class OrchestratorAgentLoopTests(unittest.IsolatedAsyncioTestCase):
-    async def _ask(self, question, *, router, agent_loop_enabled, always_retrieve_memory=False, include_memory=True):
+    async def _ask(self, question, *, router, agent_loop_enabled, always_retrieve_memory=False, include_memory=True, registry=None, max_tool_calls=None, overall_timeout_seconds=30):
         from app.services.copilot.entity_resolver import CopilotEntityResolver
         from app.services.copilot.intent_classifier import CopilotIntentClassifier
         from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
         from app.services.copilot.question_planner import CopilotQuestionPlanner
         from tests.test_copilot_orchestrator import FIXED_NOW, SELLER_ID as ORCH_SELLER_ID, USER_ID, _FakeRegistry, _FakeRepository, _SellerScopedProductSource, _good_groq
 
-        registry = _FakeRegistry()
+        registry = registry or _FakeRegistry()
         orchestrator = CopilotOrchestrator(
             repository=_FakeRepository(),
             classifier=CopilotIntentClassifier(now=FIXED_NOW),
@@ -191,7 +191,8 @@ class OrchestratorAgentLoopTests(unittest.IsolatedAsyncioTestCase):
             groq_json=_good_groq,
             model="test-model",
             groq_timeout_seconds=1,
-            overall_timeout_seconds=30,
+            overall_timeout_seconds=overall_timeout_seconds,
+            max_tool_calls=max_tool_calls,
             llm_router=router,
             agent_loop_enabled=agent_loop_enabled,
             always_retrieve_memory=always_retrieve_memory,
@@ -231,6 +232,33 @@ class OrchestratorAgentLoopTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("retrieve_business_memory", [call["name"] for call in with_flag.calls])
         self.assertNotIn("retrieve_business_memory", [call["name"] for call in opted_out.calls])
+
+    async def test_always_memory_never_displaces_a_planner_tool(self):
+        _, registry, _ = await self._ask("What should I restock?", router=_LoopOnlyRouter([]), agent_loop_enabled=False, always_retrieve_memory=True, max_tool_calls=1)
+
+        names = [call["name"] for call in registry.calls]
+        self.assertEqual(1, len(names))
+        self.assertNotEqual("retrieve_business_memory", names[0])
+
+    async def test_slow_loop_tool_cannot_hold_the_answer_past_the_deadline(self):
+        import time as _time
+
+        from tests.test_copilot_orchestrator import _FakeRegistry
+
+        class _SlowRecords(_FakeRegistry):
+            def execute(self, *, name, context, arguments):
+                if name == "query_business_records":
+                    _time.sleep(4)
+                return super().execute(name=name, context=context, arguments=arguments)
+
+        router = _LoopOnlyRouter([{"tool_calls": [{"name": "query_business_records", "arguments": {"entity": "sales", "aggregate": "count"}}]}])
+        started = _time.monotonic()
+
+        result, _, _ = await self._ask("What should I restock?", router=router, agent_loop_enabled=True, registry=_SlowRecords(), overall_timeout_seconds=3)
+
+        # Loop budget is ~2s (3s overall minus the 1s answer budget); the 4s tool must not block past it.
+        self.assertLess(_time.monotonic() - started, 3.5)
+        self.assertTrue(result.answer)
 
     async def test_blocked_question_never_reaches_the_loop(self):
         router = _LoopOnlyRouter([{"tool_calls": [{"name": "get_inventory_summary", "arguments": {}}]}])
