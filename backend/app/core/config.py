@@ -243,6 +243,8 @@ class Settings(BaseModel):
     copilot_llm_answer_routes_banglish: str = ""
     copilot_anthropic_effort: str = "low"
     copilot_anthropic_max_tokens: int = 16000
+    openai_base_url: str = "https://api.openai.com/v1"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     copilot_prompt_tool_chars: int = 12000
     copilot_prompt_total_chars: int = 48000
     copilot_conversation_memory_enabled: bool = False
@@ -563,6 +565,8 @@ class Settings(BaseModel):
             "copilot_llm_answer_routes_banglish": os.getenv("COPILOT_LLM_ANSWER_ROUTES_BANGLISH", ""),
             "copilot_anthropic_effort": os.getenv("COPILOT_ANTHROPIC_EFFORT", "low"),
             "copilot_anthropic_max_tokens": int(os.getenv("COPILOT_ANTHROPIC_MAX_TOKENS", "16000")),
+            "openai_base_url": os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1",
+            "gemini_base_url": os.getenv("GEMINI_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai",
             "copilot_prompt_tool_chars": int(os.getenv("COPILOT_PROMPT_TOOL_CHARS", "12000")),
             "copilot_prompt_total_chars": int(os.getenv("COPILOT_PROMPT_TOTAL_CHARS", "48000")),
             "copilot_conversation_memory_enabled": _parse_bool(os.getenv("COPILOT_CONVERSATION_MEMORY_ENABLED"), default=False),

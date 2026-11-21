@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 import logging
+import os
 import time
 from typing import Any, Mapping, Sequence
 
@@ -10,6 +11,12 @@ from app.ai.llm.anthropic_provider import DEFAULT_ANTHROPIC_MODEL
 from app.ai.llm.base import JsonCompletionRequest, LLMProvider, LLMProviderError, LLMResult
 
 logger = logging.getLogger(__name__)
+
+# OpenAI-compatible providers: route name -> (API key env var, settings attribute for the base URL).
+OPENAI_COMPAT_PROVIDERS = {
+    "openai": ("OPENAI_API_KEY", "openai_base_url"),
+    "gemini": ("GEMINI_API_KEY", "gemini_base_url"),
+}
 
 # Below this, a fallback attempt cannot finish inside the deadline.
 MIN_ATTEMPT_SECONDS = 1.0
@@ -106,7 +113,10 @@ def parse_route(value: str, *, default_groq_model: str | None) -> LLMRoute | Non
     if provider == "groq":
         resolved = model or default_groq_model
         return LLMRoute("groq", resolved) if resolved else None
-    raise ValueError(f"Unknown Copilot LLM provider in route {value!r}; expected 'groq' or 'anthropic'.")
+    if provider in OPENAI_COMPAT_PROVIDERS:
+        # Free-tier model ids change often, so these routes must name their model.
+        return LLMRoute(provider, model) if model else None
+    raise ValueError(f"Unknown Copilot LLM provider in route {value!r}; expected one of anthropic, gemini, groq, openai.")
 
 
 def parse_routes(value: str, *, default_groq_model: str | None) -> list[LLMRoute]:
@@ -124,6 +134,7 @@ def build_router_from_settings(
     """Build the answer router. Raises ``ValueError`` for an unknown provider in a route."""
     from app.ai.llm.anthropic_provider import AnthropicProvider
     from app.ai.llm.groq_provider import GroqProvider
+    from app.ai.llm.openai_compat_provider import OpenAICompatProvider
 
     groq_model = default_groq_model or settings.copilot_groq_model
     default_routes = parse_routes(settings.copilot_llm_answer_routes, default_groq_model=groq_model) or parse_routes(
@@ -149,6 +160,11 @@ def build_router_from_settings(
             effort=settings.copilot_anthropic_effort,
             max_tokens=settings.copilot_anthropic_max_tokens,
         )
+    for name, (key_env, base_url_attr) in OPENAI_COMPAT_PROVIDERS.items():
+        api_key = os.getenv(key_env, "").strip()
+        # A route whose provider has no key is skipped by routes_for(), so the chain moves on.
+        if name in all_providers and api_key:
+            providers[name] = OpenAICompatProvider(name=name, base_url=getattr(settings, base_url_attr), api_key=api_key)
     return CopilotLLMRouter(
         providers=providers,
         default_routes=default_routes,
