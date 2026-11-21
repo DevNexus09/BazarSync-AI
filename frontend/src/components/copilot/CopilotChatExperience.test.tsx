@@ -8,10 +8,6 @@ import { CopilotWidget } from "@/components/copilot/CopilotWidget"
 import * as copilotService from "@/services/copilot-service"
 import type { CopilotAskResponse, CopilotFeatures } from "@/types/copilot"
 
-vi.mock("@/hooks/use-products", () => ({
-  useProducts: () => ({ data: [{ id: "product-1", title: "Product A" }] }),
-}))
-
 vi.mock("@/services/copilot-service", () => ({
   listCopilotConversations: vi.fn(),
   createCopilotConversation: vi.fn(),

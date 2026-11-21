@@ -11,17 +11,6 @@ import { shouldShowCopilotWidget } from "@/components/copilot/copilot-visibility
 import * as copilotService from "@/services/copilot-service"
 import type { CopilotAskResponse } from "@/types/copilot"
 
-vi.mock("@/hooks/use-products", () => ({
-  useProducts: () => ({
-    data: [
-      {
-        id: "product-1",
-        title: "Product A",
-      },
-    ],
-  }),
-}))
-
 vi.mock("@/services/copilot-service", () => ({
   listCopilotConversations: vi.fn(),
   createCopilotConversation: vi.fn(),
@@ -111,10 +100,6 @@ async function openWidget() {
   await userEvent.click(
     screen.getByRole("button", { name: /open ai business copilot/i })
   )
-}
-
-async function expandFilters() {
-  await userEvent.click(screen.getByRole("button", { name: /^filters/i }))
 }
 
 async function submitQuestion(question = "What should I restock today?") {
@@ -257,159 +242,29 @@ describe("CopilotWidget", () => {
     )
   })
 
-  it("collapses filters by default and keeps chat message area visible", async () => {
+  it("shows no filter controls and keeps the chat message area visible", async () => {
     renderWidget()
     await openWidget()
 
-    const filtersButton = screen.getByRole("button", { name: /^filters/i })
-    expect(filtersButton).toHaveAttribute("aria-expanded", "false")
-    expect(filtersButton).toHaveAttribute("aria-controls", "copilot-filter-content")
-    expect(screen.queryByLabelText(/^date range$/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^filters/i })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/date range/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/product filter/i)).not.toBeInTheDocument()
     expect(screen.getByTestId("copilot-message-area")).toBeVisible()
   })
 
-  it("active-filter summary renders while collapsed", async () => {
-    renderWidget()
-    await openWidget()
-
-    expect(screen.getByText(/last 7 days · all domains · use both · all products/i)).toBeInTheDocument()
-  })
-
-  it("clicking filters expands existing controls", async () => {
-    renderWidget()
-    await openWidget()
-    await expandFilters()
-
-    expect(screen.getByLabelText(/date range/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "All" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    )
-    expect(screen.getByRole("button", { name: "Revenue" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Competitors" })).toBeInTheDocument()
-    expect(
-      screen.getByLabelText(/use current database data/i)
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText(/use business memory/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/use both/i)).toBeChecked()
-    expect(screen.getByLabelText(/product filter/i)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /^filters/i })).toHaveAttribute(
-      "aria-expanded",
-      "true"
-    )
-  })
-
-  it("selected filter values persist after collapse", async () => {
-    renderWidget()
-    await openWidget()
-    await expandFilters()
-
-    await userEvent.selectOptions(screen.getByLabelText(/date range/i), "last_30_days")
-    await userEvent.click(screen.getByRole("button", { name: "Pricing" }))
-    await userEvent.click(screen.getByLabelText(/use business memory/i))
-    await userEvent.selectOptions(screen.getByLabelText(/product filter/i), "product-1")
-    await expandFilters()
-
-    expect(screen.getByRole("button", { name: /^filters/i })).toHaveAttribute(
-      "aria-expanded",
-      "false"
-    )
-    expect(screen.getByText(/last 30 days · pricing · use business memory · product a/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/^date range$/i)).not.toBeInTheDocument()
-
-    await expandFilters()
-
-    expect(screen.getByLabelText(/date range/i)).toHaveValue("last_30_days")
-    expect(screen.getByRole("button", { name: "Pricing" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    )
-    expect(screen.getByLabelText(/use business memory/i)).toBeChecked()
-    expect(screen.getByLabelText(/product filter/i)).toHaveValue("product-1")
-  })
-
-  it("includes selected date range, domains, and source flags in ask requests", async () => {
-    renderWidget()
-    await openWidget()
-    await expandFilters()
-
-    await userEvent.selectOptions(screen.getByLabelText(/date range/i), "last_30_days")
-    await userEvent.click(screen.getByRole("button", { name: "Revenue" }))
-    await userEvent.click(screen.getByRole("button", { name: "Competitors" }))
-    await userEvent.click(screen.getByLabelText(/use current database data/i))
-    await userEvent.type(
-      screen.getByLabelText(/ask copilot a business question/i),
-      "What is my revenue this week?"
-    )
-    await userEvent.click(screen.getByRole("button", { name: /send question/i }))
-
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenCalledWith(
-        expect.objectContaining({
-          question: "What is my revenue this week?",
-          domain_filters: ["SALES_REVENUE", "COMPETITOR"],
-          include_memory: false,
-          include_current_data: true,
-          from_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-          to_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-          top_k: 8,
-        })
-      )
-    )
-  })
-
-  it("maps source radio selection to current-data and memory booleans", async () => {
-    renderWidget()
-    await openWidget()
-    await expandFilters()
-
-    await userEvent.click(screen.getByLabelText(/use business memory/i))
-    await userEvent.type(
-      screen.getByLabelText(/ask copilot a business question/i),
-      "What happened before?"
-    )
-    await userEvent.click(screen.getByRole("button", { name: /send question/i }))
-
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          include_current_data: false,
-          include_memory: true,
-        })
-      )
-    )
-    expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({
-        memory_source_types: expect.arrayContaining(["database", "memory"]),
-        source_types: expect.anything(),
-      })
-    )
-
-    cleanup()
-    window.localStorage.clear()
-    vi.mocked(copilotService.askCopilot).mockClear()
+  it("sends no filters: only the question, conversation and language", async () => {
     renderWidget()
     await openWidget()
     await userEvent.type(
       screen.getByLabelText(/ask copilot a business question/i),
-      "Why is revenue down?"
+      "What was my revenue from 2026-10-01 to 2026-10-31?"
     )
     await userEvent.click(screen.getByRole("button", { name: /send question/i }))
 
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          include_current_data: true,
-          include_memory: true,
-        })
-      )
-    )
-    expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({
-        source_types: expect.anything(),
-      })
-    )
+    await waitFor(() => expect(copilotService.askCopilot).toHaveBeenCalled())
+    const request = vi.mocked(copilotService.askCopilot).mock.calls[0][0]
+    expect(request.question).toBe("What was my revenue from 2026-10-01 to 2026-10-31?")
+    expect(Object.keys(request).sort()).toEqual(["conversation_id", "language", "question"])
   })
 
   it("submits with Enter and uses Shift+Enter for a new line", async () => {
@@ -428,8 +283,6 @@ describe("CopilotWidget", () => {
       expect(copilotService.askCopilot).toHaveBeenCalledWith(
         expect.objectContaining({
           question: "Line one\nLine two",
-          include_memory: true,
-          include_current_data: true,
         })
       )
     )
