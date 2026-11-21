@@ -336,6 +336,17 @@ class OpenAICompatRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({"answer": "from gemini"}, result.content)
         self.assertEqual([("openai:gpt", "FAILED", "RATE_LIMITED"), ("gemini:flash", "SUCCEEDED", None)], [(a.route, a.status, a.code) for a in attempts])
 
+    async def test_failed_routes_are_logged_with_their_code(self):
+        router = CopilotLLMRouter(
+            providers={"gemini": _ScriptedProvider("gemini", {"flash": LLMProviderError("busy", code="HTTP_503", provider="gemini")}), "groq": _ScriptedProvider("groq", {"llama": "ok"})},
+            default_routes=[LLMRoute("gemini", "flash"), LLMRoute("groq", "llama")],
+        )
+
+        with self.assertLogs("app.ai.llm.router", level="WARNING") as logs:
+            await router.complete_json(REQUEST)
+
+        self.assertTrue(any("gemini:flash" in line and "HTTP_503" in line for line in logs.output))
+
     def test_router_skips_provider_without_api_key(self):
         settings = SimpleNamespace(
             copilot_groq_model="llama-default",

@@ -88,8 +88,10 @@ class CopilotLLMRouter:
                     timeout=remaining,
                 )
             except asyncio.TimeoutError:
+                logger.warning("copilot_llm_route_failed route=%s code=DEADLINE", route.label)
                 attempts.append(LLMAttempt(route=route.label, status="FAILED", code="DEADLINE", latency_ms=_elapsed_ms(started)))
             except LLMProviderError as exc:
+                logger.warning("copilot_llm_route_failed route=%s code=%s", route.label, exc.code)
                 attempts.append(LLMAttempt(route=route.label, status="FAILED", code=exc.code, latency_ms=_elapsed_ms(started)))
             except Exception as exc:  # noqa: BLE001 - an unexpected provider bug must not skip the remaining routes
                 logger.exception("copilot_llm_provider_crashed route=%s", route.label)
