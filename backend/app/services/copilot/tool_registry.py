@@ -38,7 +38,7 @@ from app.models.product_price_history import ProductPriceHistory
 from app.models.product_visibility_metric import ProductVisibilityMetric
 from app.models.promotion import PromotionPlan, PromotionPlanStatus, PromotionResult
 from app.models.recommendation import Recommendation
-from app.models.reorder_recommendation import ReorderRecommendation, ReorderRecommendationStatus
+from app.models.reorder_recommendation import ReorderRecommendation, ReorderRecommendationAction, ReorderRecommendationStatus
 from app.models.rag_memory import RagMemoryChunk, RagMemoryDocument, RagMemoryEmbeddingStatus, RagMemorySourceType
 from app.models.sales_record import SalesRecord, SalesRecordStatus
 from app.models.sales_velocity import SalesVelocity
@@ -2217,6 +2217,8 @@ class SqlAlchemyCopilotToolDataAccess:
         statement = select(ReorderRecommendation).options(*options).where(
             ReorderRecommendation.seller_id == seller_id,
             ReorderRecommendation.recommendation_status == ReorderRecommendationStatus.OPEN,
+            ReorderRecommendation.action == ReorderRecommendationAction.REORDER,
+            ReorderRecommendation.recommended_quantity > 0,
         )
         statement = _limit_product_query(statement, product_id, ReorderRecommendation.product_id)
         if category:
@@ -2648,7 +2650,12 @@ class SqlAlchemyCopilotToolDataAccess:
             for row in self._db.execute(select(ActionCenterItem.source_type, ActionCenterItem.source_id).where(ActionCenterItem.seller_id == seller_id)).all()
         }
         new_items: list[ActionCenterItem] = []
-        reorder_rows = self._db.execute(select(ReorderRecommendation).options(joinedload(ReorderRecommendation.product)).where(ReorderRecommendation.seller_id == seller_id, ReorderRecommendation.recommendation_status == ReorderRecommendationStatus.OPEN).limit(100)).scalars().all()
+        reorder_rows = self._db.execute(select(ReorderRecommendation).options(joinedload(ReorderRecommendation.product)).where(
+            ReorderRecommendation.seller_id == seller_id,
+            ReorderRecommendation.recommendation_status == ReorderRecommendationStatus.OPEN,
+            ReorderRecommendation.action == ReorderRecommendationAction.REORDER,
+            ReorderRecommendation.recommended_quantity > 0,
+        ).limit(100)).scalars().all()
         for row in reorder_rows:
             key = ("reorder_recommendations", str(row.id))
             if key in existing:
@@ -3395,10 +3402,11 @@ def _market_opportunity_payload(row: MarketOpportunity) -> dict[str, Any]:
 def _pricing_payload(row) -> dict[str, Any] | None:
     if row is None:
         return None
+    evidence = getattr(row, "evidence", None) or {}
     return {
         "action": _enum_value(row.action),
         "current_price": row.current_price,
-        "recommended_price": row.recommended_price,
+        "recommended_price": evidence.get("recommended_target_price", row.recommended_price),
         "minimum_safe_price": row.minimum_safe_price,
         "expected_revenue": row.expected_revenue,
         "expected_profit": row.expected_profit,

@@ -9,13 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.models.product import Product, ProductMarketplaceListing
 from app.models.sales_data_coverage import SalesDataCoverage, SalesDataCompletenessStatus
-from app.models.sales_record import SalesRecord, SalesRecordPriceSource, SalesRecordStatus
+from app.models.sales_record import SalesRecord, SalesRecordPriceSource
 from app.models.rag_memory import RagMemorySourceType
 from app.schemas.sales_import import SalesImportRequest, SalesImportResponse
+from app.services.forecast_source_policy import VALID_COUNTING_STATUSES as VALID_COUNTING_STATUSES
 from app.services.rag_index_outbox_service import RagIndexOutboxService
-
-VALID_COUNTING_STATUSES = {SalesRecordStatus.COMPLETED, SalesRecordStatus.FULFILLED}
-
 
 class SalesImportService:
     def __init__(self, db: Session) -> None:

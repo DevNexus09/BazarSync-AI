@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
 
 from app.models.product import Product
+from app.schemas.pricing_policy import MarketplaceFeePolicyResponse, PricingPolicyResponse
 from app.services.pricing_calculator import FeeBreakdown, FeeInputs, PricingCalculationError, PricingCalculator
-from app.services.pricing_policy_service import PricingPolicyService
+from app.services.pricing_policy_service import PricingPolicyService, ProductOwnershipError
 
 
 class MarginGuardRejectionReason(str, Enum):
@@ -74,9 +76,18 @@ class MarginGuardResult:
 class MarginGuard:
     calculation_version = "margin_guard_v1"
 
-    def __init__(self, db: Session, *, pricing_policy_service_factory=None) -> None:
+    def __init__(
+        self,
+        db: Session | None,
+        *,
+        pricing_policy_service_factory=None,
+        resolved_policy: tuple[PricingPolicyResponse, MarketplaceFeePolicyResponse] | Literal[False] | None = False,
+    ) -> None:
         self._db = db
-        self._pricing_policy_service_factory = pricing_policy_service_factory or PricingPolicyService
+        self._pricing_policy_service_factory = pricing_policy_service_factory
+        # An explicit None records a failed terms resolution for this evaluation.
+        self._resolved_policy = resolved_policy
+        self._quotes: dict[tuple[UUID, UUID, UUID, str, Decimal, bool, str, str, str | None], MarginGuardResult] = {}
 
     def validate_candidate(
         self,
@@ -85,42 +96,87 @@ class MarginGuard:
         product: Product,
         candidate_price: Decimal,
         marketplace: str = "Daraz Bangladesh",
+        round_down_to_increment: bool = False,
+    ) -> MarginGuardResult:
+        candidate = _decimal(candidate_price)
+        if not candidate.is_finite():
+            raise ValueError("Candidate price must be finite.")
+        if self._resolved_policy is False:
+            return self._validate_candidate(seller_id, product, candidate, marketplace, round_down_to_increment)
+        # This guard owns one resolved terms snapshot. Final persistence uses a new guard.
+        key = (
+            seller_id, product.id, product.seller_id, marketplace, candidate, round_down_to_increment,
+            str(product.selling_price), str(product.cost_price), product.category,
+        )
+        if key not in self._quotes:
+            self._quotes[key] = self._validate_candidate(seller_id, product, candidate, marketplace, round_down_to_increment)
+        return self._quotes[key]
+
+    def _validate_candidate(
+        self, seller_id: UUID, product: Product, candidate: Decimal, marketplace: str,
+        round_down_to_increment: bool,
     ) -> MarginGuardResult:
         reasons: list[MarginGuardRejectionReason] = []
-        candidate = _decimal(candidate_price)
         if product.cost_price is None:
             reasons.append(MarginGuardRejectionReason.MISSING_COST_DATA)
             return _blocked_result(candidate, reasons, unit_cost=None)
         unit_cost = _decimal(product.cost_price)
-        if unit_cost < 0:
+        if not unit_cost.is_finite() or unit_cost < 0:
             reasons.append(MarginGuardRejectionReason.MISSING_COST_DATA)
+            return _blocked_result(candidate, reasons, unit_cost=None)
+
+        if self._resolved_policy is None:
+            return _blocked_result(candidate, [MarginGuardRejectionReason.INVALID_POLICY], unit_cost=unit_cost)
 
         policy = None
         fee_policy = None
         fees: FeeInputs | None = None
         calculator = PricingCalculator(currency="BDT")
         try:
-            policy_service = self._pricing_policy_service_factory(self._db)
-            policy = policy_service.get_product_policy(
-                seller_id=seller_id,
-                product_id=product.id,
-                marketplace=marketplace,
-            )
+            if self._resolved_policy is False:
+                if self._pricing_policy_service_factory is not None:
+                    policy_service = self._pricing_policy_service_factory(self._db)
+                elif self._db is not None:
+                    policy_service = PricingPolicyService(self._db)
+                else:
+                    raise ValueError("A session or resolved policy is required.")
+                policy = policy_service.get_product_policy(
+                    seller_id=seller_id, product_id=product.id, marketplace=marketplace,
+                )
+            else:
+                policy, fee_policy = self._resolved_policy
+                if (
+                    (policy.seller_id, policy.product_id, policy.marketplace)
+                    != (seller_id, product.id, marketplace)
+                    or product.seller_id != seller_id
+                    or (fee_policy.seller_id, fee_policy.marketplace) != (seller_id, marketplace)
+                    or fee_policy.product_id not in (None, product.id)
+                    or (fee_policy.product_id is None and fee_policy.category not in (None, product.category))
+                ):
+                    raise ProductOwnershipError
             if policy.currency.upper() != "BDT":
                 reasons.append(MarginGuardRejectionReason.UNSUPPORTED_CURRENCY)
             calculator = PricingCalculator(currency=policy.currency)
-            fee_policy = policy_service.effective_fee_policy(
-                seller_id=seller_id,
-                product_id=product.id,
-                marketplace=marketplace,
-            )
+            if self._resolved_policy is False:
+                fee_policy = policy_service.effective_fee_policy(
+                    seller_id=seller_id, product_id=product.id, marketplace=marketplace,
+                )
+            if fee_policy is None:
+                return _blocked_result(candidate, [MarginGuardRejectionReason.MISSING_FEE_DATA], unit_cost=unit_cost)
             if fee_policy.id is None or getattr(fee_policy, "is_default", False):
                 reasons.append(MarginGuardRejectionReason.MISSING_FEE_DATA)
+            if getattr(fee_policy, "currency", policy.currency).upper() != policy.currency.upper():
+                reasons.append(MarginGuardRejectionReason.UNSUPPORTED_CURRENCY)
+            if reasons:
+                return _blocked_result(candidate, reasons, unit_cost=unit_cost)
             fees = _fee_inputs(fee_policy)
-            if fees.percentage_fee_rate + _decimal(policy.minimum_margin_rate) >= Decimal("1"):
+            minimum_margin = _decimal(policy.minimum_margin_rate)
+            if fees.percentage_fee_rate + minimum_margin >= Decimal("1"):
                 reasons.append(MarginGuardRejectionReason.INVALID_POLICY)
-        except Exception:
-            reasons.append(MarginGuardRejectionReason.INVALID_POLICY)
+        except (ProductOwnershipError, ValidationError, InvalidOperation, ValueError):
+            return _blocked_result(
+                candidate, [MarginGuardRejectionReason.INVALID_POLICY], unit_cost=unit_cost,
+            )
 
         if policy is None or fees is None:
             return _blocked_result(candidate, reasons, unit_cost=unit_cost)
@@ -130,10 +186,17 @@ class MarginGuard:
         margin_rate = None
         fee_breakdown = None
         try:
+            increment = _decimal(policy.price_increment)
+            if not increment.is_finite() or increment <= 0 or increment != calculator.round_currency(increment):
+                return _blocked_result(
+                    candidate, [MarginGuardRejectionReason.INVALID_MARKETPLACE_INCREMENT], unit_cost=unit_cost,
+                )
+            if round_down_to_increment:
+                candidate = calculator.round_to_marketplace_increment(candidate, increment, direction="down")
             minimum_safe_price = calculator.calculate_minimum_safe_price(
                 unit_cost=unit_cost,
                 fees=fees,
-                minimum_margin_rate=policy.minimum_margin_rate,
+                minimum_margin_rate=minimum_margin,
                 minimum_unit_profit=policy.minimum_unit_profit,
                 price_increment=policy.price_increment,
             )
@@ -157,13 +220,15 @@ class MarginGuard:
         if policy.maximum_allowed_price is not None and candidate > _decimal(policy.maximum_allowed_price):
             reasons.append(MarginGuardRejectionReason.ABOVE_ABSOLUTE_MAXIMUM)
 
+        if candidate <= 0:
+            reasons.append(MarginGuardRejectionReason.INVALID_MARKETPLACE_INCREMENT)
         change_pct = _price_change_percentage(current_price=_decimal(product.selling_price), candidate_price=candidate)
         if change_pct is not None:
             if policy.maximum_price_decrease_rate is not None and change_pct < -_decimal(policy.maximum_price_decrease_rate):
                 reasons.append(MarginGuardRejectionReason.EXCEEDS_MAXIMUM_DECREASE)
             if policy.maximum_price_increase_rate is not None and change_pct > _decimal(policy.maximum_price_increase_rate):
                 reasons.append(MarginGuardRejectionReason.EXCEEDS_MAXIMUM_INCREASE)
-        increment_valid = _increment_valid(candidate, _decimal(policy.price_increment))
+        increment_valid = candidate == calculator.round_currency(candidate) and _increment_valid(candidate, increment)
         if not increment_valid:
             reasons.append(MarginGuardRejectionReason.INVALID_MARKETPLACE_INCREMENT)
 

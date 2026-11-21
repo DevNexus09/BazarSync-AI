@@ -184,7 +184,15 @@ export function useLiveDashboard(options: UseLiveDashboardOptions = {}) {
       if (!shouldProcess(event.eventId)) {
         return
       }
-      const recommendation = event.payload.recommendation
+      if (sellerId) {
+        // The final explanation may be saved after the durable job completes.
+        void queryClient.invalidateQueries({ queryKey: ["recommendations", sellerId] })
+        void queryClient.invalidateQueries({ queryKey: ["recommendation-job", sellerId] })
+      }
+      const recommendation = {
+        ...event.payload.recommendation,
+        confidenceLabel: event.payload.confidence,
+      }
       queryClient.setQueryData<Recommendation[]>(
         recommendationsQueryKey,
         (current) => upsertById(current, recommendation)
@@ -216,7 +224,7 @@ export function useLiveDashboard(options: UseLiveDashboardOptions = {}) {
             : current
       )
     },
-    [queryClient, shouldProcess]
+    [queryClient, sellerId, shouldProcess]
   )
 
   const handleAlertSent = useCallback(

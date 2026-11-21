@@ -67,6 +67,7 @@ class ProductIdentity:
     product_identifier: str | None
     condition: str | None
     package: str | None
+    package_from_title: bool
     title_type: str | None
     title_attributes: Mapping[str, str]
 
@@ -123,12 +124,12 @@ def identity_from_listing(title: str, specifications: Mapping[str, str] | None, 
         else None
     )
     pack_text = attributes.get("pack quantity") or attributes.get("pack size") or attributes.get("number of items", "")
-    count = re.fullmatch(r"[1-9]\d*", pack_text)
-    if count is None:
-        count = re.search(r"\b(?:pack of\s*)?([1-9]\d*)\s*(?:pack|pcs|pieces)\b|\bpack of ([1-9]\d*)\b", text)
+    title_count = re.search(r"\b(?:pack of\s*)?([1-9]\d*)\s*(?:pack|pcs|pieces)\b|\bpack of ([1-9]\d*)\b", text)
+    count = title_count or re.fullmatch(r"[1-9]\d*", pack_text)
+    bundle_match = re.search(_BUNDLE, text)
     if count:
         package = next(group for group in count.groups() if group is not None) if count.groups() else count[0]
-    elif re.search(_BUNDLE, text):
+    elif bundle_match:
         package = "bundle"
     else:
         package = None
@@ -136,7 +137,8 @@ def identity_from_listing(title: str, specifications: Mapping[str, str] | None, 
     # labelled manufacturer product identifier is comparable across stores.
     product_identifier = identifier_key(attributes.get("manufacturer product identifier", "")) or None
     return ProductIdentity(attributes, gtins, raw_brand if raw_brand not in _UNKNOWN else None,
-                           model, accessory, product_identifier, condition, package, title_type, title_attributes)
+                           model, accessory, product_identifier, condition, package, bool(title_count or bundle_match),
+                           title_type, title_attributes)
 
 
 def compare_identities(
@@ -157,7 +159,9 @@ def compare_identities(
     )
     if {seller.title_type, candidate.title_type} in incompatible_types:
         return IdentityEvidence(conflict="product_type")
-    if (candidate.package or "1") != (seller.package or "1"):
+    if ((seller.package and candidate.package and seller.package != candidate.package)
+            or (seller.package_from_title and candidate.package is None)
+            or (candidate.package_from_title and seller.package is None)):
         return IdentityEvidence(conflict="package")
     left_color = seller.attributes.get("color") or seller.attributes.get("colour")
     right_color = candidate.attributes.get("color") or candidate.attributes.get("colour")

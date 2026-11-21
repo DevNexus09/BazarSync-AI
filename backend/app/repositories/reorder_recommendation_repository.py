@@ -3,13 +3,15 @@ from __future__ import annotations
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.inventory_history import InventoryHistory
 from app.models.product import Product
-from app.models.reorder_recommendation import ReorderRecommendation
+from app.models.reorder_recommendation import (
+    FORECAST_REORDER_VERSION, ReorderRecommendation, ReorderRecommendationStatus,
+)
 from app.models.sales_velocity import SalesVelocity
 from app.models.seller import Seller
 from app.models.stockout_prediction import StockoutPrediction
@@ -33,7 +35,7 @@ class ReorderRecommendationRepository:
             yield rows
             offset += batch_size
 
-    def latest_inventory_for_products(self, *, seller_id: UUID, product_ids: list[UUID], as_of_date: date) -> dict[UUID, InventoryHistory]:
+    def latest_inventory_for_products(self, *, seller_id: UUID, product_ids: list[UUID], as_of_date: date, refresh: bool = False) -> dict[UUID, InventoryHistory]:
         return _latest_by_date(
             self._db,
             model=InventoryHistory,
@@ -41,6 +43,7 @@ class ReorderRecommendationRepository:
             product_ids=product_ids,
             date_column=InventoryHistory.snapshot_date,
             as_of_date=as_of_date,
+            refresh=refresh,
         )
 
     def latest_velocity_for_products(self, *, seller_id: UUID, product_ids: list[UUID], as_of_date: date) -> dict[UUID, SalesVelocity]:
@@ -74,6 +77,9 @@ class ReorderRecommendationRepository:
             return existing, False
         self._db.add(recommendation)
         try:
+            if (recommendation.evidence or {}).get("planning_method") == FORECAST_REORDER_VERSION:
+                self._db.flush()
+                self._expire_superseded_forecast_plans(recommendation)
             self._db.commit()
         except IntegrityError:
             self._db.rollback()
@@ -88,6 +94,36 @@ class ReorderRecommendationRepository:
             raise
         self._db.refresh(recommendation)
         return recommendation, True
+
+    def _expire_superseded_forecast_plans(self, recommendation: ReorderRecommendation) -> None:
+        # Serialize publication for this product after the insert. PostgreSQL
+        # NO KEY UPDATE is compatible with the insert's foreign-key key-share lock.
+        self._db.execute(
+            select(Product.id).where(
+                Product.id == recommendation.product_id,
+                Product.seller_id == recommendation.seller_id,
+            ).with_for_update(key_share=True)
+        ).scalar_one()
+        scope = (
+            ReorderRecommendation.seller_id == recommendation.seller_id,
+            ReorderRecommendation.product_id == recommendation.product_id,
+            ReorderRecommendation.as_of_date == recommendation.as_of_date,
+            ReorderRecommendation.evidence["planning_method"].as_string() == FORECAST_REORDER_VERSION,
+        )
+        latest = self._db.scalar(
+            select(ReorderRecommendation.id).where(*scope).order_by(
+                ReorderRecommendation.generated_at.desc(), ReorderRecommendation.id.desc(),
+            ).limit(1)
+        )
+        self._db.execute(
+            update(ReorderRecommendation).where(
+                *scope,
+                ReorderRecommendation.id != latest,
+                ReorderRecommendation.recommendation_status.in_((
+                    ReorderRecommendationStatus.OPEN, ReorderRecommendationStatus.ACKNOWLEDGED,
+                )),
+            ).values(recommendation_status=ReorderRecommendationStatus.EXPIRED)
+        )
 
     def latest(self, *, seller_id: UUID, product_id: UUID, calculation_version: str | None) -> ReorderRecommendation | None:
         statement = (
@@ -166,7 +202,7 @@ class ReorderRecommendationRepository:
         return recommendation
 
 
-def _latest_by_date(db: Session, *, model, seller_id: UUID, product_ids: list[UUID], date_column, as_of_date: date):
+def _latest_by_date(db: Session, *, model, seller_id: UUID, product_ids: list[UUID], date_column, as_of_date: date, refresh: bool = False):
     if not product_ids:
         return {}
     latest_dates = (
@@ -179,5 +215,6 @@ def _latest_by_date(db: Session, *, model, seller_id: UUID, product_ids: list[UU
         select(model)
         .join(latest_dates, (model.product_id == latest_dates.c.product_id) & (date_column == latest_dates.c.as_of_date))
         .where(model.seller_id == seller_id)
+        .execution_options(populate_existing=refresh)
     ).scalars().all()
     return {row.product_id: row for row in rows}

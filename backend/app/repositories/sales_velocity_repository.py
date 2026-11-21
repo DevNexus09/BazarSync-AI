@@ -71,6 +71,9 @@ class SalesVelocityRepository:
                 SalesRecord.product_id.in_(product_ids),
                 SalesRecord.status.in_(VALID_SALES_STATUSES),
                 SalesRecord.is_test_order.is_(False),
+                SalesRecord.quantity_sold > 0,
+                SalesRecord.returned_units >= 0,
+                SalesRecord.refunded_restocked_units >= 0,
                 SalesRecord.sold_at >= window_start,
                 SalesRecord.sold_at < window_end,
             )

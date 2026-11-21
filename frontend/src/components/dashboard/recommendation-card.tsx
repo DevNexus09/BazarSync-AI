@@ -7,7 +7,6 @@ import {
   RecommendationStatus,
   type Recommendation,
 } from "@/types/recommendation"
-import { formatPercent } from "@/utils/formatters"
 
 type RecommendationCardProps = {
   recommendation: Recommendation
@@ -37,15 +36,6 @@ const actionLabels: Record<RecommendationAction, string> = {
 }
 
 export function RecommendationCard({ recommendation }: RecommendationCardProps) {
-  const confidence =
-    recommendation.confidence <= 1
-      ? recommendation.confidence * 100
-      : recommendation.confidence
-  const expectedLift =
-    recommendation.expectedLift <= 1
-      ? recommendation.expectedLift * 100
-      : recommendation.expectedLift
-
   return (
     <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--accent)/.15)]">
       <div className="flex items-start justify-between gap-3">
@@ -92,13 +82,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
         <div className="flex items-center justify-between">
           <span>Confidence</span>
           <span className="font-semibold text-foreground">
-            {formatPercent(confidence)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>Expected lift</span>
-          <span className="font-semibold text-foreground">
-            {formatPercent(expectedLift)}
+            {recommendation.confidenceLabel ?? "Unavailable"}
           </span>
         </div>
       </div>

@@ -3,27 +3,38 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockRiskLevel
+from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockDataStatus, DeadStockNoSalesState, DeadStockRiskLevel
 from app.models.dead_stock_recovery_recommendation import (
+    EVIDENCE_RECOVERY_VERSION,
     DeadStockRecoveryAction,
     DeadStockRecoveryRecommendation,
     DeadStockRecoveryRecommendationStatus,
 )
 from app.models.inventory_aging import InventoryAgingSnapshot
+from app.models.inventory_history import InventoryHistory, InventorySnapshotSource
 from app.models.product import Product
 from app.models.rag_memory import RagMemorySourceType
-from app.models.sales_velocity import SalesVelocity
+from app.models.sales_velocity import SalesVelocity, SalesVelocityDataStatus
 from app.repositories.dead_stock_recovery_repository import DeadStockRecoveryRepository
-from app.services.margin_guard import MarginGuard
+from app.repositories.reorder_recommendation_repository import ReorderRecommendationRepository
+from app.scraper.constants import MARKETPLACE_NAME
+from app.services.dead_stock_recovery_evidence import (
+    SCENARIO_DAYS, cash_scenarios, holding_cost, load_recovery_forecast, money, nonnegative_decimal,
+    promotion_observations,
+)
+from app.services.margin_guard import MarginGuard, MarginGuardResult
 from app.services.rag_index_outbox_service import RagIndexOutboxService
+from app.services.sales_velocity_service import SalesVelocityCalculation
 
 MONEY = Decimal("0.01")
+RECOVERY_CLASSES = {DeadStockClassification.SLOW_MOVING, DeadStockClassification.AT_RISK, DeadStockClassification.DEAD_STOCK}
+RECOVERY_ALTERNATIVES = (DeadStockRecoveryAction.DISCOUNT, DeadStockRecoveryAction.FLASH_SALE, DeadStockRecoveryAction.BUNDLE, DeadStockRecoveryAction.SEO_FIX)
 
 
 class DeadStockRecoveryRepositoryProtocol(Protocol):
@@ -70,7 +81,11 @@ class DeadStockRecoveryService:
         self._db = db
         self._repository = repository or DeadStockRecoveryRepository(db)  # type: ignore[arg-type]
         self._margin_guard_factory = margin_guard_factory or (lambda session: MarginGuard(session))
-        self._calculation_version = calculation_version or settings.dead_stock_recovery_formula_version
+        self._evidence_driven = settings.evidence_driven_recovery_enabled
+        self._calculation_version = (
+            EVIDENCE_RECOVERY_VERSION if self._evidence_driven
+            else calculation_version or settings.dead_stock_recovery_formula_version
+        )
 
     def generate_for_product(
         self,
@@ -87,12 +102,19 @@ class DeadStockRecoveryService:
         if assessment is None:
             recommendation = self._build_without_assessment(product=product, generated_at=timestamp)
         else:
+            if self._evidence_driven and isinstance(self._repository, DeadStockRecoveryRepository):
+                saved = self._repository.get_for_assessment(
+                    seller_id=seller_id, assessment_id=assessment.id, calculation_version=self._calculation_version,
+                )
+                if saved is not None:
+                    return saved, False
             aging = self._repository.latest_aging(seller_id=seller_id, product_id=product_id, as_of_date=assessment.as_of_date)
-            velocity = self._repository.latest_velocity(seller_id=seller_id, product_id=product_id, as_of_date=assessment.as_of_date)
+            through = min(assessment.as_of_date, timestamp.date() - timedelta(days=1)) if self._evidence_driven else assessment.as_of_date
+            velocity = self._repository.latest_velocity(seller_id=seller_id, product_id=product_id, as_of_date=through)
             visibility = self._repository.visibility_for_product(seller_id=seller_id, product_id=product_id, as_of_date=assessment.as_of_date)
             promotion_history = self._repository.promotion_history_for_product(seller_id=seller_id, product_id=product_id)
             bundle_data = self._repository.bundle_compatibility_for_product(seller_id=seller_id, product_id=product_id)
-            companions = self._repository.companion_products(seller_id=seller_id, product=product)
+            companions = [] if self._evidence_driven else self._repository.companion_products(seller_id=seller_id, product=product)
             recommendation = self.build_recommendation(
                 product=product,
                 assessment=assessment,
@@ -104,6 +126,14 @@ class DeadStockRecoveryService:
                 companion_products=companions,
                 generated_at=timestamp,
             )
+        if self._evidence_driven and isinstance(self._repository, DeadStockRecoveryRepository) and self._db is not None:
+            outbox = RagIndexOutboxService(self._db)
+            def enqueue(row: DeadStockRecoveryRecommendation) -> None:
+                outbox.enqueue_upsert(
+                    seller_id=row.seller_id, source_type=RagMemorySourceType.RECOMMENDATION,
+                    source_id=str(row.id), product_id=row.product_id, source_updated_at=row.generated_at,
+                )
+            return self._repository.add_idempotent(recommendation, before_commit=enqueue)
         saved, created = self._repository.add_idempotent(recommendation)
         if created and self._db is not None:
             RagIndexOutboxService(self._db).enqueue_upsert(
@@ -122,16 +152,23 @@ class DeadStockRecoveryService:
         product: Product,
         assessment: DeadStockAssessment,
         aging: InventoryAgingSnapshot | None,
-        velocity: SalesVelocity | None,
+        velocity: SalesVelocity | SalesVelocityCalculation | None,
         visibility: dict | None,
         promotion_history: list[dict],
         bundle_data: list[dict],
         companion_products: list[Product],
         generated_at: datetime,
+        inventory: InventoryHistory | None = None,
+        prefer_listing: bool = False,
     ) -> DeadStockRecoveryRecommendation:
+        if self._evidence_driven:
+            return self._build_evidence_driven(
+                product=product, assessment=assessment, aging=aging, velocity=velocity,
+                inventory=inventory, visibility=visibility, at=_utc(generated_at), prefer_listing=prefer_listing,
+            )
         candidates: list[Candidate] = []
         rejected: list[dict] = []
-        common = {
+        common: dict[str, Any] = {
             "risk_score": _json_decimal(getattr(assessment, "risk_score", None)),
             "risk_level": _enum_value(getattr(assessment, "risk_level", None)),
             "classification": _enum_value(assessment.classification),
@@ -149,7 +186,7 @@ class DeadStockRecoveryService:
             DeadStockClassification.DEAD_STOCK,
         }:
             candidates.append(_hold_candidate("No recovery action is recommended for the current dead-stock classification.", common))
-        elif _restricted(product):
+        elif recovery_is_restricted(product):
             candidates.append(_manual_review_candidate("Product restrictions, damage, or expiry status require manual review before recovery action.", common))
         else:
             candidates.extend(self._bundle_candidates(product=product, assessment=assessment, companions=companion_products, bundle_data=bundle_data, common=common))
@@ -163,11 +200,43 @@ class DeadStockRecoveryService:
         if not candidates:
             candidates.append(_manual_review_candidate("Recovery calculations cannot be trusted with the available inputs.", common))
 
-        candidates = sorted(candidates, key=lambda item: item.score, reverse=True)
+        return self._assemble(assessment, candidates, rejected, common, generated_at)
+
+    def _assemble(
+        self,
+        assessment: DeadStockAssessment,
+        candidates: list[Candidate],
+        rejected: list[dict],
+        common: dict,
+        generated_at: datetime,
+        *,
+        prefer_listing: bool = False,
+    ) -> DeadStockRecoveryRecommendation:
+        candidates = sorted(
+            candidates,
+            key=lambda item: (
+                prefer_listing and item.action == DeadStockRecoveryAction.SEO_FIX,
+                item.score,
+            ),
+            reverse=True,
+        )
         primary = candidates[0]
-        secondary = [item.action.value for item in candidates[1:3]]
+        secondary = (
+            list(
+                dict.fromkeys(
+                    item.action.value
+                    for item in candidates[1:]
+                    if item.action != primary.action
+                )
+            )[:2]
+            if self._evidence_driven
+            else [item.action.value for item in candidates[1:3]]
+        )
         status = DeadStockRecoveryRecommendationStatus.OPEN
-        if primary.action == DeadStockRecoveryAction.MANUAL_REVIEW and primary.confidence <= Decimal("35"):
+        if (
+            primary.action == DeadStockRecoveryAction.MANUAL_REVIEW
+            and primary.confidence <= Decimal("35")
+        ):
             status = DeadStockRecoveryRecommendationStatus.INSUFFICIENT_DATA
 
         evidence = {
@@ -177,6 +246,13 @@ class DeadStockRecoveryService:
             "ranking_formula": "score = capital_recovery + sell_through + margin_safety + data_confidence + inventory_age + visibility_evidence - operational_complexity - further_loss_risk",
             "no_automatic_execution": True,
         }
+        if self._evidence_driven:
+            evidence.update(
+                ranking_formula="Verified listing findings, assessment risk, preserved unit margin, baseline stock exposure, and campaign complexity.",
+                sales_response_status="UNKNOWN",
+                expected_promotion_uplift=None,
+                prefers_compatible_listing_advice=prefer_listing,
+            )
         return DeadStockRecoveryRecommendation(
             seller_id=assessment.seller_id,
             product_id=assessment.product_id,
@@ -194,8 +270,365 @@ class DeadStockRecoveryService:
             rejected_actions=rejected,
             calculation_version=self._calculation_version,
             generated_at=generated_at,
-            expires_at=generated_at + timedelta(days=settings.dead_stock_recovery_expiration_days),
+            expires_at=generated_at
+            + timedelta(days=settings.dead_stock_recovery_expiration_days),
         )
+
+    def _build_evidence_driven(
+        self,
+        *,
+        product: Product,
+        assessment: DeadStockAssessment,
+        aging: InventoryAgingSnapshot | None,
+        velocity: SalesVelocity | SalesVelocityCalculation | None,
+        inventory: InventoryHistory | None,
+        visibility: dict | None,
+        at: datetime,
+        prefer_listing: bool,
+    ) -> DeadStockRecoveryRecommendation:
+        scope = {"seller_id": product.seller_id, "product_id": product.id}
+        if any(
+            (item.seller_id, item.product_id) != (product.seller_id, product.id)
+            for item in (assessment, aging, velocity, inventory)
+            if item is not None
+        ):
+            raise ValueError(
+                "Recovery inputs outside authorized seller and product scope."
+            )
+        cutoff = timedelta(hours=settings.recommendation_inventory_max_age_hours)
+        common: dict[str, Any] = {
+            "risk_score": _json_decimal(assessment.risk_score),
+            "classification": assessment.classification.value,
+            "assessment_id": str(assessment.id),
+            "assessed_at": _utc(assessment.assessed_at).isoformat(),
+            "current_price": _json_decimal(product.selling_price),
+            "on_hand_units": product.stock_quantity,
+            "inventory_age_days": assessment.inventory_age_days,
+        }
+        if (
+            assessment.data_status == DeadStockDataStatus.INSUFFICIENT
+            or assessment.classification == DeadStockClassification.INSUFFICIENT_DATA
+            or not (
+                timedelta(0) <= at - _utc(assessment.assessed_at) <= cutoff
+                and timedelta(0)
+                <= at.date() - assessment.as_of_date
+                <= cutoff + timedelta(days=1)
+            )
+        ):
+            reason = "ASSESSMENT_STALE_OR_INSUFFICIENT"
+        elif recovery_is_restricted(product):
+            reason = "PRODUCT_REQUIRES_MANUAL_REVIEW"
+        elif (
+            assessment.classification not in RECOVERY_CLASSES
+            or assessment.no_sales_state == DeadStockNoSalesState.PRODUCT_TOO_NEW
+        ):
+            return self._assemble(
+                assessment,
+                [
+                    _hold_candidate(
+                        "The assessment supports keeping the current recovery plan unchanged.",
+                        common,
+                    )
+                ],
+                _blocked_alternatives("CLASSIFICATION_DOES_NOT_REQUIRE_RECOVERY"),
+                common,
+                at,
+            )
+        else:
+            reason = None
+        if reason:
+            return self._assemble(
+                assessment,
+                [
+                    _manual_review_candidate(
+                        "Review product restrictions or assessment evidence before recovery.",
+                        common,
+                    )
+                ],
+                _blocked_alternatives(reason),
+                common,
+                at,
+            )
+        if inventory is None and self._db is not None:
+            inventory = (
+                ReorderRecommendationRepository(self._db)
+                .latest_inventory_for_products(
+                    seller_id=product.seller_id,
+                    product_ids=[product.id],
+                    as_of_date=at.date(),
+                )
+                .get(product.id)
+            )
+        cap = None
+        if (
+            inventory is not None
+            and inventory.id == assessment.inventory_snapshot_id
+            and inventory.source != InventorySnapshotSource.BACKFILL
+            and inventory.quantity_on_hand == product.stock_quantity
+            and inventory.quantity_available
+            == inventory.quantity_on_hand - inventory.quantity_reserved
+            and inventory.snapshot_date <= at.date()
+            and timedelta(0) <= at - _utc(inventory.captured_at) <= cutoff
+        ):
+            cap = max(
+                0, min(assessment.eligible_quantity, inventory.quantity_available)
+            )
+        matched_aging = (
+            aging is not None
+            and aging.id == assessment.inventory_aging_id
+            and aging.inventory_snapshot_id == assessment.inventory_snapshot_id
+            and aging.as_of_date <= assessment.as_of_date
+            and _utc(aging.calculated_at) <= at
+        )
+        age = (
+            aging.oldest_age_days
+            if aging is not None and matched_aging
+            else assessment.inventory_age_days
+        )
+        estimated_age = (
+            aging.is_estimated
+            if aging is not None and matched_aging
+            else assessment.inventory_age_is_estimated
+        )
+        sales = _recorded_recovery_sales(velocity, at)
+        records = (
+            self._repository.promotion_observations(
+                **scope, since=at - timedelta(days=180), at=at
+            )
+            if isinstance(self._repository, DeadStockRecoveryRepository)
+            else []
+        )
+        history = promotion_observations(records, product=product, at=at)
+        forecast: dict[str, Any] = (
+            load_recovery_forecast(self._db, product, at)
+            if cap
+            else {"status": "UNAVAILABLE", "reason": "ELIGIBLE_STOCK_UNVERIFIED"}
+        )
+        point = (
+            forecast.get("forecast", {}).get("expected_units")
+            if forecast["status"] == "APPROVED_BASELINE_ONLY"
+            else None
+        )
+        forecast["baseline_point_covers_eligible_units"] = (
+            Decimal(point) >= cap if point is not None and cap else None
+        )
+        cost, carrying = nonnegative_decimal(product.cost_price), holding_cost(product)
+        common.update(
+            inventory_snapshot_id=str(inventory.id) if inventory is not None else None,
+            inventory_age_days=age,
+            inventory_age_is_estimated=estimated_age,
+            eligible_quantity=cap,
+            reserved_units=inventory.quantity_reserved
+            if inventory is not None
+            else None,
+            recorded_sales=sales,
+            promotion_history=history,
+            baseline_demand=forecast,
+            unit_cost_bdt=str(cost) if cost is not None else None,
+            locked_cost_basis_bdt=money(cost * cap)
+            if cost is not None and cap is not None
+            else None,
+            holding_cost_bdt_per_unit_per_day=str(carrying)
+            if carrying is not None
+            else None,
+        )
+        candidates = []
+        rejected: list[dict] = [
+            {
+                "action": "BUNDLE",
+                "reasons": ["VERIFIED_BUNDLE_TERMS_AND_ECONOMICS_UNAVAILABLE"],
+            }
+        ]
+        seo = self._seo_candidate(
+            assessment=assessment,
+            visibility=_recent_visibility(visibility, at, cutoff),
+            common={},
+        )
+        if seo:
+            candidates.append(seo)
+        else:
+            rejected.append(
+                {"action": "SEO_FIX", "reasons": ["LISTING_EVIDENCE_UNAVAILABLE"]}
+            )
+        failures = [
+            code
+            for condition, code in (
+                (bool(cap), "ELIGIBLE_STOCK_UNVERIFIED_OR_EMPTY"),
+                (
+                    age is not None
+                    and age >= settings.dead_stock_inventory_age_threshold_days,
+                    "INVENTORY_AGE_BELOW_THRESHOLD_OR_UNAVAILABLE",
+                ),
+                (sales is not None, "RECENT_SALES_EVIDENCE_UNAVAILABLE"),
+                (
+                    assessment.classification == DeadStockClassification.DEAD_STOCK
+                    or assessment.risk_level
+                    in {DeadStockRiskLevel.HIGH, DeadStockRiskLevel.CRITICAL},
+                    "RISK_BELOW_PROMOTION_THRESHOLD",
+                ),
+                (
+                    product.selling_price is not None
+                    and product.selling_price.is_finite()
+                    and product.selling_price > 0,
+                    "CURRENT_PRICE_UNAVAILABLE",
+                ),
+            )
+            if not condition
+        ]
+        if failures:
+            rejected.extend(
+                {"action": action, "reasons": failures}
+                for action in ("DISCOUNT", "FLASH_SALE")
+            )
+        else:
+            assert cap is not None
+            candidates.extend(
+                self._evidence_prices(
+                    product,
+                    assessment,
+                    cap,
+                    carrying,
+                    history,
+                    forecast,
+                    rejected,
+                )
+            )
+        if not candidates:
+            candidates.append(
+                _manual_review_candidate(
+                    "Review the stock, sales, listing, and price evidence before committing to recovery.",
+                    {},
+                )
+            )
+        return self._assemble(
+            assessment, candidates, rejected, common, at, prefer_listing=prefer_listing
+        )
+
+    def _evidence_prices(
+        self,
+        product: Product,
+        assessment: DeadStockAssessment,
+        cap: int,
+        carrying: Decimal | None,
+        history: dict,
+        forecast: dict,
+        rejected: list[dict],
+    ) -> list[Candidate]:
+        guard: MarginGuard = self._margin_guard_factory(self._db)
+        baseline = guard.validate_candidate(
+            seller_id=product.seller_id,
+            product=product,
+            marketplace=MARKETPLACE_NAME,
+            candidate_price=product.selling_price,
+        )
+        candidates: list[Candidate] = []
+        rates = _discount_rates()
+        flash_blockers = []
+        if cap < settings.dead_stock_recovery_flash_sale_min_quantity:
+            flash_blockers.append("FLASH_STOCK_BELOW_MINIMUM")
+        if len(history["observed_outcomes"]) < 2:
+            flash_blockers.append("FLASH_HISTORY_INSUFFICIENT")
+        if settings.dead_stock_recovery_flash_sale_duration_days <= 0:
+            flash_blockers.append("FLASH_DURATION_INVALID")
+        if flash_blockers:
+            rejected.append({"action": "FLASH_SALE", "reasons": flash_blockers})
+        if not rates:
+            rejected.append(
+                {"action": "DISCOUNT", "reasons": ["DISCOUNT_GRID_UNAVAILABLE"]}
+            )
+            if not flash_blockers:
+                rejected.append(
+                    {"action": "FLASH_SALE", "reasons": ["DISCOUNT_GRID_UNAVAILABLE"]}
+                )
+            return candidates
+        floor = product.selling_price * (1 - rates[-1])
+        checked = set()
+        for rate in rates:
+            requested = _money(product.selling_price * (1 - rate))
+            quote = guard.validate_candidate(
+                seller_id=product.seller_id,
+                product=product,
+                marketplace=MARKETPLACE_NAME,
+                candidate_price=requested,
+                round_down_to_increment=True,
+            )
+            price = quote.candidate_price
+            if price in checked:
+                continue
+            checked.add(price)
+            reasons = [reason.value for reason in quote.rejection_reasons]
+            if not floor <= price < product.selling_price:
+                reasons.append("ROUNDED_PRICE_OUTSIDE_RECOVERY_GRID")
+            for action in (
+                DeadStockRecoveryAction.DISCOUNT,
+                DeadStockRecoveryAction.FLASH_SALE,
+            ):
+                if action == DeadStockRecoveryAction.FLASH_SALE and flash_blockers:
+                    continue
+                evidence: dict[str, Any] = {
+                    "candidate_price": str(price),
+                    "requested_price": str(requested),
+                    "margin_guard": quote.to_evidence(),
+                }
+                if reasons or not quote.is_allowed:
+                    rejected.append(
+                        {
+                            "action": action.value,
+                            **evidence,
+                            "reasons": reasons or ["MARGIN_GUARD_BLOCKED"],
+                        }
+                    )
+                    continue
+                duration = (
+                    settings.dead_stock_recovery_flash_sale_duration_days
+                    if action == DeadStockRecoveryAction.FLASH_SALE
+                    else SCENARIO_DAYS
+                )
+                score_parts = {
+                    "base": Decimal(52),
+                    "assessment_risk": _risk_points(assessment),
+                    "unit_margin": _margin_points(quote),
+                    "campaign_complexity": Decimal(-8)
+                    if action == DeadStockRecoveryAction.FLASH_SALE
+                    else Decimal(0),
+                    "baseline_coverage_penalty": Decimal(-12)
+                    if forecast.get("baseline_point_covers_eligible_units")
+                    else Decimal(0),
+                }
+                evidence.update(
+                    ranking_components={
+                        name: str(value) for name, value in score_parts.items()
+                    },
+                    scenario_duration_days=duration,
+                    sales_response_status="UNKNOWN",
+                    cash_scenarios=cash_scenarios(
+                        quote,
+                        quantity=cap,
+                        holding_per_day=carrying,
+                        duration_days=duration,
+                        baseline=baseline,
+                    ),
+                )
+                candidates.append(
+                    Candidate(
+                        action=action,
+                        score=sum(score_parts.values(), Decimal(0)),
+                        confidence=Decimal("60"),
+                        explanation="Review this guarded recovery price. Financial scenarios show what happens at specified quantities sold.",
+                        evidence=evidence,
+                        discount_rate=(
+                            (product.selling_price - price) / product.selling_price
+                        ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP),
+                        price=price,
+                        quantity=cap,
+                        duration_days=duration
+                        if action == DeadStockRecoveryAction.FLASH_SALE
+                        else None,
+                    )
+                )
+        # The grid is in increasing discount order, so equal scores retain the
+        # highest candidate price and avoid an unsupported preference for deeper cuts.
+        return candidates
 
     def _bundle_candidates(self, *, product: Product, assessment: DeadStockAssessment, companions: list[Product], bundle_data: list[dict], common: dict) -> list[Candidate]:
         if assessment.eligible_quantity < settings.dead_stock_recovery_bundle_min_quantity:
@@ -233,7 +666,7 @@ class DeadStockRecoveryService:
             return []
         candidates: list[Candidate] = []
         guard = self._margin_guard_factory(self._db)
-        allowed_discounts: list[tuple[Decimal, Decimal, object]] = []
+        allowed_discounts: list[tuple[Decimal, Decimal, MarginGuardResult]] = []
         blocked_reasons: set[str] = set()
         for rate in _discount_rates():
             candidate_price = _money(Decimal(str(product.selling_price)) * (Decimal("1") - rate))
@@ -339,6 +772,59 @@ def _hold_candidate(explanation: str, common: dict) -> Candidate:
     return Candidate(DeadStockRecoveryAction.HOLD, Decimal("50"), Decimal("70"), explanation, common)
 
 
+def _blocked_alternatives(reason: str) -> list[dict]:
+    return [
+        {"action": action.value, "reasons": [reason]}
+        for action in RECOVERY_ALTERNATIVES
+    ]
+
+
+def _recorded_recovery_sales(
+    velocity: SalesVelocity | SalesVelocityCalculation | None,
+    at: datetime,
+) -> dict | None:
+    if (
+        velocity is None
+        or velocity.data_status != SalesVelocityDataStatus.SUFFICIENT
+        or not 1 <= (at.date() - velocity.as_of_date).days <= 3
+        or nonnegative_decimal(velocity.daily_sales_rate) is None
+        or nonnegative_decimal(velocity.confidence_score) is None
+        or velocity.confidence_score
+        < Decimal(str(settings.reorder_minimum_velocity_confidence))
+        or (isinstance(velocity, SalesVelocity) and _utc(velocity.calculated_at) > at)
+    ):
+        return None
+    return {
+        "source": "recorded_net_sales",
+        "through": velocity.as_of_date.isoformat(),
+        "net_units": velocity.net_units_sold,
+        "sales_days": velocity.sales_days,
+        "window_days": velocity.window_days,
+        "daily_rate": str(velocity.daily_sales_rate),
+        "calculation_version": velocity.calculation_version,
+        "total_window_sell_through": None,
+    }
+
+
+def _recent_visibility(
+    visibility: dict | None, at: datetime, age: timedelta
+) -> dict | None:
+    if not visibility or visibility.get("marketplace") != MARKETPLACE_NAME:
+        return None
+    try:
+        day = datetime.fromisoformat(visibility["metric_date"]).date()
+    except (KeyError, TypeError, ValueError):
+        return None
+    if timedelta(0) <= at.date() - day <= age + timedelta(days=1):
+        return {
+            key: value
+            for key, value in visibility.items()
+            if key not in {"impressions", "click_through_rate", "listing_quality_score"}
+            or nonnegative_decimal(value) is not None
+        }
+    return None
+
+
 def _manual_review_candidate(explanation: str, common: dict) -> Candidate:
     return Candidate(DeadStockRecoveryAction.MANUAL_REVIEW, Decimal("55"), Decimal("30"), explanation, common, complexity=4)
 
@@ -360,7 +846,7 @@ def _discount_rates() -> list[Decimal]:
     return sorted(rates)
 
 
-def _restricted(product: Product) -> bool:
+def recovery_is_restricted(product: Product) -> bool:
     specs = getattr(product, "specifications", None) or {}
     return any(bool(specs.get(key)) for key in ("expired", "damaged", "restricted", "regulated"))
 
@@ -375,11 +861,14 @@ def _low_visibility_evidence(evidence: dict) -> list[str]:
     rules: list[str] = []
     if evidence.get("status") == "LOW_VISIBILITY":
         rules.append("LOW_VISIBILITY_STATUS")
-    if _decimal_or_none(evidence.get("impressions")) is not None and _decimal_or_none(evidence.get("impressions")) <= Decimal("100"):
+    impressions = _decimal_or_none(evidence.get("impressions"))
+    if impressions is not None and impressions <= Decimal("100"):
         rules.append("LOW_IMPRESSIONS")
-    if _decimal_or_none(evidence.get("click_through_rate")) is not None and _decimal_or_none(evidence.get("click_through_rate")) <= Decimal("0.01"):
+    ctr = _decimal_or_none(evidence.get("click_through_rate"))
+    if ctr is not None and ctr <= Decimal("0.01"):
         rules.append("LOW_CTR")
-    if _decimal_or_none(evidence.get("listing_quality_score")) is not None and _decimal_or_none(evidence.get("listing_quality_score")) <= Decimal("40"):
+    quality = _decimal_or_none(evidence.get("listing_quality_score"))
+    if quality is not None and quality <= Decimal("40"):
         rules.append("LOW_LISTING_QUALITY")
     if evidence.get("missing_keywords"):
         rules.append("MISSING_KEYWORDS")

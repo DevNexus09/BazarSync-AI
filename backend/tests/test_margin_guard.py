@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from uuid import uuid4
+from sqlalchemy.exc import OperationalError
 
 from app.models.recommendation import RecommendationAction
 from app.services.margin_guard import MarginGuard, MarginGuardRejectionReason
@@ -12,6 +13,18 @@ from app.services.recommendation_service import RecommendationService
 
 
 class MarginGuardTests(unittest.TestCase):
+    def test_fee_storage_outage_remains_retryable(self) -> None:
+        policy_service = FakePricingPolicyService(_policy(), _fee())
+        guard = MarginGuard(FakeDb(), pricing_policy_service_factory=lambda _db: policy_service)
+        with patch.object(policy_service, "effective_fee_policy", side_effect=OperationalError(
+            "fee lookup", {}, RuntimeError("connection unavailable"),
+        )):
+            with self.assertRaises(OperationalError):
+                guard.validate_candidate(
+                    seller_id=uuid4(), product=_product(cost="100", price="200"),
+                    candidate_price=Decimal("150"),
+                )
+
     def test_price_exactly_at_safe_floor(self) -> None:
         result = _guard().validate_candidate(
             seller_id=uuid4(),

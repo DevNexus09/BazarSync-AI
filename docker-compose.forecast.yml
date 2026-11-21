@@ -1,0 +1,31 @@
+services:
+  forecast-inference:
+    profiles: ["forecast"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.inference
+    network_mode: none
+    read_only: true
+    cpus: 1.0
+    mem_limit: 768m
+    pids_limit: 32
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      FORECAST_ML_MODE: ${FORECAST_ML_MODE:-disabled}
+      FORECAST_REGISTRY_SHA256: ${FORECAST_REGISTRY_SHA256:-}
+    tmpfs:
+      - /tmp:size=96m,mode=1777
+    volumes:
+      - type: bind
+        source: ${FORECAST_MODEL_HOST_DIR:-./forecast-models}
+        target: /models
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${FORECAST_INPUT_HOST_DIR:-./forecast-inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false

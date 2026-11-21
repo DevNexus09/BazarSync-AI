@@ -8,6 +8,7 @@ from uuid import uuid4
 from app.models.competitor import Competitor
 from app.models.scrape_run import ScrapeRun
 from app.services.competitor_snapshot_service import (
+    CompetitorObservation,
     CompetitorSnapshotService,
     normalize_stock_status,
 )
@@ -47,6 +48,25 @@ class CompetitorSnapshotServiceTest(unittest.TestCase):
         self.assertEqual(normalize_stock_status(None), "UNKNOWN")
         self.assertEqual(normalize_stock_status(""), "UNKNOWN")
         self.assertEqual(normalize_stock_status("unparseable"), "UNKNOWN")
+
+    def test_naive_field_timestamps_are_not_persisted_as_observations(self) -> None:
+        product_id = uuid4()
+        competitor = _competitor(product_id=product_id)
+        naive = datetime(2026, 6, 29, 9, 0)
+        service = CompetitorSnapshotService.__new__(CompetitorSnapshotService)
+        snapshot, = service._build_snapshots(
+            scrape_run=_scrape_run(product_id=product_id),
+            competitors=[competitor],
+            captured_at=naive.replace(tzinfo=timezone.utc),
+            observations={
+                competitor.id: CompetitorObservation(
+                    price=Decimal("320.00"), rating=None, review_count=None, stock_status="in_stock",
+                    price_observed_at=naive, stock_observed_at=naive,
+                ),
+            },
+        )
+        self.assertIsNone(snapshot.price_observed_at)
+        self.assertIsNone(snapshot.stock_observed_at)
 
     def test_negative_price_is_rejected_before_snapshot_insert(self) -> None:
         product_id = uuid4()

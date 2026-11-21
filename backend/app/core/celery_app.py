@@ -36,6 +36,7 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
     broker_connection_retry_on_startup=True,
+    broker_transport_options={"socket_connect_timeout": 5, "socket_timeout": 5},
 )
 
 celery_app.autodiscover_tasks(["app.tasks"])
@@ -47,6 +48,11 @@ celery_app.autodiscover_tasks(["app.tasks"])
 import app.tasks  # noqa: E402,F401
 
 beat_schedule = {}
+if settings.durable_recommendation_jobs_enabled:
+    beat_schedule["recover_recommendation_jobs"] = {
+        "task": "analytics.recover_recommendation_jobs",
+        "schedule": 30.0,
+    }
 if settings.scraper_schedule_enabled:
     beat_schedule.update(
         {

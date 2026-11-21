@@ -15,11 +15,12 @@ from app.models.dead_stock_capital_recovery import (
     CapitalRecoveryEstimateStatus,
     DeadStockCapitalRecoveryEstimate,
 )
-from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction, DeadStockRecoveryRecommendation
-from app.models.demand_elasticity_estimate import DemandElasticityEstimate, DemandEstimationMethod
+from app.models.dead_stock_recovery_recommendation import EVIDENCE_RECOVERY_VERSION, DeadStockRecoveryAction, DeadStockRecoveryRecommendation
+from app.models.demand_elasticity_estimate import DemandElasticityEstimate
 from app.models.product import Product
 from app.repositories.dead_stock_capital_recovery_repository import DeadStockCapitalRecoveryRepository
 from app.services.demand_response_service import DemandElasticityResult, DemandResponseService
+from app.services.dead_stock_recovery_evidence import cash_scenarios, holding_cost
 from app.services.margin_guard import MarginGuard
 
 MONEY = Decimal("0.01")
@@ -88,7 +89,15 @@ class DeadStockCapitalRecoveryService:
         )
 
     def latest_estimate(self, *, seller_id: UUID, product_id: UUID):
-        return self._repository.latest_estimate(seller_id=seller_id, product_id=product_id)
+        estimate = self._repository.latest_estimate(seller_id=seller_id, product_id=product_id)
+        if estimate is not None:
+            recommendation = self.latest_recovery_recommendation(seller_id=seller_id, product_id=product_id)
+            if (
+                getattr(recommendation, "calculation_version", None) == EVIDENCE_RECOVERY_VERSION
+                and estimate.recovery_recommendation_id != recommendation.id
+            ):
+                return None
+        return estimate
 
     def latest_recovery_recommendation(self, *, seller_id: UUID, product_id: UUID):
         return self._repository.latest_recovery_recommendation(seller_id=seller_id, product_id=product_id)
@@ -108,6 +117,11 @@ class DeadStockCapitalRecoveryService:
         recommendation = self._repository.latest_recovery_recommendation(seller_id=seller_id, product_id=product_id)
         action = simulation.action if simulation else getattr(recommendation, "primary_action", DeadStockRecoveryAction.HOLD)
         eligible_quantity = _eligible_quantity(product=product, assessment=assessment, recommendation=recommendation, simulation=simulation)
+        evidence_driven = settings.evidence_driven_recovery_enabled or getattr(recommendation, "calculation_version", None) == EVIDENCE_RECOVERY_VERSION
+        if evidence_driven and simulation is None:
+            inputs = (getattr(recommendation, "evidence", None) or {}).get("inputs", {})
+            verified_cap = inputs.get("eligible_quantity")
+            eligible_quantity = min(eligible_quantity, verified_cap) if type(verified_cap) is int and verified_cap > 0 else 0
         unit_cost = _decimal_or_none(getattr(product, "cost_price", None))
         locked_capital = _money(Decimal(eligible_quantity) * unit_cost) if unit_cost is not None else None
         candidate_price = _candidate_price(product=product, recommendation=recommendation, simulation=simulation)
@@ -204,6 +218,24 @@ class DeadStockCapitalRecoveryService:
                 confidence=Decimal("0.00"),
                 evidence={**base_evidence, "reason": "MARGIN_GUARD_REJECTED", "margin_guard": guard_evidence},
                 calculated_at=calculated_at,
+            )
+
+        if evidence_driven:
+            scenarios = (
+                cash_scenarios(guard, quantity=eligible_quantity, holding_per_day=holding_cost(product), duration_days=duration)
+                if action in {DeadStockRecoveryAction.DISCOUNT, DeadStockRecoveryAction.FLASH_SALE, DeadStockRecoveryAction.HOLD, DeadStockRecoveryAction.SEO_FIX}
+                else []
+            )
+            return self._blocked_estimate(
+                product=product, assessment=assessment, recommendation=recommendation,
+                eligible_quantity=eligible_quantity, unit_cost=unit_cost, locked_capital=locked_capital,
+                candidate_price=candidate_price, status=CapitalRecoveryEstimateStatus.INSUFFICIENT_DATA,
+                method=CapitalRecoveryEstimationMethod.INSUFFICIENT_DATA, confidence=Decimal("0"),
+                evidence={
+                    **base_evidence, "margin_guard": guard_evidence,
+                    "reason": "SALES_RESPONSE_UNVALIDATED", "scenario_duration_days": duration,
+                    "cash_scenarios": scenarios,
+                }, calculated_at=calculated_at,
             )
 
         unit_estimate = self._estimate_units(

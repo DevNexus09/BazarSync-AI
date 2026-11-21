@@ -2,7 +2,7 @@
 
 The competitor dashboard submits `POST /api/v1/scraper/run/{product_id}` with the seller's bearer token. Poll `GET /api/v1/scraper/runs/{scrape_run_id}` and retrieve competitors with `GET /api/v1/competitors/{product_id}`. The former direct search route, `POST /api/v1/scraper/daraz`, returns `410 Gone` with the queued endpoint as its replacement.
 
-Daraz Bangladesh's site terms restrict automated extraction and its public robots policy disallows `/catalog/`, which the AJAX and browser searches use. `DARAZ_SCRAPING_AUTHORIZED` defaults to `false`. Set it on workers and Beat only if Daraz has explicitly authorized the requested paths and request volumes. With acquisition disabled, queued manual runs report `MARKETPLACE_ACCESS_DENIED` and scheduled tasks skip dispatch. [Daraz site terms](https://www.daraz.com.bd/terms-of-use/) · [Daraz robots policy](https://www.daraz.com.bd/robots.txt)
+Daraz Bangladesh's site terms restrict automated extraction and its public robots policy disallows `/catalog/`, which the AJAX and browser searches use. `DARAZ_SCRAPING_AUTHORIZED` defaults to `false`. Set it on workers and Beat only if Daraz has explicitly authorized the requested paths and request volumes. With acquisition disabled, queued manual runs report `DARAZ_ACQUISITION_DISABLED` and scheduled tasks skip dispatch. [Daraz site terms](https://www.daraz.com.bd/terms-of-use/) · [Daraz robots policy](https://www.daraz.com.bd/robots.txt)
 
 ## Run behavior
 

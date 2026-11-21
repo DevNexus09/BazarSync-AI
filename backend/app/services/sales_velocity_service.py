@@ -133,6 +133,22 @@ class SalesVelocityService:
         calculation_version: str | None = None,
         calculated_at: datetime | None = None,
     ) -> SalesVelocityOutcome:
+        calculation = self.measure_for_product(
+            product=product, seller=seller, as_of_date=as_of_date, window_days=window_days,
+            calculation_version=calculation_version, calculated_at=calculated_at,
+        )
+        return self._save_calculation(calculation, calculated_at=calculated_at)
+
+    def measure_for_product(
+        self,
+        *,
+        product: Product,
+        seller: Seller | None = None,
+        as_of_date: date | None = None,
+        window_days: int | None = None,
+        calculation_version: str | None = None,
+        calculated_at: datetime | None = None,
+    ) -> SalesVelocityCalculation:
         seller_obj = seller or product.seller
         window = window_days or self._default_window_days
         version = calculation_version or self._calculation_version
@@ -144,7 +160,7 @@ class SalesVelocityService:
             window_start=window_start,
             window_end=window_end,
         ).get(product.id, {})
-        calculation = self.calculate_from_aggregate(
+        return self.calculate_from_aggregate(
             product=product,
             seller=seller_obj,
             as_of_date=as_of,
@@ -152,7 +168,6 @@ class SalesVelocityService:
             aggregate=aggregate,
             calculation_version=version,
         )
-        return self._save_calculation(calculation, calculated_at=calculated_at)
 
     def calculate_for_batch(
         self,

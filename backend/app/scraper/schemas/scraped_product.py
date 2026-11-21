@@ -96,6 +96,7 @@ class ObservationProvenance(BaseModel):
     detail_observed_at: datetime | None = None
     metadata_cached_at: datetime | None = None
     price_observed_at: datetime | None = None
+    stock_observed_at: datetime | None = None
     parser_version: str = PARSER_VERSION
     field_sources: dict[str, ExtractionSource] = Field(default_factory=dict)
 
@@ -107,8 +108,12 @@ class DetailExtraction:
     observed_at: datetime
     price_observed_at: datetime | None
     metadata_cached: bool = False
+    stock_observed_at: datetime | None = None
 
     @classmethod
     def observed(cls, fields: ProductFields, method: AcquisitionMethod) -> Self:
         now = datetime.now(timezone.utc)
-        return cls(fields, method, now, now if fields.current_price is not None else None)
+        return cls(
+            fields, method, now, now if fields.current_price is not None else None,
+            stock_observed_at=now if fields.stock_status != "UNKNOWN" else None,
+        )

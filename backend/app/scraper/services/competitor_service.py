@@ -11,7 +11,7 @@ from app.scraper.acquisition.metadata_cache import DarazMetadataCache
 from app.scraper.browser import BrowserManager
 from app.scraper.constants import SCRAPER_HTTPX_ENABLED, SCRAPER_METADATA_CACHE_TTL, SCRAPER_USER_AGENT
 from app.scraper.daraz_scraper import DarazScraper
-from app.scraper.exceptions import PermanentAccessError
+from app.scraper.exceptions import DarazAcquisitionDisabledError
 from app.scraper.schemas import ScrapeResponse
 from app.scraper.utils import build_headers
 
@@ -22,7 +22,7 @@ async def scrape_daraz_competitors(
     seller_id: UUID | None = None,
 ) -> ScrapeResponse:
     if not settings.daraz_scraping_authorized:
-        raise PermanentAccessError("Daraz acquisition has not been authorized in this deployment.")
+        raise DarazAcquisitionDisabledError("Daraz acquisition has not been authorized in this deployment.")
 
     from app.core.celery_app import redis_url
 

@@ -122,7 +122,7 @@ class PricingEngine:
     def __init__(self, config: PricingConfig | None = None) -> None:
         self._config = config or PricingConfig()
 
-    def analyze(self, payload: Mapping[str, Any]) -> AnalyticsOutput:
+    def analyze(self, payload: Mapping[str, Any], *, freshness_aware: bool = False) -> AnalyticsOutput:
         seller = _parse_seller_input(payload)
         competitors, invalid_competitor_count = _parse_competitors(
             payload.get("competitors")
@@ -149,9 +149,10 @@ class PricingEngine:
             seller.seller_price, seller.seller_cost, self._config
         )
 
-        daily_velocity = estimate_daily_sales_velocity(
-            seller.seller_price, competitor_median, float(availability["ratio"])
+        availability_ratio = (
+            None if freshness_aware and not availability["total"] else float(availability["ratio"])
         )
+        daily_velocity = estimate_daily_sales_velocity(seller.seller_price, competitor_median, availability_ratio)
         days_left = estimate_days_of_stock_left(seller.stock_quantity, daily_velocity)
 
         market_position_score = score_market_position(price_gap_median)

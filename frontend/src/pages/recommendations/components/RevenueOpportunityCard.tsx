@@ -1,9 +1,9 @@
 import { Sparkles } from "lucide-react"
 
-import { formatCurrency } from "@/utils/formatters"
+import { formatOptionalCurrency } from "@/utils/formatters"
 
 type RevenueOpportunityCardProps = {
-  value: number
+  value: number | null
   className?: string
 }
 
@@ -21,10 +21,10 @@ export function RevenueOpportunityCard({
           <Sparkles className="size-4 text-emerald-500" />
         </div>
         <div className="mt-3 text-2xl font-semibold text-foreground">
-          {formatCurrency(value)}
+          {formatOptionalCurrency(value)}
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Estimated upside from the recommended pricing action.
+          Legacy heuristic estimate.
         </p>
       </div>
     </div>

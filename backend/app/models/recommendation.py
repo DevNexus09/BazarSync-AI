@@ -131,16 +131,16 @@ class Recommendation(Base):
     def _validate_revenue(self, _: str, value: Decimal) -> Decimal:
         if value is None:
             return Decimal("0.00")
-        if value < 0:
-            raise ValueError("revenue_opportunity cannot be negative.")
+        if not Decimal(str(value)).is_finite() or value < 0:
+            raise ValueError("revenue_opportunity must be finite and nonnegative.")
         return value
 
     @validates("suggested_price_min", "suggested_price_max")
     def _validate_suggested_price(self, key: str, value: Decimal | None) -> Decimal | None:
         if value is None:
             return None
-        if value < 0:
-            raise ValueError(f"{key} cannot be negative.")
+        if not Decimal(str(value)).is_finite() or value < 0:
+            raise ValueError(f"{key} must be finite and nonnegative.")
         other = (
             self.suggested_price_max
             if key == "suggested_price_min"

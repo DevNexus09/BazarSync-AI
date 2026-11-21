@@ -17,6 +17,7 @@ from app.models.sales_velocity import SalesVelocity, SalesVelocityDataStatus
 from app.models.seller import Seller
 from app.models.stockout_prediction import StockoutPrediction, StockoutPredictionStatus
 from app.repositories.stockout_prediction_repository import StockoutPredictionRepository
+from app.services.sales_velocity_service import SalesVelocityCalculation
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class StockoutPredictionService:
         product: Product,
         seller: Seller,
         inventory_snapshot: InventoryHistory | None,
-        sales_velocity: SalesVelocity | None,
+        sales_velocity: SalesVelocity | SalesVelocityCalculation | None,
         as_of_date: date | None = None,
         calculated_at: datetime | None = None,
         calculation_version: str | None = None,
@@ -223,7 +224,7 @@ class StockoutPredictionService:
         product: Product,
         seller: Seller,
         inventory_snapshot: InventoryHistory | None,
-        sales_velocity: SalesVelocity | None,
+        sales_velocity: SalesVelocity | SalesVelocityCalculation | None,
         as_of_date: date,
         calculated_at: datetime,
         calculation_version: str,
@@ -377,7 +378,7 @@ class StockoutPredictionService:
     @staticmethod
     def confidence_score(
         *,
-        sales_velocity: SalesVelocity | None,
+        sales_velocity: SalesVelocity | SalesVelocityCalculation | None,
         inventory_snapshot: InventoryHistory | None,
         as_of_date: date,
         incoming_used: int,

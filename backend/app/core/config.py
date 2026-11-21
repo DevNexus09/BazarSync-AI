@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from decimal import Decimal
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -59,6 +60,27 @@ class Settings(BaseModel):
     password_reset_email_retry_attempts: int = 2
     bootstrap_db_on_startup: bool = False
     scraper_schedule_enabled: bool = False
+    recommendation_jobs_enabled: bool = False
+    recommendation_validation_enabled: bool = False
+    recommendation_dashboard_evidence_enabled: bool = False
+    recommendation_explanation_enabled: bool = False
+    recommendation_explanation_groq_enabled: bool = False
+    recommendation_explanation_model: str = "openai/gpt-oss-20b"
+    recommendation_explanation_temperature: float = Field(default=0.1, ge=0, le=1)
+    recommendation_explanation_timeout_seconds: float = Field(default=4, gt=0, le=15)
+    recommendation_explanation_max_retries: int = Field(default=0, ge=0, le=2)
+    historical_dataset_export_enabled: bool = False
+    recommendation_action_evaluation_enabled: bool = False
+    recommendation_action_min_score: Decimal = Field(default=Decimal("0.50"), ge=0, le=1)
+    recommendation_action_profit_reference_bdt: Decimal = Field(default=Decimal("1000"), gt=0, allow_inf_nan=False)
+    recommendation_action_max_adverse_risk: Decimal = Field(default=Decimal("0.60"), ge=0, le=1)
+    recommendation_orchestration_enabled: bool = False
+    recommendation_orchestration_shadow_enabled: bool = False
+    recommendation_evidence_enabled: bool = False
+    recommendation_business_signals_enabled: bool = False
+    recommendation_inventory_max_age_hours: int = Field(default=48, gt=0, le=8760)
+    recommendation_price_max_age_hours: int = Field(default=24, gt=0, le=8760)
+    recommendation_stock_max_age_hours: int = Field(default=6, gt=0, le=8760)
     daraz_scraping_authorized: bool = False
     supabase_url: str | None = None
     supabase_key: str | None = None
@@ -99,6 +121,8 @@ class Settings(BaseModel):
     reorder_minimum_velocity_confidence: float = 40.0
     reorder_maximum_recommendation_horizon_days: int = 14
     reorder_calculation_version: str = "v1"
+    forecast_aware_reorder_enabled: bool = False
+    reorder_target_service_level: Decimal = Field(default=Decimal("0.90"), gt=0.5, lt=1)
     inventory_risk_calculation_version: str = "v1"
     inventory_risk_significant_coverage_gap_days: float = 1.0
     inventory_risk_medium_review_horizon_days: int = 7
@@ -133,6 +157,7 @@ class Settings(BaseModel):
     dead_stock_excess_coverage_weight: float = 15.0
     dead_stock_visibility_weight: float = 10.0
     dead_stock_recovery_formula_version: str = "v1"
+    evidence_driven_recovery_enabled: bool = False
     dead_stock_recovery_discount_rates: list[float] = Field(default_factory=lambda: [0.05, 0.10, 0.15, 0.20])
     dead_stock_recovery_bundle_min_quantity: int = 5
     dead_stock_recovery_flash_sale_min_quantity: int = 10
@@ -174,6 +199,7 @@ class Settings(BaseModel):
     demand_response_max_forecast_multiplier: float = 3.0
     demand_response_formula_version: str = "v1"
     dynamic_pricing_formula_version: str = "v1"
+    forecast_assisted_pricing_enabled: bool = False
     dynamic_pricing_min_improvement_rate: float = 0.02
     dynamic_pricing_min_actionable_change_rate: float = 0.01
     dynamic_pricing_max_change_rate: float = 0.15
@@ -201,6 +227,10 @@ class Settings(BaseModel):
     rag_outbox_initial_backoff_seconds: int = 60
     rag_outbox_max_backoff_seconds: int = 3600
     rag_outbox_processing_lease_seconds: int = 900
+
+    @property
+    def durable_recommendation_jobs_enabled(self) -> bool:
+        return self.recommendation_jobs_enabled or self.recommendation_orchestration_enabled
 
     @classmethod
     def load(cls) -> "Settings":
@@ -272,6 +302,29 @@ class Settings(BaseModel):
                 os.getenv("SCRAPER_SCHEDULE_ENABLED"),
                 default=scraper_schedule_default,
             ),
+            "recommendation_jobs_enabled": _parse_bool(os.getenv("RECOMMENDATION_JOBS_ENABLED")),
+            "recommendation_orchestration_enabled": _parse_bool(os.getenv("RECOMMENDATION_ORCHESTRATION_ENABLED")),
+            "recommendation_orchestration_shadow_enabled": _parse_bool(os.getenv("RECOMMENDATION_ORCHESTRATION_SHADOW_ENABLED")),
+            "historical_dataset_export_enabled": _parse_bool(os.getenv("HISTORICAL_DATASET_EXPORT_ENABLED")),
+            "recommendation_action_evaluation_enabled": _parse_bool(os.getenv("RECOMMENDATION_ACTION_EVALUATION_ENABLED")),
+            "recommendation_action_min_score": os.getenv("RECOMMENDATION_ACTION_MIN_SCORE", "0.50"),
+            "recommendation_action_profit_reference_bdt": os.getenv("RECOMMENDATION_ACTION_PROFIT_REFERENCE_BDT", "1000"),
+            "recommendation_action_max_adverse_risk": os.getenv("RECOMMENDATION_ACTION_MAX_ADVERSE_RISK", "0.60"),
+            "recommendation_validation_enabled": _parse_bool(os.getenv("RECOMMENDATION_VALIDATION_ENABLED")),
+            "recommendation_dashboard_evidence_enabled": _parse_bool(os.getenv("RECOMMENDATION_DASHBOARD_EVIDENCE_ENABLED")),
+            "recommendation_explanation_enabled": _parse_bool(os.getenv("RECOMMENDATION_EXPLANATION_ENABLED")),
+            "recommendation_explanation_groq_enabled": _parse_bool(os.getenv("RECOMMENDATION_EXPLANATION_GROQ_ENABLED")),
+            "recommendation_explanation_model": os.getenv("RECOMMENDATION_EXPLANATION_MODEL", "openai/gpt-oss-20b"),
+            "recommendation_explanation_temperature": os.getenv("RECOMMENDATION_EXPLANATION_TEMPERATURE", "0.1"),
+            "recommendation_explanation_timeout_seconds": os.getenv("RECOMMENDATION_EXPLANATION_TIMEOUT_SECONDS", "4"),
+            "recommendation_explanation_max_retries": os.getenv("RECOMMENDATION_EXPLANATION_MAX_RETRIES", "0"),
+            "recommendation_evidence_enabled": _parse_bool(os.getenv("RECOMMENDATION_EVIDENCE_ENABLED")),
+            "recommendation_business_signals_enabled": _parse_bool(
+                os.getenv("RECOMMENDATION_BUSINESS_SIGNALS_ENABLED")
+            ),
+            "recommendation_inventory_max_age_hours": int(os.getenv("RECOMMENDATION_INVENTORY_MAX_AGE_HOURS", "48")),
+            "recommendation_price_max_age_hours": int(os.getenv("RECOMMENDATION_PRICE_MAX_AGE_HOURS", "24")),
+            "recommendation_stock_max_age_hours": int(os.getenv("RECOMMENDATION_STOCK_MAX_AGE_HOURS", "6")),
             "daraz_scraping_authorized": _parse_bool(
                 os.getenv("DARAZ_SCRAPING_AUTHORIZED"), default=False,
             ),
@@ -341,6 +394,8 @@ class Settings(BaseModel):
             "reorder_minimum_velocity_confidence": float(os.getenv("REORDER_MINIMUM_VELOCITY_CONFIDENCE", "40.0")),
             "reorder_maximum_recommendation_horizon_days": int(os.getenv("REORDER_MAXIMUM_RECOMMENDATION_HORIZON_DAYS", "14")),
             "reorder_calculation_version": os.getenv("REORDER_CALCULATION_VERSION", "v1"),
+            "forecast_aware_reorder_enabled": _parse_bool(os.getenv("FORECAST_AWARE_REORDER_ENABLED")),
+            "reorder_target_service_level": os.getenv("REORDER_TARGET_SERVICE_LEVEL", "0.90"),
             "inventory_risk_calculation_version": os.getenv("INVENTORY_RISK_CALCULATION_VERSION", "v1"),
             "inventory_risk_significant_coverage_gap_days": float(os.getenv("INVENTORY_RISK_SIGNIFICANT_COVERAGE_GAP_DAYS", "1.0")),
             "inventory_risk_medium_review_horizon_days": int(os.getenv("INVENTORY_RISK_MEDIUM_REVIEW_HORIZON_DAYS", "7")),
@@ -381,6 +436,7 @@ class Settings(BaseModel):
             "dead_stock_excess_coverage_weight": float(os.getenv("DEAD_STOCK_EXCESS_COVERAGE_WEIGHT", "15.0")),
             "dead_stock_visibility_weight": float(os.getenv("DEAD_STOCK_VISIBILITY_WEIGHT", "10.0")),
             "dead_stock_recovery_formula_version": os.getenv("DEAD_STOCK_RECOVERY_FORMULA_VERSION", "v1"),
+            "evidence_driven_recovery_enabled": _parse_bool(os.getenv("EVIDENCE_DRIVEN_RECOVERY_ENABLED")),
             "dead_stock_recovery_discount_rates": [
                 float(item)
                 for item in _split_csv(os.getenv("DEAD_STOCK_RECOVERY_DISCOUNT_RATES", "0.05,0.10,0.15,0.20"))
@@ -434,6 +490,7 @@ class Settings(BaseModel):
             "demand_response_max_forecast_multiplier": float(os.getenv("DEMAND_RESPONSE_MAX_FORECAST_MULTIPLIER", "3.0")),
             "demand_response_formula_version": os.getenv("DEMAND_RESPONSE_FORMULA_VERSION", "v1"),
             "dynamic_pricing_formula_version": os.getenv("DYNAMIC_PRICING_FORMULA_VERSION", "v1"),
+            "forecast_assisted_pricing_enabled": _parse_bool(os.getenv("FORECAST_ASSISTED_PRICING_ENABLED")),
             "dynamic_pricing_min_improvement_rate": float(os.getenv("DYNAMIC_PRICING_MIN_IMPROVEMENT_RATE", "0.02")),
             "dynamic_pricing_min_actionable_change_rate": float(os.getenv("DYNAMIC_PRICING_MIN_ACTIONABLE_CHANGE_RATE", "0.01")),
             "dynamic_pricing_max_change_rate": float(os.getenv("DYNAMIC_PRICING_MAX_CHANGE_RATE", "0.15")),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from collections.abc import Callable
 from uuid import UUID
 
 from sqlalchemy import select
@@ -15,6 +16,7 @@ from app.models.dead_stock_recovery_recommendation import (
 from app.models.inventory_aging import InventoryAgingSnapshot
 from app.models.product import Product
 from app.models.product_visibility_metric import ProductVisibilityMetric
+from app.models.promotion import PromotionPlan, PromotionResult
 from app.models.sales_velocity import SalesVelocity
 
 
@@ -62,7 +64,7 @@ class DeadStockRecoveryRepository:
     def companion_products(self, *, seller_id: UUID, product: Product, limit: int = 5) -> list[Product]:
         if not product.category:
             return []
-        return self._db.execute(
+        return list(self._db.execute(
             select(Product)
             .where(
                 Product.seller_id == seller_id,
@@ -72,7 +74,7 @@ class DeadStockRecoveryRepository:
             )
             .order_by(Product.created_at.desc(), Product.id.desc())
             .limit(limit)
-        ).scalars().all()
+        ).scalars())
 
     def visibility_for_product(self, *, seller_id: UUID, product_id: UUID, as_of_date: date) -> dict | None:
         from app.services.product_visibility_service import ProductVisibilityService
@@ -97,7 +99,39 @@ class DeadStockRecoveryRepository:
         del seller_id, product_id
         return []
 
-    def add_idempotent(self, recommendation: DeadStockRecoveryRecommendation) -> tuple[DeadStockRecoveryRecommendation, bool]:
+    def promotion_observations(
+        self,
+        *,
+        seller_id: UUID,
+        product_id: UUID,
+        since: datetime,
+        at: datetime,
+    ) -> list[tuple[PromotionResult, PromotionPlan | None]]:
+        statement = (
+            select(PromotionResult, PromotionPlan)
+            .outerjoin(
+                PromotionPlan,
+                (PromotionPlan.id == PromotionResult.promotion_plan_id)
+                & (PromotionPlan.seller_id == seller_id)
+                & (PromotionPlan.product_id == product_id),
+            )
+            .where(
+                PromotionResult.seller_id == seller_id,
+                PromotionResult.product_id == product_id,
+                PromotionResult.started_at >= since,
+                PromotionResult.created_at <= at,
+            )
+            .order_by(PromotionResult.started_at.desc(), PromotionResult.id.desc())
+            .limit(50)
+        )
+        return [(result, plan) for result, plan in self._db.execute(statement)]
+
+    def add_idempotent(
+        self,
+        recommendation: DeadStockRecoveryRecommendation,
+        *,
+        before_commit: Callable[[DeadStockRecoveryRecommendation], None] | None = None,
+    ) -> tuple[DeadStockRecoveryRecommendation, bool]:
         existing = self.get_for_assessment(
             seller_id=recommendation.seller_id,
             assessment_id=recommendation.dead_stock_assessment_id,
@@ -107,6 +141,9 @@ class DeadStockRecoveryRepository:
             return existing, False
         self._db.add(recommendation)
         try:
+            if before_commit is not None:
+                self._db.flush()
+                before_commit(recommendation)
             self._db.commit()
         except IntegrityError:
             self._db.rollback()
@@ -117,6 +154,9 @@ class DeadStockRecoveryRepository:
             )
             if existing:
                 return existing, False
+            raise
+        except Exception:
+            self._db.rollback()
             raise
         self._db.refresh(recommendation)
         return recommendation, True
@@ -140,7 +180,7 @@ class DeadStockRecoveryRepository:
             .limit(limit)
             .offset(offset)
         ).scalars().all()
-        return rows, total
+        return list(rows), total
 
     def get(self, *, seller_id: UUID, recommendation_id: UUID) -> DeadStockRecoveryRecommendation | None:
         return self._db.execute(

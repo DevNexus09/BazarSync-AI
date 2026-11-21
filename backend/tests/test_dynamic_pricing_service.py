@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
@@ -86,6 +87,21 @@ class DynamicPricingServiceTests(unittest.TestCase):
         self.assertEqual(DynamicPricingRecommendationStatus.INSUFFICIENT_DATA, rec.recommendation_status)
         self.assertEqual(DemandEstimationMethod.INSUFFICIENT_DATA, rec.estimation_method)
 
+    def test_missing_baseline_does_not_become_zero_profit(self) -> None:
+        missing = _build(
+            analytics=_analytics(recent=None),
+            estimate=replace(_estimate(), baseline_units=None),
+        )
+        observed_zero = _build(analytics=_analytics(recent=0), estimate=_estimate())
+
+        self.assertEqual(DynamicPricingRecommendationStatus.INSUFFICIENT_DATA, missing.recommendation_status)
+        self.assertEqual(DynamicPricingAction.HOLD, missing.action)
+        self.assertIsNone(missing.expected_units)
+        self.assertIsNone(missing.expected_profit)
+        self.assertIsNone(missing.baseline_expected_profit)
+        self.assertEqual(Decimal("0"), observed_zero.expected_profit)
+        self.assertEqual(Decimal("0"), observed_zero.baseline_expected_profit)
+
     def test_heuristic_method_disclosure(self) -> None:
         rec = _build(estimate=_estimate(method=DemandEstimationMethod.CONSERVATIVE_HEURISTIC))
 
@@ -104,6 +120,33 @@ class DynamicPricingServiceTests(unittest.TestCase):
         self.assertNotIn(Decimal("10.00"), candidates)
         self.assertNotIn(Decimal("200.00"), candidates)
         self.assertIn(Decimal("95.00"), candidates)
+
+    def test_marketplace_rounding_cannot_escape_candidate_band(self) -> None:
+        result = generate_candidates(
+            current_price=Decimal("100.00"),
+            minimum_safe_price=Decimal("80.00"),
+            competitor_values=[Decimal("115.00")],
+            increment=Decimal("20.00"),
+            max_change_rate=Decimal("0.15"),
+        )
+        self.assertEqual([Decimal("100.00")], result)
+
+    def test_empty_increment_grid_retains_the_comparison_anchor(self) -> None:
+        result = generate_candidates(
+            current_price=Decimal("1.01"),
+            minimum_safe_price=Decimal("1.00"),
+            competitor_values=[],
+            increment=Decimal("10.00"),
+            max_change_rate=Decimal("0.10"),
+        )
+        self.assertEqual([Decimal("1.01")], result)
+        self.assertEqual(
+            DynamicPricingAction.HOLD,
+            derive_action(
+                current_price=result[0], selected_price=result[0],
+                min_actionable_change_rate=Decimal(0),
+            ),
+        )
 
     def test_action_derivation(self) -> None:
         self.assertEqual(DynamicPricingAction.HOLD, derive_action(current_price=Decimal("100"), selected_price=Decimal("100.50"), min_actionable_change_rate=Decimal("0.01")))

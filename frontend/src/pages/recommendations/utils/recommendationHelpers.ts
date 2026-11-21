@@ -45,21 +45,30 @@ export const getActionMeta = (action: RecommendationAction) => actionMetaMap[act
 export const getConfidenceTone = (confidence: RecommendationConfidence) =>
   confidenceToneMap[confidence]
 
+const recommendationPrice = new Intl.NumberFormat("en-BD", {
+  style: "currency",
+  currency: "BDT",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+
+export const formatRecommendationPrice = (value: number) => recommendationPrice.format(value)
+
 export const formatNullableCurrency = (value: number | null | undefined) =>
-  value === null || value === undefined ? "n/a" : formatCurrency(value)
+  value === null || value === undefined ? "Unavailable" : formatCurrency(value)
 
 export const formatNullableNumber = (value: number | null | undefined) =>
-  value === null || value === undefined ? "n/a" : formatNumber(value)
+  value === null || value === undefined ? "Unavailable" : formatNumber(value)
 
 export const formatNullablePercent = (value: number | null | undefined) =>
-  value === null || value === undefined ? "n/a" : formatPercent(value)
+  value === null || value === undefined ? "Unavailable" : formatPercent(value)
 
 export const formatScorePercent = (value: number) =>
   formatPercent(Math.min(Math.max(value, 0), 1) * 100)
 
 export const formatSignedPercent = (value: number | null | undefined) => {
   if (value === null || value === undefined) {
-    return "n/a"
+    return "Unavailable"
   }
   const sign = value > 0 ? "+" : value < 0 ? "-" : ""
   const magnitude = formatPercent(Math.abs(value))

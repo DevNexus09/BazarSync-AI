@@ -21,7 +21,8 @@ export function PublicAuthLayout({
   const shouldReduceMotion = useReducedMotion()
 
   return (
-    <div className="relative isolate min-h-[100dvh] overflow-y-auto bg-background">
+<div className="app-theme app-shell-canvas relative isolate min-h-[100dvh] overflow-y-auto bg-background">
+<div className="app-shell-grid pointer-events-none absolute inset-0" aria-hidden="true" />
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,_rgb(var(--primary)/.18),_transparent_42%),radial-gradient(circle_at_85%_70%,_rgb(var(--accent)/.08),_transparent_36%)]"
         aria-hidden="true"

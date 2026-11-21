@@ -337,10 +337,12 @@ class RagMemoryDocumentBuilder:
         event_time = getattr(recommendation, "generated_at", None) or getattr(recommendation, "created_at", None)
         title = f"Pricing recommendation {action} for {product_name}"
         summary = f"Pricing recommendation {action} for {product_name} with status {status}."
+        evidence = getattr(recommendation, "evidence", None) or {}
+        target = evidence.get("recommended_target_price", getattr(recommendation, "recommended_price", None))
         content = (
             f"On {_date_text(event_time)}, pricing recommendation for {product_name} selected action {action}. "
             f"Current price: {_money(getattr(recommendation, 'current_price', None))}. "
-            f"Recommended price: {_money(getattr(recommendation, 'recommended_price', None))}. "
+            f"Recommended price: {_money(target)}. "
             f"Minimum safe price: {_money(getattr(recommendation, 'minimum_safe_price', None))}. "
             f"Expected revenue: {_money(getattr(recommendation, 'expected_revenue', None))}. "
             f"Expected profit: {_money(getattr(recommendation, 'expected_profit', None))}. "
@@ -469,11 +471,16 @@ class RagMemoryDocumentBuilder:
         action = _enum_value(getattr(recommendation, "action", None))
         title = f"Recommendation {action} for {product_name}"
         summary = f"Recommendation {action} for {product_name} with {_enum_value(recommendation.confidence)} confidence."
+        explanation = (getattr(recommendation, "recommendation_context", None) or {}).get("explanation", {})
+        revenue_text = (
+            "" if explanation.get("prompt_version")
+            else f"Revenue opportunity: {_money(recommendation.revenue_opportunity)}. "
+        )
         content = (
             f"On {_date_text(recommendation.created_at)}, recommendation for {product_name} selected action {action}. "
             f"Confidence: {_enum_value(recommendation.confidence)}. "
             f"Suggested price range: {_money(recommendation.suggested_price_min)} to {_money(recommendation.suggested_price_max)}. "
-            f"Revenue opportunity: {_money(recommendation.revenue_opportunity)}. "
+            f"{revenue_text}"
             f"Reason: {_clean_text(recommendation.reasoning_bn)} Source: recommendations."
         )
         return self._document(

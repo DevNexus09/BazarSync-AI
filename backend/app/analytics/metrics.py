@@ -145,7 +145,7 @@ def compute_availability_counts(
 
 
 def estimate_daily_sales_velocity(
-    seller_price: float, competitor_median: float | None, availability_ratio: float
+    seller_price: float, competitor_median: float | None, availability_ratio: float | None
 ) -> float:
     """Estimate daily sales velocity using pricing and availability signals."""
     price_gap_percent = compute_price_gap_percent(seller_price, competitor_median) or 0.0
@@ -154,7 +154,10 @@ def estimate_daily_sales_velocity(
     price_factor = clamp(1.0 - (price_gap_percent / 30.0), 0.3, 1.5)
 
     # When competitors are mostly out of stock, demand shifts to the seller.
-    availability_factor = clamp(1.0 + (1.0 - availability_ratio) * 0.8, 0.6, 1.8)
+    availability_factor = (
+        1.0 if availability_ratio is None
+        else clamp(1.0 + (1.0 - availability_ratio) * 0.8, 0.6, 1.8)
+    )
 
     base_velocity = 1.0
     return max(0.1, base_velocity * price_factor * availability_factor)

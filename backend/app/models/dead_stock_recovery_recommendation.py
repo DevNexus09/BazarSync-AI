@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     from app.models.seller import Seller
 
 
+EVIDENCE_RECOVERY_VERSION = "evidence-recovery-v1"
+
+
 class DeadStockRecoveryAction(str, Enum):
     BUNDLE = "BUNDLE"
     DISCOUNT = "DISCOUNT"

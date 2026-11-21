@@ -1,0 +1,19 @@
+FROM python:3.14.4-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+COPY requirements-training.txt ./requirements-training.txt
+RUN python -m pip install --only-binary=:all: -r requirements-training.txt \
+    && python -m pip check
+
+COPY app ./app
+COPY scripts/infer_forecast.py scripts/forecast_native_worker.py ./scripts/
+USER 10001:10001
+ENTRYPOINT ["python", "-m", "scripts.infer_forecast"]

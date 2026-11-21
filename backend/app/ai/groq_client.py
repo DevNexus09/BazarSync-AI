@@ -34,7 +34,6 @@ Celery compatibility notes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-import asyncio
 import json
 import logging
 import os
@@ -69,6 +68,10 @@ class GroqAPIError(Exception):
 
 class GroqTimeoutError(GroqAPIError):
     """Raised when Groq requests timeout."""
+
+
+class GroqUnavailableError(GroqAPIError):
+    """Raised when a transient provider failure exhausts request retries."""
 
 
 class GroqRateLimitError(GroqAPIError):
@@ -127,16 +130,16 @@ class GroqClientManager:
 
     @classmethod
     def get_client(cls) -> AsyncGroq:
+        settings = cls.get_settings()
         if cls._client is None:
             with cls._lock:
                 if cls._client is None:
-                    settings = cls.get_settings()
-                    cls._client = AsyncGroq(
-                        api_key=settings.api_key,
-                        timeout=settings.timeout_seconds,
-                        max_retries=0,
-                    )
+                    cls._client = cls.new_client(settings)
         return cls._client
+
+    @staticmethod
+    def new_client(settings: GroqSettings) -> AsyncGroq:
+        return AsyncGroq(api_key=settings.api_key, timeout=settings.timeout_seconds, max_retries=0)
 
 
 def get_groq_client() -> AsyncGroq:
@@ -152,14 +155,21 @@ async def generate_completion(
     max_tokens: int | None = None,
     response_format: Mapping[str, Any] | None = None,
     request_id: str | None = None,
+    timeout_seconds: float | None = None,
+    max_retries: int | None = None,
 ) -> dict[str, Any]:
     """Generate a plain-text completion from Groq."""
     if not messages:
         raise GroqInvalidResponseError("messages cannot be empty.")
 
     settings = GroqClientManager.get_settings()
+    if timeout_seconds is not None or max_retries is not None:
+        settings = GroqSettings(
+            api_key=settings.api_key, model=settings.model,
+            timeout_seconds=timeout_seconds if timeout_seconds is not None else settings.timeout_seconds,
+            max_retries=max_retries if max_retries is not None else settings.max_retries,
+        )
     selected_model = model or settings.model
-    client = GroqClientManager.get_client()
     logger = logging.getLogger(__name__)
 
     start_time = time.monotonic()
@@ -172,16 +182,19 @@ async def generate_completion(
     )
 
     try:
-        response = await _execute_with_retry(
-            client,
-            settings,
-            messages,
-            selected_model,
-            temperature,
-            max_tokens,
-            response_format=response_format,
-            request_id=request_id,
-        )
+        # Celery runs separate event loops per invocation. Connections must
+        # close on the same loop that used them.
+        async with GroqClientManager.new_client(settings) as client:
+            response = await _execute_with_retry(
+                client,
+                settings,
+                messages,
+                selected_model,
+                temperature,
+                max_tokens,
+                response_format=response_format,
+                request_id=request_id,
+            )
     except APITimeoutError as exc:
         _log_event(
             logger,
@@ -212,6 +225,8 @@ async def generate_completion(
             error=exc.__class__.__name__,
         )
         raise GroqAPIError("Groq request is invalid.") from exc
+    except (APIConnectionError, InternalServerError) as exc:
+        raise GroqUnavailableError("Groq is temporarily unavailable.") from exc
     except GroqError as exc:
         _log_event(
             logger,

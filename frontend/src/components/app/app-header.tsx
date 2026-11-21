@@ -43,7 +43,7 @@ export default function AppHeader({
   return (
     <div className="sticky top-0 z-30">
       <div className="px-4 pt-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--primary)/.12),_0_20px_50px_rgb(var(--overlay)/.55)] backdrop-blur">
+        <div className="rounded-2xl border border-border/60 bg-card/75 p-4 shadow-[0_0_0_1px_rgb(var(--primary)/.12),_0_20px_50px_rgb(var(--overlay)/.38)] backdrop-blur-2xl">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex min-w-[180px] items-center gap-3">
               <Button
@@ -59,7 +59,7 @@ export default function AppHeader({
                 <Menu className="size-4" aria-hidden="true" />
               </Button>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary">
                   BazarSync AI
                 </p>
                 <h1 className="heading-font text-lg font-semibold text-foreground">

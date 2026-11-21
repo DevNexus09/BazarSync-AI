@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockDataStatus, DeadStockRiskLevel
 from app.models.dead_stock_capital_recovery import DeadStockCapitalRecoveryEstimate
-from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction, DeadStockRecoveryRecommendation
+from app.models.dead_stock_recovery_recommendation import EVIDENCE_RECOVERY_VERSION, DeadStockRecoveryAction, DeadStockRecoveryRecommendation
 from app.models.inventory_aging import InventoryAgingSnapshot
 from app.models.product import Product
 from app.models.sales_velocity import SalesVelocity
@@ -88,9 +88,16 @@ class DeadStockDashboardRepository:
             .outerjoin(recovery_ids, and_(DeadStockRecoveryRecommendation.id == recovery_ids.c.id, recovery_ids.c.row_number == 1))
             .outerjoin(
                 DeadStockCapitalRecoveryEstimate,
-                and_(DeadStockCapitalRecoveryEstimate.product_id == Product.id, DeadStockCapitalRecoveryEstimate.seller_id == seller_id),
+                and_(
+                    DeadStockCapitalRecoveryEstimate.product_id == Product.id,
+                    DeadStockCapitalRecoveryEstimate.seller_id == seller_id,
+                    DeadStockCapitalRecoveryEstimate.id.in_(
+                        select(capital_ids.c.id).where(capital_ids.c.row_number == 1)
+                    ),
+                    DeadStockRecoveryRecommendation.calculation_version.is_distinct_from(EVIDENCE_RECOVERY_VERSION)
+                    | (DeadStockCapitalRecoveryEstimate.recovery_recommendation_id == DeadStockRecoveryRecommendation.id),
+                ),
             )
-            .outerjoin(capital_ids, and_(DeadStockCapitalRecoveryEstimate.id == capital_ids.c.id, capital_ids.c.row_number == 1))
             .outerjoin(InventoryAgingSnapshot, and_(InventoryAgingSnapshot.product_id == Product.id, InventoryAgingSnapshot.seller_id == seller_id))
             .outerjoin(aging_ids, and_(InventoryAgingSnapshot.id == aging_ids.c.id, aging_ids.c.row_number == 1))
             .outerjoin(SalesVelocity, and_(SalesVelocity.product_id == Product.id, SalesVelocity.seller_id == seller_id))
@@ -98,7 +105,6 @@ class DeadStockDashboardRepository:
             .where(Product.seller_id == seller_id, Product.stock_quantity > 0)
             .where((DeadStockAssessment.id.is_(None)) | (assessment_ids.c.row_number == 1))
             .where((DeadStockRecoveryRecommendation.id.is_(None)) | (recovery_ids.c.row_number == 1))
-            .where((DeadStockCapitalRecoveryEstimate.id.is_(None)) | (capital_ids.c.row_number == 1))
             .where((InventoryAgingSnapshot.id.is_(None)) | (aging_ids.c.row_number == 1))
             .where((SalesVelocity.id.is_(None)) | (velocity_ids.c.row_number == 1))
         )

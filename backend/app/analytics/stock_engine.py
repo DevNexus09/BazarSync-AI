@@ -21,7 +21,7 @@ class StockAnalytics:
     estimated_days_of_stock_left: float
     stock_risk_score: float
     urgency_score: float
-    competitor_availability_ratio: float
+    competitor_availability_ratio: float | None
     out_of_stock_competitor_count: int
     in_stock_competitor_count: int
 
@@ -32,7 +32,7 @@ class StockEngine:
     def __init__(self, config: PricingConfig | None = None) -> None:
         self._config = config or PricingConfig()
 
-    def analyze(self, payload: Mapping[str, Any]) -> StockAnalytics:
+    def analyze(self, payload: Mapping[str, Any], *, freshness_aware: bool = False) -> StockAnalytics:
         seller_price = _require_float(payload, "seller_price")
         stock_quantity = _require_int(payload, "stock_quantity")
         supplier_lead_time = _require_int(payload, "supplier_lead_time")
@@ -50,10 +50,13 @@ class StockEngine:
 
         stats = compute_competitor_price_stats(competitor_prices)
         competitor_median = stats["median"]
+        availability_ratio = (
+            None if freshness_aware and not availability["total"] else float(availability["ratio"])
+        )
         daily_velocity = estimate_daily_sales_velocity(
             seller_price,
             competitor_median,
-            float(availability["ratio"]),
+            availability_ratio,
         )
         days_left = estimate_days_of_stock_left(stock_quantity, daily_velocity)
         stock_risk_score = score_stock_risk(
@@ -68,7 +71,7 @@ class StockEngine:
             estimated_days_of_stock_left=days_left,
             stock_risk_score=stock_risk_score,
             urgency_score=urgency_score,
-            competitor_availability_ratio=float(availability["ratio"]),
+            competitor_availability_ratio=availability_ratio,
             out_of_stock_competitor_count=int(availability["out_of_stock"]),
             in_stock_competitor_count=int(availability["in_stock"]),
         )

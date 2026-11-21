@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.product import Product
 from app.models.product_price_history import ProductPriceHistorySource
 from app.schemas.products import ProductCreate, ProductUpdate
@@ -142,6 +144,7 @@ class ProductService:
             old_supplier_lead_time=old_supplier_lead_time,
             old_specifications=old_specifications,
             product=product,
+            old_cost_price=old_cost_price,
         ):
             from app.tasks.inventory_intelligence_workflow_tasks import enqueue_product_recalculation
 
@@ -206,15 +209,26 @@ def _requires_inventory_recalculation(
     old_supplier_lead_time: int,
     old_specifications: dict[str, str],
     product: Product,
+    old_cost_price: Decimal | None = None,
 ) -> bool:
     if "stock_quantity" in updates and product.stock_quantity != old_stock_quantity:
         return True
     if "supplier_lead_time" in updates and product.supplier_lead_time != old_supplier_lead_time:
         return True
+    new_specifications = product.specifications or {}
+    if (
+        settings.forecast_aware_reorder_enabled and new_specifications.get("reorder_budget_bdt") is not None
+        and "cost_price" in updates and product.cost_price != old_cost_price
+    ):
+        return True
     if "specifications" not in updates:
         return False
-    new_specifications = product.specifications or {}
-    for key in INVENTORY_RECALC_SPEC_KEYS:
+    keys = INVENTORY_RECALC_SPEC_KEYS
+    if settings.forecast_aware_reorder_enabled:
+        from app.services.forecast_reorder_service import REORDER_SPEC_KEYS
+
+        keys = keys | REORDER_SPEC_KEYS
+    for key in keys:
         if old_specifications.get(key) != new_specifications.get(key):
             return True
     return False

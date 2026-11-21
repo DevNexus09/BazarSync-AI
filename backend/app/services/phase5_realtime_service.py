@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from typing import Iterable
 from uuid import UUID
 
 import socketio
 
 from app.core.config import settings
-from app.websocket.socket_events import DashboardRealtimeEnvelope, RealtimeEventType
+from app.websocket.socket_events import DashboardRealtimeEnvelope, RealtimeEvent, RealtimeEventType
 from app.websocket.socket_manager import get_socket_emitter
 from app.websocket.socket_rooms import product_room, seller_room
 
@@ -63,7 +64,7 @@ class Phase5RealtimePublisher:
 
     async def _publish_via_redis(
         self,
-        envelope: DashboardRealtimeEnvelope,
+        envelope: RealtimeEvent,
         *,
         rooms: list[str],
     ) -> bool:
@@ -76,8 +77,8 @@ class Phase5RealtimePublisher:
             self._log.info(
                 "phase5_realtime_redis_publish_succeeded event=%s seller_id=%s product_id=%s",
                 payload["event"],
-                payload["seller_id"],
-                payload["product_id"],
+                envelope.seller_id,
+                envelope.product_id,
             )
             return True
         except Exception as exc:
@@ -89,6 +90,9 @@ class Phase5RealtimePublisher:
                 exc,
             )
             return False
+
+    async def emit_event(self, event: RealtimeEvent, *, rooms: Iterable[str] | None = None) -> None:
+        await self._publish_via_redis(event, rooms=list(rooms or []))
 
     def _get_redis_manager(self) -> socketio.AsyncRedisManager:
         if self._redis_manager is None:

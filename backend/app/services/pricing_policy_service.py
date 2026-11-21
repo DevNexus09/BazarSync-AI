@@ -41,7 +41,24 @@ class PricingPolicyService:
         marketplace: str,
     ) -> PricingPolicyResponse:
         product = self._product_for_seller(seller_id=seller_id, product_id=product_id)
-        policy = self._active_policy(seller_id=seller_id, product_id=product_id, marketplace=marketplace)
+        return self._policy_for_product(product, marketplace, datetime.now(timezone.utc))
+
+    def resolve_for_product(
+        self, product: Product, *, marketplace: str, as_of: datetime,
+    ) -> tuple[PricingPolicyResponse, MarketplaceFeePolicyResponse]:
+        """Resolve both policies for a previously ownership-verified product."""
+        return (
+            self._policy_for_product(product, marketplace, as_of),
+            self._fee_for_product(product, marketplace, as_of),
+        )
+
+    def _policy_for_product(
+        self, product: Product, marketplace: str, as_of: datetime,
+    ) -> PricingPolicyResponse:
+        policy = self._active_policy(
+            seller_id=product.seller_id, product_id=product.id, marketplace=marketplace,
+            as_of=as_of,
+        )
         if policy:
             return PricingPolicyResponse.model_validate(policy)
         return self._default_policy_response(product=product, marketplace=marketplace)
@@ -213,6 +230,12 @@ class PricingPolicyService:
         as_of: datetime | None = None,
     ) -> MarketplaceFeePolicyResponse:
         product = self._product_for_seller(seller_id=seller_id, product_id=product_id)
+        return self._fee_for_product(product, marketplace, as_of)
+
+    def _fee_for_product(
+        self, product: Product, marketplace: str, as_of: datetime | None,
+    ) -> MarketplaceFeePolicyResponse:
+        seller_id = product.seller_id
         fee = self._effective_fee(product=product, seller_id=seller_id, marketplace=marketplace, as_of=as_of)
         if fee:
             return _fee_response(fee, is_default=False, scope=_fee_scope(fee))
@@ -303,8 +326,10 @@ class PricingPolicyService:
             raise ProductOwnershipError
         return product
 
-    def _active_policy(self, *, seller_id: UUID, product_id: UUID, marketplace: str) -> PricingPolicy | None:
-        return self._db.execute(
+    def _active_policy(
+        self, *, seller_id: UUID, product_id: UUID, marketplace: str, as_of: datetime | None = None,
+    ) -> PricingPolicy | None:
+        statement = (
             select(PricingPolicy)
             .where(
                 PricingPolicy.seller_id == seller_id,
@@ -313,7 +338,13 @@ class PricingPolicyService:
                 PricingPolicy.is_active.is_(True),
             )
             .order_by(PricingPolicy.effective_from.desc(), PricingPolicy.created_at.desc())
-        ).scalar_one_or_none()
+        )
+        if as_of is not None:
+            statement = statement.where(
+                PricingPolicy.effective_from <= as_of,
+                PricingPolicy.effective_to.is_(None) | (PricingPolicy.effective_to > as_of),
+            ).execution_options(populate_existing=True)
+        return self._db.execute(statement).scalar_one_or_none()
 
     def _effective_fee(
         self,
@@ -345,7 +376,7 @@ class PricingPolicyService:
                 ),
             )
         )
-        candidates = self._db.execute(statement).scalars().all()
+        candidates = self._db.execute(statement.execution_options(populate_existing=True)).scalars().all()
         return select_effective_fee_policy(
             candidates,
             product_id=product.id,

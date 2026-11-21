@@ -41,6 +41,11 @@ class PermanentAccessError(ScraperError):
     public_message = "Daraz access is unavailable for this scrape."
 
 
+class DarazAcquisitionDisabledError(PermanentAccessError):
+    failure_code = "DARAZ_ACQUISITION_DISABLED"
+    public_message = "Live Daraz scraping is disabled in this deployment."
+
+
 class ParseError(ScraperError):
     """The response did not contain a recognizable search result."""
 
@@ -67,5 +72,7 @@ def public_failure_message(code: str | None) -> str:
 
 _PUBLIC_FAILURE_MESSAGES = {
     error.failure_code: error.public_message
-    for error in (RateLimitError, PermanentAccessError, SimilarityError, SimilarityUnavailableError)
+    for error in (
+        RateLimitError, PermanentAccessError, DarazAcquisitionDisabledError, SimilarityError, SimilarityUnavailableError,
+    )
 }

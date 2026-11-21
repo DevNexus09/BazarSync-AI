@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 import logging
+import asyncio
 import time
 from typing import Any, Mapping, Sequence
 
@@ -53,15 +54,46 @@ from app.ai.groq_client import (
     GroqInvalidResponseError,
     GroqRateLimitError,
     GroqTimeoutError,
+    GroqUnavailableError,
+    generate_completion,
     generate_json_completion,
 )
-from app.ai.prompts import build_recommendation_prompt
+from app.ai.explanation import approved_sentences, render_explanation, selection_schema
+from app.ai.prompts import EXPLANATION_PROMPT_VERSION, build_explanation_prompt, build_recommendation_prompt
 from app.ai.schemas import (
     AIModelResponse,
+    ExplanationEvidence,
+    ExplanationSelection,
     RecommendationContext,
     RecommendationMetadata,
     RecommendationResponse,
 )
+from app.core.config import settings
+
+
+async def generate_bangla_explanation(evidence: ExplanationEvidence) -> str | None:
+    """Return verified text or let the stored template stand."""
+    logger = logging.getLogger(__name__)
+    try:
+        timeout = settings.recommendation_explanation_timeout_seconds
+        async with asyncio.timeout(timeout):
+            response = await generate_completion(
+                build_explanation_prompt(evidence, approved_sentences(evidence)),
+                model=settings.recommendation_explanation_model,
+                temperature=settings.recommendation_explanation_temperature,
+                max_tokens=768,
+                response_format=selection_schema(evidence),
+                timeout_seconds=timeout,
+                max_retries=settings.recommendation_explanation_max_retries,
+            )
+        content = response.get("content")
+        if not isinstance(content, str) or len(content) > 4096:
+            raise ValueError("Invalid explanation content.")
+        return render_explanation(evidence, ExplanationSelection.model_validate_json(content))
+    except Exception as exc:
+        logger.info("recommendation_explanation_fallback prompt_version=%s source=template error_type=%s",
+                    EXPLANATION_PROMPT_VERSION, type(exc).__name__)
+        return None
 
 
 class RecommendationGenerationError(Exception):
@@ -193,9 +225,9 @@ class RecommendationGenerator:
             return await generate_json_completion(messages)
         except GroqTimeoutError as exc:
             raise RecommendationTimeoutError("Groq request timed out.", retryable=True) from exc
-        except GroqRateLimitError as exc:
+        except (GroqRateLimitError, GroqUnavailableError) as exc:
             raise RecommendationGenerationError(
-                "Groq rate limit reached.", retryable=True
+                "Groq is temporarily unavailable.", retryable=True
             ) from exc
         except GroqInvalidResponseError as exc:
             raise InvalidAIResponseError("Groq returned invalid JSON.", retryable=True) from exc

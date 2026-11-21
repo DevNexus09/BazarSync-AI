@@ -161,6 +161,11 @@ const mapRecommendationConfidence = (confidence: string): number => {
   }
 }
 
+const recommendationConfidenceLabel = (confidence: string): Recommendation["confidenceLabel"] => {
+  const label = confidence.toUpperCase()
+  return label === "LOW" || label === "MEDIUM" || label === "HIGH" ? label : undefined
+}
+
 const formatRecommendationTitle = (actionType: string) => {
   switch (actionType?.toUpperCase()) {
     case "LOWER":
@@ -334,6 +339,7 @@ export async function getRecommendations(
     status: RecommendationStatus.New,
     priority: mapRecommendationPriority(rec.urgency_score),
     confidence: mapRecommendationConfidence(rec.confidence),
+    confidenceLabel: recommendationConfidenceLabel(rec.confidence),
     expectedLift: Math.min(Math.max((rec.urgency_score ?? 0) / 100, 0), 1),
     product: rec.product_title,
     competitor: null,

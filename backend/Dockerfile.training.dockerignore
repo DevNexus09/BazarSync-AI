@@ -1,0 +1,7 @@
+**
+!requirements-training.txt
+!app/
+!app/**
+!scripts/
+!scripts/**
+**/__pycache__

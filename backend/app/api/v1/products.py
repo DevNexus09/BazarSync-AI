@@ -150,6 +150,14 @@ def get_product_inventory_history(
         limit=limit,
         offset=offset,
     )
+    if total == 0 and not ProductService(db).get_product(current_seller.id, product_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+    return InventoryHistoryPageResponse(
+        items=[InventoryHistoryResponse.model_validate(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{product_id}/inventory-intelligence", response_model=ProductInventoryIntelligenceResponse)
@@ -165,14 +173,6 @@ def get_product_inventory_intelligence(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
     return item
-    if total == 0 and not ProductService(db).get_product(current_seller.id, product_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
-    return InventoryHistoryPageResponse(
-        items=[InventoryHistoryResponse.model_validate(item) for item in items],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
 
 
 @router.get("/{product_id}/inventory-history/latest", response_model=LatestInventoryHistoryResponse)

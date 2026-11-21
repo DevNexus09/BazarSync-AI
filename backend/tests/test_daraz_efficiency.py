@@ -103,7 +103,7 @@ def test_metadata_cache_tenant_variant_ttl_and_stampede(redis_url):
             fresh, hit = await asyncio.gather(first, second)
             assert live.await_count == 1
             assert fresh.fields.current_price == Decimal("99")
-            assert hit.metadata_cached and hit.price_observed_at is None
+            assert hit.metadata_cached and hit.price_observed_at is None and hit.stock_observed_at is None
             assert hit.fields.current_price is None and hit.fields.seller_name is None and hit.fields.stock_status == "UNKNOWN"
             assert hit.fields.description == "Public metadata"
             assert cache._key(URL) != other._key(URL)
@@ -169,6 +169,7 @@ def test_cached_details_skip_requests_and_keep_live_prices(redis_url):
                 assert second.provenance.metadata_cached_at is not None
                 assert second.provenance.detail_observed_at is None
                 assert second.provenance.price_observed_at == second.provenance.search_observed_at
+                assert second.provenance.stock_observed_at == second.provenance.search_observed_at
                 assert second.product_description == "Cached description"
                 assert (first.product_price, second.product_price, third.product_price) == (100, 120, 999)
                 assert second.stock_status == "out_of_stock"

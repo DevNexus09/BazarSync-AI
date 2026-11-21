@@ -112,7 +112,7 @@ class AnalyticsData:
     competitor_median_price: float | None
     estimated_margin_percent: float
     estimated_days_of_stock_left: float
-    out_of_stock_competitor_count: int
+    out_of_stock_competitor_count: int | None
     pricing_pressure_score: float
     stock_risk_score: float
 
@@ -126,7 +126,7 @@ class RecommendationContext:
     seller_stock: int
     competitor_min_price: float | None
     competitor_median_price: float | None
-    competitors_oos: int
+    competitors_oos: int | None
     margin_after_fees: float
     margin_floor: float
     days_of_stock_left: float
@@ -250,11 +250,11 @@ class RecommendationContextBuilder:
             non_negative=True,
             error_cls=InvalidAnalyticsDataError,
         )
-        out_of_stock_competitor_count = _require_int(
-            payload,
-            "out_of_stock_competitor_count",
-            non_negative=True,
-            error_cls=InvalidAnalyticsDataError,
+        out_of_stock_competitor_count = (
+            None if payload.get("out_of_stock_competitor_count") is None else _require_int(
+                payload, "out_of_stock_competitor_count",
+                non_negative=True, error_cls=InvalidAnalyticsDataError,
+            )
         )
         pricing_pressure_score = _require_float(
             payload,
@@ -548,9 +548,9 @@ def _validate_numeric_range(
 
 
 def _resolve_oos_count(
-    competitors: Sequence[CompetitorData], analytics_oos: int
-) -> int:
-    if not competitors:
+    competitors: Sequence[CompetitorData], analytics_oos: int | None
+) -> int | None:
+    if not competitors or analytics_oos is None:
         return analytics_oos
     oos_count = sum(1 for competitor in competitors if competitor.stock_status == "out_of_stock")
     return max(oos_count, analytics_oos)

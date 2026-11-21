@@ -1,0 +1,8 @@
+**
+!requirements-training.txt
+!app/
+!app/**
+!scripts/
+!scripts/infer_forecast.py
+!scripts/forecast_native_worker.py
+**/__pycache__

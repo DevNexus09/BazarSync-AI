@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.demand_elasticity_estimate import DemandElasticityEstimate, DemandEstimateDataStatus, DemandEstimationMethod
 from app.models.product import Product
+from app.models.promotion import PromotionPlan
 from app.models.sales_record import SalesRecord, SalesRecordStatus
 
 VALID_DEMAND_STATUSES = {SalesRecordStatus.COMPLETED, SalesRecordStatus.FULFILLED}
@@ -135,16 +136,16 @@ class DemandResponseService:
         *,
         current_price: Decimal,
         candidate_price: Decimal,
-        baseline_units: Decimal,
+        baseline_units: Decimal | None,
         forecast_horizon_days: int,
         baseline_period: dict[str, object],
         estimate: DemandElasticityResult,
     ) -> CandidateUnitForecast:
         current = Decimal(str(current_price))
         candidate = Decimal(str(candidate_price))
-        baseline = Decimal(str(baseline_units))
+        baseline = Decimal(str(baseline_units)) if baseline_units is not None else None
         assumptions = dict(estimate.evidence)
-        if current <= 0 or candidate <= 0 or estimate.elasticity is None or baseline < 0:
+        if current <= 0 or candidate <= 0 or estimate.elasticity is None or baseline is None or baseline < 0:
             return CandidateUnitForecast(
                 method=DemandEstimationMethod.INSUFFICIENT_DATA,
                 current_price=current,
@@ -155,7 +156,7 @@ class DemandResponseService:
                 forecast_horizon_days=forecast_horizon_days,
                 baseline_period=baseline_period,
                 confidence=Decimal("0.00"),
-                assumptions={"reason": "missing_positive_price_or_elasticity"},
+                assumptions={"reason": "baseline_units_unavailable" if baseline is None else "missing_positive_price_or_elasticity"},
                 elasticity=None,
                 data_status=DemandEstimateDataStatus.INSUFFICIENT,
                 calculation_version=self._config.calculation_version,
@@ -221,6 +222,19 @@ class DemandResponseService:
     ) -> DemandElasticityEstimate:
         if self._db is None:
             raise ValueError("A database session is required to persist demand estimates.")
+        existing = self._db.execute(
+            select(DemandElasticityEstimate)
+            .where(
+                DemandElasticityEstimate.seller_id == seller_id,
+                DemandElasticityEstimate.product_id == product_id,
+                DemandElasticityEstimate.observation_end == estimate.observation_end,
+                DemandElasticityEstimate.calculation_version == estimate.calculation_version,
+            )
+            .order_by(DemandElasticityEstimate.created_at.asc(), DemandElasticityEstimate.id.asc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
         record = DemandElasticityEstimate(
             seller_id=seller_id,
             product_id=product_id,
@@ -256,9 +270,12 @@ class DemandResponseService:
         return record
 
     def _load_observations_from_sales_records(self, *, seller_id: UUID, product_id: UUID, as_of_date: date) -> list[DemandObservation]:
+        db = self._db
+        if db is None:
+            raise ValueError("A database session is required to load demand observations.")
         window_start = datetime.combine(as_of_date - timedelta(days=self._config.max_data_age_days), datetime.min.time(), tzinfo=timezone.utc)
         window_end = datetime.combine(as_of_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
-        rows = self._db.execute(
+        rows = db.execute(
             select(SalesRecord).where(
                 SalesRecord.seller_id == seller_id,
                 SalesRecord.product_id == product_id,
@@ -266,19 +283,48 @@ class DemandResponseService:
                 SalesRecord.sold_at < window_end,
             )
         ).scalars().all()
-        # Current sales_records do not store transaction price, so these rows cannot
-        # support historical elasticity until order-price data is added.
+        promotions = db.execute(
+            select(PromotionPlan).where(
+                PromotionPlan.seller_id == seller_id,
+                PromotionPlan.product_id == product_id,
+                PromotionPlan.planned_start_at.is_not(None),
+                PromotionPlan.planned_start_at < window_end,
+                (
+                    PromotionPlan.planned_end_at.is_(None)
+                    | (PromotionPlan.planned_end_at >= window_start)
+                ),
+            )
+        ).scalars().all()
+
+        def promotion_active(sold_at: datetime) -> bool:
+            for plan in promotions:
+                start_at = plan.planned_start_at
+                if start_at is None:
+                    continue
+                if start_at <= sold_at and (
+                    plan.planned_end_at is None or sold_at <= plan.planned_end_at
+                ):
+                    return True
+            return False
+
         return [
             DemandObservation(
                 seller_id=row.seller_id,
                 product_id=row.product_id,
                 observed_date=row.sold_at.date(),
-                price=Decimal("0"),
+                # Preserve unavailable evidence as unusable instead of
+                # substituting the current product price or observed zero.
+                price=(
+                    Decimal(row.unit_price)
+                    if row.unit_price is not None
+                    else Decimal("0")
+                ),
                 units_sold=row.quantity_sold,
                 returned_units=row.returned_units,
                 refunded_restocked_units=row.refunded_restocked_units,
                 status=row.status,
                 is_test_order=row.is_test_order,
+                promotion_active=promotion_active(row.sold_at),
                 source_reference=row.source_reference,
             )
             for row in rows
@@ -420,6 +466,11 @@ class DemandResponseService:
 
 def _money(value: Decimal) -> Decimal:
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def project_baseline_units(daily_rate: Decimal, horizon_days: int) -> Decimal:
+    """Convert a supported daily rate to the requested scenario horizon."""
+    return _q4(daily_rate * horizon_days)
 
 
 def _q4(value: Decimal) -> Decimal:

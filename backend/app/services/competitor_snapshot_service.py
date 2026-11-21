@@ -47,6 +47,9 @@ class CompetitorObservation:
     rating: float | None
     review_count: int | None
     stock_status: str | None
+    price_observed_at: datetime | None = None
+    stock_observed_at: datetime | None = None
+    match_score: float | None = None
 
 
 class CompetitorSnapshotService:
@@ -323,6 +326,9 @@ class CompetitorSnapshotService:
                     external_listing_id=external_listing_id,
                     content_hash=content_hash,
                     captured_at=normalized_captured_at,
+                    price_observed_at=_verified_field_time(observation.price_observed_at) if price is not None else None,
+                    stock_observed_at=_verified_field_time(observation.stock_observed_at) if stock_status != "UNKNOWN" else None,
+                    match_score=observation.match_score,
                 )
             )
         return snapshots
@@ -345,6 +351,12 @@ class CompetitorSnapshotService:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _verified_field_time(value: datetime | None) -> datetime | None:
+    if value is None or value.utcoffset() is None:
+        return None
+    return value.astimezone(timezone.utc)
 
 
 def ensure_utc(value: datetime | None) -> datetime:

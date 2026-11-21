@@ -19,6 +19,7 @@ from app.schemas.competitor import CompetitorSnapshot
 from app.schemas.scrape import ScrapeRunResponse
 from app.scraper.constants import MARKETPLACE_NAME, SIMILARITY_THRESHOLD
 from app.scraper.exceptions import ParseError, ScraperError, SimilarityError, public_failure_message
+from app.scraper.schemas.scraped_product import ObservationProvenance
 from app.scraper.services.competitor_service import scrape_daraz_competitors
 from app.scraper.similarity import filter_similar_products
 from app.scraper.telemetry import ScrapeTelemetry
@@ -148,6 +149,13 @@ class ScrapeService:
 
             telemetry.matching_status = "success"
             telemetry.competitors_matched = len(filtered)
+            # Acquisition normally deduplicates URLs. Conflicting duplicate
+            # provenance cannot be tied to the listing selected by matching.
+            provenance_by_url: dict[str, ObservationProvenance | None] = {}
+            for item in scrape_response.products:
+                prior = provenance_by_url.setdefault(item.daraz_product_url, item.provenance)
+                if prior != item.provenance:
+                    provenance_by_url[item.daraz_product_url] = None
             competitor_rows, observations = self._competitor_service.store_competitors(
                 scrape_run=scrape_run,
                 product=product,
@@ -155,9 +163,14 @@ class ScrapeService:
                 competitors=filtered,
                 observed_at=scrape_response.scraped_at,
                 price_observed_at_by_url={
-                    item.daraz_product_url: item.provenance.price_observed_at
-                    for item in scrape_response.products
-                    if item.provenance is not None and item.provenance.price_observed_at is not None
+                    url: provenance.price_observed_at
+                    for url, provenance in provenance_by_url.items()
+                    if provenance is not None and provenance.price_observed_at is not None
+                },
+                stock_observed_at_by_url={
+                    url: provenance.stock_observed_at
+                    for url, provenance in provenance_by_url.items()
+                    if provenance is not None and provenance.stock_observed_at is not None
                 },
             )
 

@@ -1,0 +1,27 @@
+FROM python:3.14.4-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app/backend \
+    OMP_NUM_THREADS=2 \
+    OPENBLAS_NUM_THREADS=2 \
+    MKL_NUM_THREADS=2
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libgomp1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/backend
+COPY requirements-training.txt ./requirements-training.txt
+RUN python -m pip install --upgrade pip==26.0.1 \
+    && python -m pip install --only-binary=:all: -r requirements-training.txt \
+    && python -m pip check
+
+COPY app ./app
+COPY scripts ./scripts
+RUN python -m scripts.verify_catboost_environment
+
+ENTRYPOINT ["python", "-m"]
+CMD ["scripts.verify_catboost_environment"]

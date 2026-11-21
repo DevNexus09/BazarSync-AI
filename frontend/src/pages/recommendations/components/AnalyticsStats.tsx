@@ -28,25 +28,25 @@ const stats = (
     label: "Competitor median price",
     value: formatNullableCurrency(analytics.competitorMedianPrice),
     icon: ChartLine,
-    helper: "Market midpoint pricing.",
+    helper: "Observed competitor listings.",
   },
   {
     label: "Price gap",
     value: formatSignedPercent(analytics.priceGapPercent),
     icon: TrendingDown,
-    helper: "Seller vs median gap.",
+    helper: "Calculated from listed prices.",
   },
   {
     label: "Stock risk",
-    value: formatScorePercent(analytics.stockRiskScore),
+    value: analytics.stockRiskAvailable === false || analytics.stockRiskScore === null ? "Unavailable" : formatScorePercent(analytics.stockRiskScore),
     icon: AlertTriangle,
-    helper: "Inventory urgency signal.",
+    helper: "Heuristic inventory signal.",
   },
   {
     label: "Competitors OOS",
     value: formatNullableNumber(analytics.competitorsOos ?? null),
     icon: Activity,
-    helper: "Out-of-stock rivals.",
+    helper: "Observed competitor listings.",
   },
 ]
 

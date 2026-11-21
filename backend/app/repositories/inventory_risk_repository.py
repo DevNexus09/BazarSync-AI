@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -36,7 +36,7 @@ class InventoryRiskRepository:
         return _latest_by_date(self._db, model=StockoutPrediction, seller_id=seller_id, product_ids=product_ids, date_column=StockoutPrediction.as_of_date, as_of_date=as_of_date)
 
     def latest_reorder_for_products(self, *, seller_id: UUID, product_ids: list[UUID], as_of_date: date) -> dict[UUID, ReorderRecommendation]:
-        return _latest_by_date(self._db, model=ReorderRecommendation, seller_id=seller_id, product_ids=product_ids, date_column=ReorderRecommendation.as_of_date, as_of_date=as_of_date)
+        return _latest_by_date(self._db, model=ReorderRecommendation, seller_id=seller_id, product_ids=product_ids, date_column=ReorderRecommendation.as_of_date, as_of_date=as_of_date, ties_by=ReorderRecommendation.generated_at)
 
     def add_idempotent(self, assessment: InventoryRiskAssessment) -> tuple[InventoryRiskAssessment, bool]:
         existing = self.get_for_date(seller_id=assessment.seller_id, product_id=assessment.product_id, as_of_date=assessment.as_of_date, calculation_version=assessment.calculation_version)
@@ -117,7 +117,7 @@ class InventoryRiskRepository:
         return self._db.execute(statement).scalar_one_or_none()
 
 
-def _latest_by_date(db: Session, *, model, seller_id: UUID, product_ids: list[UUID], date_column, as_of_date: date):
+def _latest_by_date(db: Session, *, model, seller_id: UUID, product_ids: list[UUID], date_column, as_of_date: date, ties_by=None):
     if not product_ids:
         return {}
     latest_dates = select(model.product_id.label("product_id"), func.max(date_column).label("as_of_date")).where(
@@ -125,5 +125,8 @@ def _latest_by_date(db: Session, *, model, seller_id: UUID, product_ids: list[UU
         model.product_id.in_(product_ids),
         date_column <= as_of_date,
     ).group_by(model.product_id).subquery()
-    rows = db.execute(select(model).join(latest_dates, (model.product_id == latest_dates.c.product_id) & (date_column == latest_dates.c.as_of_date)).where(model.seller_id == seller_id)).scalars().all()
+    statement = select(model).join(latest_dates, (model.product_id == latest_dates.c.product_id) & (date_column == latest_dates.c.as_of_date)).where(model.seller_id == seller_id)
+    if ties_by is not None:
+        statement = statement.order_by(ties_by.asc(), model.id.asc())
+    rows = db.execute(statement).scalars().all()
     return {row.product_id: row for row in rows}

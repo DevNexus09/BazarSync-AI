@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Iterable
+from typing import Iterable, Protocol
 from uuid import UUID, uuid4
 
-from app.websocket.socket_emitter import SocketEmitter
 from app.websocket.socket_events import (
     AlertFailedEvent,
     AlertFailedPayload,
@@ -28,6 +27,7 @@ from app.websocket.socket_events import (
     StockRiskDetectedPayload,
     UrgencyScoreUpdatedEvent,
     UrgencyScoreUpdatedPayload,
+    RealtimeEvent,
 )
 from app.websocket.socket_rooms import (
     ACTIVITY_ROOM,
@@ -38,10 +38,14 @@ from app.websocket.socket_rooms import (
 )
 
 
+class RealtimeEmitter(Protocol):
+    async def emit_event(self, event: RealtimeEvent, *, rooms: Iterable[str] | None = None) -> None: ...
+
+
 class RealtimeService:
     """High-level realtime emitters for the War Room dashboard."""
 
-    def __init__(self, emitter: SocketEmitter, logger: logging.Logger | None = None) -> None:
+    def __init__(self, emitter: RealtimeEmitter, logger: logging.Logger | None = None) -> None:
         self._emitter = emitter
         self._logger = logger or logging.getLogger(__name__)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
+from hashlib import sha256
 import logging
 from typing import Protocol
 from uuid import UUID
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.inventory_risk import InventoryRiskAssessment, InventoryRiskDataStatus, InventoryRiskLevel
 from app.models.product import Product
-from app.models.reorder_recommendation import ReorderRecommendation, ReorderRecommendationAction, ReorderRecommendationStatus
+from app.models.reorder_recommendation import FORECAST_REORDER_VERSION, ReorderRecommendation
 from app.models.seller import Seller
 from app.models.stockout_prediction import StockoutPrediction, StockoutPredictionStatus
 from app.repositories.inventory_risk_repository import InventoryRiskRepository
@@ -98,6 +99,14 @@ class InventoryRiskService:
 
     def build_assessment(self, *, product: Product, seller: Seller, stockout_prediction: StockoutPrediction | None, reorder_recommendation: ReorderRecommendation | None, as_of_date: date, assessed_at: datetime, calculation_version: str) -> InventoryRiskAssessment:
         del seller
+        if (
+            reorder_recommendation is not None and reorder_recommendation.id is not None
+            and (getattr(reorder_recommendation, "evidence", None) or {}).get("planning_method") == FORECAST_REORDER_VERSION
+        ):
+            # Recalculate the dashboard risk when fresh supplier terms produced
+            # a different reorder row on the same date.
+            material = f"{calculation_version}:{reorder_recommendation.id}".encode()
+            calculation_version = f"reorder-{sha256(material).hexdigest()[:12]}"
         lead_time = int(getattr(reorder_recommendation, "supplier_lead_time_days", getattr(product, "supplier_lead_time", 0) or settings.reorder_default_supplier_lead_time_days) or 0)
         safety_days = int(getattr(reorder_recommendation, "safety_buffer_days", settings.reorder_default_safety_buffer_days) or 0)
         review_days = int(getattr(reorder_recommendation, "review_period_days", settings.inventory_risk_medium_review_horizon_days) or settings.inventory_risk_medium_review_horizon_days)
@@ -107,7 +116,6 @@ class InventoryRiskService:
         prediction_status = getattr(stockout_prediction, "prediction_status", None)
         predicted_date = getattr(stockout_prediction, "predicted_stockout_date", None)
         reorder_deadline = getattr(reorder_recommendation, "reorder_deadline", None)
-        reorder_status = getattr(reorder_recommendation, "recommendation_status", None)
         coverage_gap = required_coverage - days_remaining if days_remaining is not None else None
 
         if stockout_prediction is None or prediction_status == StockoutPredictionStatus.INSUFFICIENT_DATA:

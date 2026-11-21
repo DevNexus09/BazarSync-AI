@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from app.models.stockout_prediction import StockoutPrediction
 
 
+FORECAST_REORDER_VERSION = "forecast-reorder-v1"
+
+
 class ReorderRecommendationAction(str, Enum):
     HOLD = "HOLD"
     REORDER = "REORDER"

@@ -123,5 +123,5 @@ def get_scrape_run_detail(
         created_at=scrape_run.created_at,
         updated_at=scrape_run.updated_at,
         failure_code=scrape_run.failure_code,
-        failure_message="Scrape failed." if scrape_run.status == "FAILED" else None,
+        failure_message=public_failure_message(scrape_run.failure_code) if scrape_run.status == "FAILED" else None,
     )

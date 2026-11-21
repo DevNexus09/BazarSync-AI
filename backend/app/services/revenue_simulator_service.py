@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.dynamic_pricing_recommendation import DynamicPricingAction
 from app.models.product import Product
-from app.services.demand_response_service import DemandElasticityResult, DemandResponseService
+from app.services.demand_response_service import DemandElasticityResult, DemandResponseService, project_baseline_units
 from app.services.margin_guard import MarginGuard
 from app.services.pricing_analytics_service import PricingAnalyticsService
 from app.services.pricing_calculator import PricingCalculationError
@@ -235,9 +235,9 @@ def _baseline_units(analytics, estimate: DemandElasticityResult, horizon_days: i
     if analytics.recent_net_sales is not None:
         return _quantity(Decimal(str(analytics.recent_net_sales)))
     if analytics.daily_sales_rate is not None:
-        return _quantity(Decimal(str(analytics.daily_sales_rate)) * Decimal(horizon_days))
+        return project_baseline_units(Decimal(str(analytics.daily_sales_rate)), horizon_days)
     if estimate.baseline_units is not None:
-        return _quantity(Decimal(str(estimate.baseline_units)) * Decimal(horizon_days))
+        return project_baseline_units(Decimal(str(estimate.baseline_units)), horizon_days)
     return None
 
 

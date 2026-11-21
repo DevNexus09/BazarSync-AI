@@ -390,6 +390,10 @@ class DarazScraper:
                         fields=fill_product(lightweight.fields, rendered.fields),
                         method="chromium", observed_at=rendered.observed_at,
                         price_observed_at=lightweight.price_observed_at or rendered.price_observed_at,
+                        stock_observed_at=(
+                            lightweight.stock_observed_at if lightweight.fields.stock_status != "UNKNOWN"
+                            else rendered.stock_observed_at
+                        ),
                     )
                 return DetailExtraction.observed(details, "chromium")
         return lightweight
@@ -434,6 +438,7 @@ class DarazScraper:
                 details = tasks[url].result() if url in tasks else None
                 method = detail_at = cached_at = None
                 price_at = search_observed_at if item.current_price is not None else None
+                stock_at = search_observed_at if item.stock_status != "UNKNOWN" else None
                 if details is not None:
                     if details.metadata_cached:
                         cached_at = details.observed_at
@@ -441,13 +446,15 @@ class DarazScraper:
                         method, detail_at = details.method, details.observed_at
                     if price_at is None:
                         price_at = details.price_observed_at
+                    if stock_at is None and not details.metadata_cached:
+                        stock_at = details.stock_observed_at
                     item = fill_product(item, details.fields)
                 results.append(to_competitor(
                     item, ranking_score=score, detail_acquisition_method=method,
                     extraction_quality=assess_extraction(item, self._parser.weights),
                     provenance=ObservationProvenance(
                         search_observed_at=search_observed_at, detail_observed_at=detail_at, metadata_cached_at=cached_at,
-                        price_observed_at=price_at, field_sources=item.field_sources,
+                        price_observed_at=price_at, stock_observed_at=stock_at, field_sources=item.field_sources,
                     ),
                 ))
             return results

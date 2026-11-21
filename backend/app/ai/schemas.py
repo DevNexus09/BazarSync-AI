@@ -2,19 +2,61 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction
 
 ALLOWED_ACTIONS = Literal["LOWER", "RAISE", "HOLD", "REORDER"]
 CONFIDENCE_LABELS = Literal["LOW", "MEDIUM", "HIGH"]
+
+ExplanationMetricKey = Literal["target_price", "current_price", "competitor_median", "available_units", "reorder_quantity", "daily_sales_rate"]
+
+
+class ExplanationMetric(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+    value: Decimal = Field(ge=0, le=Decimal("999999999999.99"))
+    provenance: Literal["verified", "estimated"]
+
+
+class ExplanationMarginGuard(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    status: Literal["approved", "blocked", "not_evaluated"]
+    rejection_reasons: tuple[str, ...] = ()
+    fee_policy_version: str | None = None
+
+
+class ExplanationEvidence(BaseModel):
+    """The bounded facts available to explain one approved decision."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    action: ALLOWED_ACTIONS
+    confidence: CONFIDENCE_LABELS
+    metrics: dict[ExplanationMetricKey, ExplanationMetric]
+    evaluated_at: datetime
+    market_observed_at: datetime | None = None
+    inventory_observed_at: datetime | None = None
+    sales_through: date | None = None
+    reason_codes: tuple[str, ...] = ()
+    margin_guard: ExplanationMarginGuard
+    forecast_version: str | None = None
+    prediction_uncertainty: str | None = None
+    missing_evidence: tuple[str, ...] = ()
+    supporting_actions: tuple[DeadStockRecoveryAction, ...] = ()
+
+
+class ExplanationSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    sentence_bn: str
+    metric_keys: list[ExplanationMetricKey] = Field(max_length=6)
 
 
 class RecommendationContext(BaseModel):
     """Validated analytics context passed into the LLM prompt system."""
 
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, allow_inf_nan=False)
 
     sku: str = Field(..., min_length=1, max_length=64)
     product_title: str = Field(..., min_length=1, max_length=120)
@@ -23,7 +65,7 @@ class RecommendationContext(BaseModel):
     seller_stock: int = Field(..., ge=0)
     competitor_min_price: float | None = Field(default=None, gt=0)
     competitor_median_price: float | None = Field(default=None, gt=0)
-    competitors_oos: int = Field(..., ge=0)
+    competitors_oos: int | None = Field(..., ge=0)
     margin_after_fees: float = Field(..., ge=0)
     margin_floor: float = Field(..., ge=0)
     days_of_stock_left: float = Field(..., ge=0)
@@ -37,7 +79,7 @@ class RecommendationContext(BaseModel):
 class RecommendationResponse(BaseModel):
     """LLM response after validation."""
 
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, allow_inf_nan=False)
 
     action: ALLOWED_ACTIONS
     confidence: CONFIDENCE_LABELS

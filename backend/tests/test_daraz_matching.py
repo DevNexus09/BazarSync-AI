@@ -96,6 +96,45 @@ def test_included_accessory_and_irrelevant_ram_do_not_force_rejection(monkeypatc
         seller_specifications={"RAM": "8 GB"}, seller_category="Drinkware",
     )
 
+def test_operational_product_attributes_do_not_reject_footwear_match(monkeypatch):
+    monkeypatch.setattr(similarity, "_embed_texts", lambda _: score_vectors([0.95]))
+    identity_specs = {"brand": "Bata", "style": "Soft sandal", "audience": "MEN", "product_type": "Soft Sandal"}
+    operational_specs = {
+        "image_url": "https://static.example/sandal.jpg", "pack_size": "6", "safety_stock": "6",
+        "source_listing_id": "1575185161", "source_listing_url": "https://www.daraz.com.bd/products/-i1575185161.html",
+        "source_price_observed_at": "2026-11-19T21:10:49.166147+00:00", "source_marketplace": "Daraz Bangladesh",
+        "source_store": "Bata", "source_validation_status": "VERIFIED_PUBLIC_LISTING",
+        "source_missing_fields": "material,color,available_sizes", "source_observed_price_bdt": "599.00",
+        "minimum_order_quantity": "12", "maximum_stock": "90", "market_reference_only": "true",
+        "quantity_reserved": "4", "demo_data_class": "SYNTHETIC_DEMO_BUSINESS_DATA",
+        "quantity_incoming_unconfirmed": "0", "inventory_scenario": "slow_moving",
+        "demo_demand_pattern": "low", "holding_cost_bdt_per_unit_per_day": "0.50",
+    }
+    candidate = {"product_title": "Bata Soft Mens Sandal", "product_brand": "Bata",
+                 "product_attributes": {"Brand": "Bata", "Style": "Soft sandal"}}
+    kwargs = {"seller_description": "Soft men's sandal listed by the Bata store on Daraz Bangladesh.",
+              "seller_category": "Other"}
+    baseline = similarity.filter_similar_products(
+        "BATA (MEN) SOFT MENS SANDALS", [candidate], seller_specifications=identity_specs, **kwargs,
+    )
+    with_operational_metadata = similarity.filter_similar_products(
+        "BATA (MEN) SOFT MENS SANDALS", [candidate],
+        seller_specifications={**identity_specs, **operational_specs}, **kwargs,
+    )
+    assert with_operational_metadata
+    assert with_operational_metadata[0]["similarity_score"] == baseline[0]["similarity_score"]
+
+def test_pack_conflict_requires_comparable_evidence(monkeypatch):
+    monkeypatch.setattr(similarity, "_embed_texts", lambda _: score_vectors([0.95]))
+    candidate = {"product_title": "Ceramic mug"}
+    assert similarity.filter_similar_products(
+        "Ceramic mug", [candidate], seller_specifications={"pack quantity": "6"},
+    )
+    assert not similarity.filter_similar_products(
+        "Ceramic mug", [{"product_title": "Ceramic mug", "product_attributes": {"pack quantity": "2"}}],
+        seller_specifications={"pack quantity": "6"},
+    )
+
 
 def test_popularity_is_pass_through_and_exploration_stays_out_of_verified_results(monkeypatch):
     monkeypatch.setattr(similarity, "_embed_texts", lambda _: score_vectors([0.6, 0.6]))

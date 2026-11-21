@@ -6,7 +6,7 @@ type RecommendationSkeletonProps = {
 
 export function RecommendationSkeleton({ className }: RecommendationSkeletonProps) {
   return (
-    <div className={cn("space-y-4", className)} role="status" aria-live="polite">
+    <div className={cn("space-y-4", className)} role="status" aria-label="Loading recommendation">
       <div className="rounded-xl border bg-background p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="space-y-2">

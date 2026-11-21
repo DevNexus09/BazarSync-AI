@@ -23,6 +23,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from app.api.v1 import scraper as scraper_api
+from app.core.async_runner import run_async
 from app.core.celery_app import celery_app
 from app.dependencies.auth import get_current_seller
 from app.dependencies.db import get_db
@@ -37,6 +38,7 @@ from app.scraper import similarity
 from app.scraper.constants import MARKETPLACE_NAME
 from app.scraper.daraz_scraper import DarazScraper, _retry_after_seconds
 from app.scraper.exceptions import (
+    DarazAcquisitionDisabledError,
     PageLoadError,
     ParseError,
     PermanentAccessError,
@@ -44,6 +46,7 @@ from app.scraper.exceptions import (
     RequestTimeoutError,
     SimilarityError,
     SimilarityUnavailableError,
+    public_failure_message,
 )
 from app.scraper.parser import DarazParser
 from app.scraper.schemas import CompetitorProduct, ScrapeResponse
@@ -318,8 +321,11 @@ def test_acquisition_requires_explicit_authorization(monkeypatch):
     browser = Mock()
     monkeypatch.setattr(acquisition_service.settings, "daraz_scraping_authorized", False)
     monkeypatch.setattr(acquisition_service, "BrowserManager", browser)
-    with pytest.raises(PermanentAccessError):
-        asyncio.run(acquisition_service.scrape_daraz_competitors(product_title=TITLE))
+    with pytest.raises(DarazAcquisitionDisabledError) as raised:
+        run_async(acquisition_service.scrape_daraz_competitors(product_title=TITLE))
+    assert raised.value.__context__ is None
+    assert public_failure_message(raised.value.failure_code) == "Live Daraz scraping is disabled in this deployment."
+    assert public_failure_message(PermanentAccessError.failure_code) != public_failure_message(raised.value.failure_code)
     browser.assert_not_called()
 
 
@@ -685,6 +691,7 @@ def test_partial_extraction_preserves_competitor_but_never_fabricates_observatio
         provenance=ObservationProvenance(
             search_observed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
             price_observed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            stock_observed_at=datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc),
         ),
     )
     incomplete = CompetitorProduct(
@@ -712,6 +719,10 @@ def test_partial_extraction_preserves_competitor_but_never_fabricates_observatio
         assert observed.observed_at == priced.provenance.price_observed_at
         latest = session.scalar(select(CompetitorSnapshot).where(CompetitorSnapshot.scrape_run_id == second.id))
         assert (latest.price, latest.rating, latest.review_count, latest.stock_status) == (None, None, None, "UNKNOWN")
+        assert latest.price_observed_at is None and latest.stock_observed_at is None
+        original = session.scalar(select(CompetitorSnapshot).where(CompetitorSnapshot.scrape_run_id == first.id))
+        assert original.price_observed_at == priced.provenance.price_observed_at
+        assert original.stock_observed_at == priced.provenance.stock_observed_at
         assert session.scalar(select(func.count()).select_from(PriceHistory).where(PriceHistory.competitor_id == competitor.id)) == 1
     third = _enqueue(db, seller, product)
     _worker(third)
@@ -720,6 +731,7 @@ def test_partial_extraction_preserves_competitor_but_never_fabricates_observatio
         assert (competitor.competitor_price, competitor.competitor_rating, competitor.competitor_sold) == (0, 0, "0")
         latest = session.scalar(select(CompetitorSnapshot).where(CompetitorSnapshot.scrape_run_id == third.id))
         assert (latest.price, latest.rating, latest.review_count) == (0, 0, 0)
+        assert latest.price_observed_at is None and latest.stock_observed_at is None
         history = session.scalars(select(PriceHistory.observed_price).where(
             PriceHistory.competitor_id == competitor.id,
         ).order_by(PriceHistory.observed_at)).all()

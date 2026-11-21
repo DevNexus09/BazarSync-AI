@@ -38,6 +38,7 @@ class CompetitorService:
         competitors: list[dict[str, Any]],
         observed_at: datetime | None = None,
         price_observed_at_by_url: dict[str, datetime] | None = None,
+        stock_observed_at_by_url: dict[str, datetime] | None = None,
     ) -> tuple[list[Competitor], dict[UUID, CompetitorObservation]]:
         if (scrape_run.product_id, scrape_run.seller_id) != (product.id, product.seller_id):
             raise ValueError("Scrape run does not belong to the seller product.")
@@ -85,6 +86,9 @@ class CompetitorService:
                 rating=rating,
                 review_count=self._to_int(item.get("rating_count")),
                 stock_status=raw_stock,
+                price_observed_at=(price_observed_at_by_url or {}).get(product_url) if product_url else None,
+                stock_observed_at=(stock_observed_at_by_url or {}).get(product_url) if product_url else None,
+                match_score=self._to_float(item.get("match_confidence")),
             )
             sold_count = first_present(item.get("competitor_sold"), item.get("sold_count"))
             if sold_count is not None:
@@ -136,7 +140,7 @@ class CompetitorService:
             PriceHistory(
                 competitor_id=competitor.id,
                 observed_price=observation.price,
-                observed_at=(price_observed_at_by_url or {}).get(competitor.product_url, observed_timestamp),
+                observed_at=observation.price_observed_at or observed_timestamp,
             )
             for competitor, observation in observed.items()
             if observation.price is not None

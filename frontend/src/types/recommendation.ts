@@ -38,6 +38,7 @@ export type Recommendation = {
   status: RecommendationStatus
   priority: RecommendationPriority
   confidence: number
+  confidenceLabel?: "LOW" | "MEDIUM" | "HIGH"
   expectedLift: number
   product: string
   competitor?: string | null

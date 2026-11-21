@@ -12,6 +12,11 @@ def run_async(coro: Awaitable[T]) -> T:
     try:
         asyncio.get_running_loop()
     except RuntimeError:
+        loop_running = False
+    else:
+        loop_running = True
+
+    if not loop_running:
         return asyncio.run(coro)
 
     result_container: dict[str, object] = {}

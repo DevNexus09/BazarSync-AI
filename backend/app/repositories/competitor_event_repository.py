@@ -83,6 +83,11 @@ class CompetitorEventSnapshotRepository:
 
     def previous_completed_run(self, current_run: ScrapeRun) -> ScrapeRun | None:
         marker = current_run.completed_at or current_run.finished_at or current_run.created_at
+        observed_at = func.coalesce(
+            ScrapeRun.completed_at,
+            ScrapeRun.finished_at,
+            ScrapeRun.created_at,
+        )
         statement = (
             select(ScrapeRun)
             .where(
@@ -91,7 +96,7 @@ class CompetitorEventSnapshotRepository:
                 ScrapeRun.marketplace == current_run.marketplace,
                 ScrapeRun.status == "COMPLETED",
                 ScrapeRun.id != current_run.id,
-                ScrapeRun.created_at <= marker,
+                observed_at < marker,
             )
             .order_by(
                 ScrapeRun.completed_at.desc().nullslast(),
@@ -105,6 +110,11 @@ class CompetitorEventSnapshotRepository:
 
     def recent_completed_runs(self, current_run: ScrapeRun, *, limit: int) -> list[ScrapeRun]:
         marker = current_run.completed_at or current_run.finished_at or current_run.created_at
+        observed_at = func.coalesce(
+            ScrapeRun.completed_at,
+            ScrapeRun.finished_at,
+            ScrapeRun.created_at,
+        )
         statement = (
             select(ScrapeRun)
             .where(
@@ -112,7 +122,7 @@ class CompetitorEventSnapshotRepository:
                 ScrapeRun.product_id == current_run.product_id,
                 ScrapeRun.marketplace == current_run.marketplace,
                 ScrapeRun.status == "COMPLETED",
-                ScrapeRun.created_at <= marker,
+                observed_at <= marker,
             )
             .order_by(
                 ScrapeRun.completed_at.desc().nullslast(),
@@ -135,6 +145,11 @@ class CompetitorEventSnapshotRepository:
 
     def historical_competitor_ids_before(self, current_run: ScrapeRun) -> set[UUID]:
         marker = current_run.completed_at or current_run.finished_at or current_run.created_at
+        observed_at = func.coalesce(
+            ScrapeRun.completed_at,
+            ScrapeRun.finished_at,
+            ScrapeRun.created_at,
+        )
         statement = (
             select(CompetitorSnapshot.competitor_id)
             .join(ScrapeRun, CompetitorSnapshot.scrape_run_id == ScrapeRun.id)
@@ -145,7 +160,7 @@ class CompetitorEventSnapshotRepository:
                 ScrapeRun.marketplace == current_run.marketplace,
                 ScrapeRun.status == "COMPLETED",
                 ScrapeRun.id != current_run.id,
-                ScrapeRun.created_at < marker,
+                observed_at < marker,
             )
             .distinct()
         )

@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import asyncio
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 import logging
 import os
 import time
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai.recommendation_generator import RecommendationGenerator, RecommendationGenerationError
+from app.ai.explanation import ACTION_TEMPLATES, render_explanation
+from app.ai.prompts import EXPLANATION_PROMPT_VERSION
+from app.ai.recommendation_generator import RecommendationGenerator, RecommendationGenerationError, generate_bangla_explanation
+from app.ai.schemas import ExplanationEvidence
 from app.analytics.pricing_engine import PricingEngine
 from app.analytics.recommendation_builder import (
     InvalidAnalyticsDataError,
@@ -21,6 +26,7 @@ from app.analytics.recommendation_builder import (
     RecommendationContextBuilder,
 )
 from app.analytics.stock_engine import StockEngine
+from app.core.config import settings
 from app.models.competitor import Competitor
 from app.models.product import Product
 from app.models.recommendation import Recommendation, RecommendationAction, RecommendationConfidence
@@ -36,11 +42,26 @@ from app.schemas.dashboard.summary_schema import DashboardSummaryResponse
 from app.services.dashboard.events import DashboardEventEmitter
 from app.services.dashboard.dashboard_service import DashboardService
 from app.services.margin_guard import MarginGuard
+from app.services.decision_orchestrator import DecisionOrchestrator
+from app.services.recommendation_selection import RecommendationDecision
+from app.schemas.recommendation_candidate import RecoveryParameters, ReorderParameters
+from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction
+from app.services.phase5_realtime_service import Phase5RealtimePublisher
+from app.services.recommendation_business_signals import RecommendationBusinessSignals
+from app.services.recommendation_jobs import JobAttempt, RecommendationJobs
+from app.services.recommendation_dashboard_evidence import build_dashboard_evidence
+from app.services.recommendation_explanation_evidence import build_explanation_evidence
+from app.services.recommendation_evidence_validator import (
+    MIN_MATCH, InvalidRecommendationEvidence, RecommendationEvidenceValidator, validate_finite_json,
+)
+from app.scraper.constants import MARKETPLACE_NAME
+from app.services.recommendation_evidence_service import RecommendationEvidence, RecommendationEvidenceService
 from app.services.realtime import RealtimeService
 from app.services.rag_index_outbox_service import RagIndexOutboxService
 from app.websocket.socket_events import (
     DashboardSummaryPayload,
     DashboardSummarySnapshot,
+    InsightPayload,
     MarketOpportunityPayload,
     MarketOpportunitySnapshot,
     RecommendationCreatedPayload,
@@ -70,6 +91,10 @@ class CompetitorDataNotFoundError(RecommendationServiceError):
     status_code = 404
     error_code = "competitor_data_missing"
 
+    def __init__(self, detail: str, *, evidence: RecommendationEvidence | None = None) -> None:
+        super().__init__(detail)
+        self.evidence = evidence
+
 
 class AnalyticsExecutionError(RecommendationServiceError):
     status_code = 400
@@ -84,6 +109,10 @@ class AIRecommendationError(RecommendationServiceError):
 class RecommendationPersistenceError(RecommendationServiceError):
     status_code = 500
     error_code = "recommendation_persistence_failed"
+
+
+class RecommendationAttemptLostError(Exception):
+    """A superseded attempt cannot persist its result."""
 
 
 class RecommendationNotFoundError(RecommendationServiceError):
@@ -124,7 +153,8 @@ class RecommendationService:
         )
 
     async def generate_recommendation(
-        self, *, seller_id: UUID, product_id: UUID
+        self, *, seller_id: UUID, product_id: UUID, scrape_run_id: UUID | None = None,
+        attempt: JobAttempt | None = None, legacy_delivery: bool = False,
     ) -> RecommendationGenerateResponse:
         start_time = time.monotonic()
         self._log_event(
@@ -134,8 +164,18 @@ class RecommendationService:
         )
 
         product = self.load_product(seller_id, product_id)
-        competitors = self.load_competitors(seller_id, product_id)
-        analytics = self.run_analytics(product, competitors)
+        decision = None
+        evidence: RecommendationEvidence | None
+        context: dict[str, Any]
+        if settings.recommendation_orchestration_enabled and not legacy_delivery:
+            evidence = self._collect_decision_evidence(product, scrape_run_id)
+            try:
+                decision = DecisionOrchestrator(self._db).evaluate(product, evidence)
+            except ValueError as exc:
+                raise AnalyticsExecutionError("Recommendation decision inputs are invalid.") from exc
+            context, analytics = {}, decision.analytics
+        else:
+            context, analytics, evidence = self.prepare_recommendation(product, scrape_run_id=scrape_run_id)
         self._log_event(
             logging.INFO,
             "recommendation_analytics_complete",
@@ -146,40 +186,52 @@ class RecommendationService:
             product=product,
             analytics=analytics,
         )
-        context = self.build_context(product, competitors, analytics)
         self._log_event(
             logging.INFO,
             "recommendation_context_built",
             product_id=str(product_id),
         )
-        self._log_event(
-            logging.INFO,
-            "recommendation_ai_start",
-            product_id=str(product_id),
+        ai_response = None
+        if not settings.recommendation_explanation_enabled and decision is None and "business_signals_version" not in analytics:
+            self._log_event(logging.INFO, "recommendation_ai_start", product_id=str(product_id))
+            ai_response = await self.generate_ai_recommendation(context)
+            self._log_event(
+                logging.INFO, "recommendation_ai_complete", product_id=str(product_id),
+                model=ai_response.metadata.model, latency_ms=ai_response.metadata.latency_ms,
+                retry_count=ai_response.metadata.retry_count,
+            )
+        # Refresh economic inputs under the product lock before final approval.
+        product = self.load_product(seller_id, product_id, for_persistence=True)
+        recommendation = self.save_recommendation(
+            product, ai_response, context, analytics, evidence=evidence, attempt=attempt,
+            **({"decision": decision} if decision is not None else {}),
         )
-        ai_response = await self.generate_ai_recommendation(context)
-        self._log_event(
-            logging.INFO,
-            "recommendation_ai_complete",
-            product_id=str(product_id),
-            model=ai_response.metadata.model,
-            latency_ms=ai_response.metadata.latency_ms,
-            retry_count=ai_response.metadata.retry_count,
-        )
-        recommendation = self.save_recommendation(product, ai_response, context, analytics)
+        if settings.recommendation_explanation_enabled and settings.recommendation_explanation_groq_enabled:
+            await self._enhance_saved_explanation(recommendation, seller_id=seller_id, product_id=product_id)
         self._log_event(
             logging.INFO,
             "recommendation_saved",
+            generation_job_id=str(attempt.job_id) if attempt is not None else None,
             recommendation_id=str(recommendation.id),
             product_id=str(product_id),
         )
-        await self._emit_recommendation_created(
-            seller_id=str(seller_id),
-            recommendation=recommendation,
-            product=product,
-            analytics=analytics,
-        )
-        response = self.build_response(recommendation, analytics)
+        response = self.read_result(recommendation)
+        _, published_analytics = self._split_context_snapshot(recommendation.recommendation_context)
+        try:
+            async with asyncio.timeout(5):
+                await self._emit_recommendation_created(
+                    seller_id=str(seller_id), recommendation=recommendation,
+                    product=product, analytics=published_analytics,
+                )
+        except Exception:
+            self._logger.warning("recommendation_notification_failed product_id=%s", product_id, exc_info=True)
+
+        if (
+            decision is None
+            and not settings.recommendation_orchestration_enabled
+            and settings.recommendation_orchestration_shadow_enabled
+        ):
+            self._compare_shadow(product, response.recommendation.action, evidence, scrape_run_id)
 
         self._log_event(
             logging.INFO,
@@ -203,6 +255,9 @@ class RecommendationService:
         if not recommendation:
             raise RecommendationNotFoundError("No recommendations found.")
 
+        return self.read_result(recommendation)
+
+    def read_result(self, recommendation: Recommendation) -> RecommendationGenerateResponse:
         context_snapshot, analytics_snapshot = self._split_context_snapshot(
             recommendation.recommendation_context
         )
@@ -215,19 +270,30 @@ class RecommendationService:
             reasoning_bn=recommendation.reasoning_bn,
             revenue_opportunity=float(recommendation.revenue_opportunity),
         )
+        dashboard_evidence = None
+        if settings.recommendation_dashboard_evidence_enabled:
+            try:
+                dashboard_evidence = build_dashboard_evidence(recommendation)
+            except (ValueError, TypeError, KeyError, AttributeError):
+                self._log_event(logging.WARNING, "recommendation_dashboard_evidence_unavailable")
         return RecommendationGenerateResponse(
             success=True,
             product_id=recommendation.product_id,
+            dashboard_evidence=dashboard_evidence,
             recommendation=recommendation_response,
             analytics=analytics_response,
             created_at=recommendation.created_at or datetime.now(timezone.utc),
         )
 
-    def load_product(self, seller_id: UUID, product_id: UUID) -> Product:
+    def load_product(
+        self, seller_id: UUID, product_id: UUID, *, for_persistence: bool = False,
+    ) -> Product:
         statement = select(Product).where(
             Product.id == product_id,
             Product.seller_id == seller_id,
         )
+        if for_persistence:
+            statement = statement.with_for_update(read=True).execution_options(populate_existing=True)
         product = self._db.execute(statement).scalar_one_or_none()
         if not product:
             raise ProductNotFoundError("Product not found.")
@@ -278,7 +344,80 @@ class RecommendationService:
             raise CompetitorDataNotFoundError("No valid competitor prices found.")
         return competitors
 
-    def run_analytics(self, product: Product, competitors: list[dict[str, Any]]) -> dict[str, Any]:
+    def generation_preflight(self, product: Product) -> UUID | None:
+        if settings.recommendation_orchestration_enabled:
+            run = RecommendationEvidenceService(self._db).completed_run(
+                seller_id=product.seller_id, product_id=product.id,
+            )
+            return run.id if run is not None else None
+        _, _, evidence = self.prepare_recommendation(product)
+        return evidence.scrape_run_id if evidence else None
+
+    def _collect_decision_evidence(
+        self, product: Product, scrape_run_id: UUID | None,
+    ) -> RecommendationEvidence:
+        return RecommendationEvidenceService(self._db).collect(
+            seller_id=product.seller_id, product_id=product.id, scrape_run_id=scrape_run_id,
+        )
+
+    def _compare_shadow(
+        self, product: Product, visible_action: str, evidence: RecommendationEvidence | None,
+        scrape_run_id: UUID | None,
+    ) -> None:
+        try:
+            # A diagnostic failure must leave the saved legacy result and job intact.
+            with self._db.begin_nested():
+                shared_evidence = evidence or self._collect_decision_evidence(product, scrape_run_id)
+                orchestrator = DecisionOrchestrator(self._db)
+                decision = orchestrator.evaluate(product, shared_evidence)
+            self._log_event(
+                logging.INFO, "recommendation_decision_shadow",
+                seller_id=str(product.seller_id), product_id=str(product.id),
+                legacy_action=visible_action, orchestrated_action=decision.action.value,
+                match=visible_action == decision.action.value,
+            )
+        except Exception:
+            self._logger.warning("recommendation_decision_shadow_failed", exc_info=True)
+
+    def prepare_recommendation(
+        self, product: Product, *, scrape_run_id: UUID | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any], RecommendationEvidence | None]:
+        evidence = None
+        validated = settings.recommendation_validation_enabled or settings.recommendation_explanation_enabled
+        if validated or settings.recommendation_evidence_enabled or settings.recommendation_business_signals_enabled or scrape_run_id is not None:
+            evidence = RecommendationEvidenceService(self._db).collect(
+                seller_id=product.seller_id, product_id=product.id, scrape_run_id=scrape_run_id,
+            )
+            competitors: Sequence[Mapping[str, Any]] = (
+                RecommendationEvidenceValidator(MarginGuard(self._db)).market(
+                    product, evidence, evidence.evaluated_at,
+                ) if validated else evidence.market_competitors
+            )
+            if not competitors and not validated:
+                self._log_event(
+                    logging.INFO, "recommendation_evidence_insufficient",
+                    seller_id=str(product.seller_id), product_id=str(product.id),
+                    scrape_run_id=evidence.scrape_run_id, quality_flags=evidence.to_context()["quality_flags"],
+                )
+                raise CompetitorDataNotFoundError(
+                    "No sufficiently fresh, verified competitor prices from the completed scrape.",
+                    evidence=evidence,
+                )
+        else:
+            competitors = self.load_competitors(product.seller_id, product.id)
+        if validated or settings.recommendation_business_signals_enabled:
+            analytics = RecommendationBusinessSignals(self._db).analyze(product, competitors)
+            if validated:
+                analytics["evidence_validation_version"] = 1
+            # The Task 2 explanation uses the validated evidence and action directly.
+            return {}, analytics, evidence
+        analytics = self.run_analytics(product, competitors, freshness_aware=evidence is not None)
+        context = self.build_context(product, competitors, analytics)
+        return context, analytics, evidence
+
+    def run_analytics(
+        self, product: Product, competitors: Sequence[Mapping[str, Any]], *, freshness_aware: bool = False,
+    ) -> dict[str, Any]:
         payload = {
             "seller_price": float(product.selling_price),
             "seller_cost": float(product.cost_price),
@@ -292,8 +431,8 @@ class RecommendationService:
         }
 
         try:
-            analytics = self._pricing_engine.analyze(payload)
-            stock_metrics = self._stock_engine.analyze(payload)
+            analytics: dict[str, Any] = dict(self._pricing_engine.analyze(payload, freshness_aware=freshness_aware))
+            stock_metrics = self._stock_engine.analyze(payload, freshness_aware=freshness_aware)
         except (ValueError, InvalidAnalyticsDataError) as exc:
             raise AnalyticsExecutionError("Failed to compute analytics.") from exc
 
@@ -302,20 +441,30 @@ class RecommendationService:
                 "estimated_days_of_stock_left": round(stock_metrics.estimated_days_of_stock_left, 2),
                 "stock_risk_score": round(stock_metrics.stock_risk_score, 2),
                 "urgency_score": round(stock_metrics.urgency_score, 2),
-                "competitor_availability_ratio": round(
-                    stock_metrics.competitor_availability_ratio, 2
+                "competitor_availability_ratio": (
+                    round(stock_metrics.competitor_availability_ratio, 2)
+                    if stock_metrics.competitor_availability_ratio is not None else None
                 ),
                 "out_of_stock_competitor_count": stock_metrics.out_of_stock_competitor_count,
                 "in_stock_competitor_count": stock_metrics.in_stock_competitor_count,
             }
         )
+        if stock_metrics.competitor_availability_ratio is None:
+            analytics["out_of_stock_competitor_count"] = None
+            analytics["in_stock_competitor_count"] = None
+        if analytics["action"] == "RAISE":
+            # The legacy rule has no raised-price candidate to validate.
+            analytics.update(action="HOLD", confidence=0.0, recommendation_confidence=0.0)
+            analytics["reason_codes"].append("NO_VALIDATED_RAISE_CANDIDATE")
         self._apply_margin_guard(product=product, analytics=analytics)
+        if freshness_aware:
+            analytics["recommendation_confidence"] = analytics["confidence"]
         return analytics
 
     def build_context(
         self,
         product: Product,
-        competitors: list[dict[str, Any]],
+        competitors: Sequence[Mapping[str, Any]],
         analytics: Mapping[str, Any],
     ) -> dict[str, Any]:
         product_payload = {
@@ -358,37 +507,129 @@ class RecommendationService:
         ai_response,
         context: dict[str, Any],
         analytics: Mapping[str, Any],
+        *,
+        evidence: RecommendationEvidence | None = None,
+        attempt: JobAttempt | None = None,
+        decision: RecommendationDecision | None = None,
     ) -> Recommendation:
-        guarded_action, guarded_confidence, guard_evidence = self._guard_final_recommendation(
-            product=product,
-            requested_action=str(ai_response.recommendation.action),
-            requested_confidence=str(ai_response.recommendation.confidence),
-            analytics=analytics,
-        )
+        suggested_price = None
+        revenue_opportunity = Decimal("0.00")
+        assessment = None
+        explain_from_evidence = settings.recommendation_explanation_enabled
+        if decision is not None:
+            requested_action = decision.action.value
+            try:
+                decision = DecisionOrchestrator(self._db).finalize(product, decision)
+                orchestration = decision.to_context()
+                validate_finite_json(orchestration)
+            except ValueError as exc:
+                raise AnalyticsExecutionError("Recommendation decision could not be validated.") from exc
+            guarded_action = decision.action.value
+            guarded_confidence = decision.confidence.value
+            suggested_price = decision.target_price
+            primary_guard = next(
+                (item.guard for item in decision.evaluations if item.candidate is decision.primary), None,
+            )
+            guard_evidence = {
+                **(primary_guard or {}),
+                "requested_action": requested_action,
+                "final_action": guarded_action,
+                "fail_closed": requested_action != guarded_action,
+            }
+            analytics = {
+                **decision.analytics, "action": guarded_action, "candidate_price": (
+                    str(suggested_price) if suggested_price is not None else None
+                ), "reason_codes": list(decision.reason_codes),
+            }
+            reasoning = "" if explain_from_evidence else _orchestration_reasoning(decision)
+            evidence = decision.context.competitors
+        elif settings.recommendation_validation_enabled or explain_from_evidence or "evidence_validation_version" in analytics:
+            if evidence is None:
+                raise AnalyticsExecutionError("Scoped recommendation evidence is required.")
+            try:
+                assessment = RecommendationEvidenceValidator(MarginGuard(self._db)).assess(product, evidence, analytics)
+                validate_finite_json(context)
+            except InvalidRecommendationEvidence as exc:
+                raise AnalyticsExecutionError("Recommendation evidence could not be validated.") from exc
+            guarded_action = assessment.action.value
+            guarded_confidence = assessment.confidence.value
+            guard_evidence = assessment.guard
+            suggested_price = assessment.candidate_price
+            analytics = {
+                **analytics, **assessment.market_metrics, "action": guarded_action, "candidate_price": (
+                    str(suggested_price) if suggested_price is not None else None
+                ), "reason_codes": list(assessment.reason_codes),
+            }
+            reasoning = "" if explain_from_evidence else _business_reasoning(guarded_action, analytics, guard_evidence)
+        elif "business_signals_version" in analytics:
+            guarded_action, guarded_confidence, guard_evidence = self._guard_business_decision(product, analytics)
+            reasoning = _business_reasoning(guarded_action, analytics, guard_evidence)
+            if guarded_action in {"LOWER", "RAISE"}:
+                suggested_price = Decimal(str(analytics["candidate_price"]))
+        else:
+            guarded_action, guarded_confidence, guard_evidence = self._guard_final_recommendation(
+                product=product,
+                requested_action=str(analytics["action"]) if evidence is not None else str(ai_response.recommendation.action),
+                requested_confidence=str(ai_response.recommendation.confidence),
+                analytics=analytics,
+            )
+            reasoning = _guarded_reasoning(ai_response.recommendation.reasoning_bn, guard_evidence)
+            if guarded_action != "HOLD":
+                revenue_opportunity = Decimal(str(ai_response.recommendation.revenue_opportunity))
         context_snapshot = {
             "context": context,
             "analytics": dict(analytics),
             "margin_guard": guard_evidence,
         }
+        if decision is not None:
+            context_snapshot["decision_orchestration"] = orchestration
+        if evidence is not None:
+            context_snapshot["competitor_evidence"] = evidence.to_context()
+        if assessment is not None:
+            context_snapshot["evidence_assessment"] = assessment.to_context()
+        if explain_from_evidence:
+            context_snapshot["explanation"] = {
+                "source": "template", "prompt_version": EXPLANATION_PROMPT_VERSION,
+            }
+            try:
+                market_at = max((
+                    observation.price_evidence.observed_at
+                    for observation in evidence.observations
+                    if observation.price_evidence.status.value == "FRESH"
+                    and observation.price_evidence.observed_at is not None
+                    and observation.match_score is not None and MIN_MATCH <= observation.match_score <= 1
+                    and observation.price is not None and observation.price.is_finite() and observation.price > 0
+                ), default=None) if evidence is not None else None
+                explanation = build_explanation_evidence(
+                    product=product, action=RecommendationAction(guarded_action).value,
+                    confidence=RecommendationConfidence(guarded_confidence).value,
+                    target_price=suggested_price, analytics=analytics, guard=guard_evidence,
+                    decision=decision, evaluated_at=datetime.now(timezone.utc),
+                    market_observed_at=market_at,
+                )
+                reasoning = render_explanation(explanation)
+                context_snapshot["explanation"]["evidence"] = explanation.model_dump(mode="json")
+            except Exception as exc:
+                reasoning = ACTION_TEMPLATES[guarded_action][0]
+                self._log_event(logging.WARNING, "recommendation_explanation_evidence_unavailable",
+                                error_type=type(exc).__name__)
+            self._log_event(logging.INFO, "recommendation_explanation_rendered",
+                            source="template", prompt_version=EXPLANATION_PROMPT_VERSION)
         recommendation = Recommendation(
             product_id=product.id,
             action=RecommendationAction(guarded_action),
             confidence=RecommendationConfidence(guarded_confidence),
-            reasoning_bn=_guarded_reasoning(
-                ai_response.recommendation.reasoning_bn,
-                guard_evidence,
-            ),
-            suggested_price_min=None,
-            suggested_price_max=None,
-            revenue_opportunity=(
-                Decimal("0.00")
-                if guarded_action == RecommendationAction.HOLD.value
-                else Decimal(str(ai_response.recommendation.revenue_opportunity))
-            ),
+            reasoning_bn=reasoning,
+            suggested_price_min=suggested_price,
+            suggested_price_max=suggested_price,
+            revenue_opportunity=revenue_opportunity,
             recommendation_context=context_snapshot,
         )
 
         try:
+            jobs = RecommendationJobs(self._db) if attempt is not None else None
+            if jobs is not None and attempt is not None and not jobs.can_complete(attempt):
+                raise RecommendationAttemptLostError()
             self._db.add(recommendation)
             if hasattr(self._db, "flush"):
                 self._db.flush()
@@ -399,13 +640,85 @@ class RecommendationService:
                     product_id=product.id,
                     source_updated_at=datetime.now(timezone.utc),
                 )
+            if jobs is not None and attempt is not None and not jobs.complete(attempt, recommendation.id):
+                raise RecommendationAttemptLostError()
             self._db.commit()
-            self._db.refresh(recommendation)
+        except RecommendationAttemptLostError:
+            self._db.rollback()
+            raise
         except Exception as exc:
             if hasattr(self._db, "rollback"):
                 self._db.rollback()
             raise RecommendationPersistenceError("Failed to store recommendation.") from exc
         return recommendation
+
+    async def _enhance_saved_explanation(
+        self, recommendation: Recommendation, *, seller_id: UUID, product_id: UUID,
+    ) -> None:
+        """Update the explanation and its index together after the decision commits."""
+        try:
+            raw = recommendation.recommendation_context.get("explanation", {}).get("evidence")
+            if raw is None:
+                return
+            evidence = ExplanationEvidence.model_validate(raw)
+            reasoning = await generate_bangla_explanation(evidence)
+            if reasoning is None or reasoning == recommendation.reasoning_bn:
+                return
+            current = self._db.scalars(
+                select(Recommendation).join(Product)
+                .where(Recommendation.id == recommendation.id, Recommendation.product_id == product_id,
+                       Product.seller_id == seller_id)
+                .with_for_update(of=Recommendation).execution_options(populate_existing=True)
+            ).first()
+            if current is None:
+                self._db.rollback()
+                return
+            snapshot = current.recommendation_context
+            metadata = snapshot.get("explanation", {})
+            if metadata.get("source") != "template" or metadata.get("evidence") != raw or (
+                current.action.value, current.confidence.value
+            ) != (evidence.action, evidence.confidence):
+                self._db.rollback()
+                return
+            current.reasoning_bn = reasoning
+            current.recommendation_context = {**snapshot, "explanation": {
+                **metadata, "source": "groq", "model": settings.recommendation_explanation_model,
+            }}
+            RagIndexOutboxService(self._db).enqueue_upsert(
+                seller_id=seller_id, product_id=product_id, source_type=RagMemorySourceType.RECOMMENDATION,
+                source_id=str(current.id), source_updated_at=datetime.now(timezone.utc),
+            )
+            self._db.commit()
+            self._log_event(logging.INFO, "recommendation_explanation_rendered",
+                            source="groq", prompt_version=EXPLANATION_PROMPT_VERSION)
+        except Exception as exc:
+            self._db.rollback()
+            self._log_event(logging.WARNING, "recommendation_explanation_update_failed",
+                            source="template", prompt_version=EXPLANATION_PROMPT_VERSION,
+                            error_type=type(exc).__name__)
+
+    def _guard_business_decision(
+        self, product: Product, analytics: Mapping[str, Any],
+    ) -> tuple[str, str, dict[str, Any]]:
+        action = str(analytics["action"])
+        score = float(analytics["confidence"])
+        confidence = "HIGH" if score >= 0.75 else "MEDIUM" if score >= 0.5 else "LOW"
+        if action not in {"LOWER", "RAISE"}:
+            return action, confidence, {"requested_action": action, "final_action": action}
+        candidate = analytics.get("candidate_price")
+        if candidate is None:
+            return "HOLD", "LOW", {"requested_action": action, "final_action": "HOLD", "fail_closed": True}
+        price = Decimal(str(candidate))
+        guard = MarginGuard(self._db).validate_candidate(
+            seller_id=product.seller_id, product=product, candidate_price=price, marketplace=MARKETPLACE_NAME,
+        )
+        safe = guard.is_allowed and price == guard.candidate_price and (
+            0 < price < product.selling_price if action == "LOWER" else price > product.selling_price
+        )
+        final = action if safe else "HOLD"
+        return final, confidence if safe else "LOW", {
+            **guard.to_evidence(), "requested_action": action, "final_action": final, "fail_closed": not safe,
+        }
 
     def _apply_margin_guard(self, *, product: Product, analytics: dict[str, Any]) -> None:
         requested_action = str(analytics.get("action", "HOLD")).upper()
@@ -447,7 +760,9 @@ class RecommendationService:
         )
         evidence = guard.to_evidence()
         evidence["requested_action"] = action
-        if action in {"LOWER", "RAISE"} and not guard.is_allowed:
+        if action == "RAISE" or (action == "LOWER" and (
+            not guard.is_allowed or not 0 < candidate_price < product.selling_price
+        )):
             evidence["final_action"] = "HOLD"
             evidence["fail_closed"] = True
             return "HOLD", "LOW", evidence
@@ -486,8 +801,10 @@ class RecommendationService:
         try:
             emitter = get_socket_emitter()
         except RuntimeError:
-            self._logger.debug("socket_emitter_unavailable")
-            return None
+            if not settings.redis_broker_url:
+                return None
+            self._realtime = RealtimeService(Phase5RealtimePublisher(self._logger))
+            return self._realtime
         self._realtime = RealtimeService(emitter, logging.getLogger("app.websocket.realtime"))
         return self._realtime
 
@@ -605,7 +922,7 @@ class RecommendationService:
             status="new",
             priority=_map_priority(urgency_score),
             confidence=_map_confidence(recommendation.confidence),
-            expected_lift=_expected_lift(urgency_score),
+            expected_lift=0.0 if {"business_signals_version", "decision_orchestration_version"} & analytics.keys() else _expected_lift(urgency_score),
             product=product.title,
             competitor=None,
             created_at=recommendation.created_at or datetime.now(timezone.utc),
@@ -692,6 +1009,10 @@ class RecommendationService:
             stock_risk_score=stock_risk_score,
             pricing_pressure_score=pricing_pressure_score,
             estimated_days_of_stock_left=estimated_days_of_stock_left,
+            **({
+                "stock_coverage_available": analytics.get("estimated_days_of_stock_left") is not None,
+                "stock_risk_available": analytics.get("stock_risk_score") is not None,
+            } if analytics and ("business_signals_version" in analytics or "decision_orchestration_version" in analytics) else {}),
         )
 
     @staticmethod
@@ -822,7 +1143,7 @@ def _build_dashboard_summary_snapshot(summary: DashboardSummaryResponse) -> Dash
     system_status = "degraded" if summary.high_risk_stock_count > 0 or summary.active_alerts > 0 else "healthy"
     return DashboardSummarySnapshot(
         kpis=[],
-        insights=insights,
+        insights=[InsightPayload.model_validate(item) for item in insights],
         active_alerts=summary.active_alerts,
         live_competitors=summary.total_monitored_products,
         ai_recommendations=summary.realtime_activity.recommendations_last_hour,
@@ -844,6 +1165,54 @@ def _candidate_price_for_action(
         if candidate is not None:
             return Decimal(str(candidate))
     return Decimal(str(product.selling_price))
+
+
+def _orchestration_reasoning(decision: RecommendationDecision) -> str:
+    params = decision.primary.proposed_parameters if decision.primary else None
+    if isinstance(params, ReorderParameters) and decision.action == RecommendationAction.REORDER:
+        return f"নথিভুক্ত বিক্রয় ও মজুত অনুযায়ী {params.quantity} ইউনিট পুনরায় অর্ডার করুন। আপাতত বর্তমান দাম রাখুন।"
+    if decision.target_price is not None:
+        return f"সাম্প্রতিক বাজারদর, বিক্রয় ও প্রযোজ্য ফি অনুযায়ী প্রস্তাবিত দাম ৳{decision.target_price}।"
+    if isinstance(params, RecoveryParameters):
+        return {
+            DeadStockRecoveryAction.BUNDLE: "ধীরগতির মজুত বিক্রির জন্য বান্ডেল প্রস্তাবটি পর্যালোচনা করুন।",
+            DeadStockRecoveryAction.DISCOUNT: "ধীরগতির মজুতের জন্য সীমিত ছাড়ের প্রস্তাবটি পর্যালোচনা করুন।",
+            DeadStockRecoveryAction.FLASH_SALE: "ধীরগতির মজুতের জন্য স্বল্পমেয়াদি অফারটি পর্যালোচনা করুন।",
+            DeadStockRecoveryAction.SEO_FIX: "পণ্যের তালিকা আরও সহজে খুঁজে পেতে তথ্য ও সার্চ দৃশ্যমানতা পর্যালোচনা করুন।",
+            DeadStockRecoveryAction.MANUAL_REVIEW: "ধীরগতির মজুতের তথ্য যাচাই করে পরবর্তী পদক্ষেপ নির্ধারণ করুন।",
+            DeadStockRecoveryAction.HOLD: "আপাতত বর্তমান দাম ও মজুত পরিকল্পনা বজায় রাখুন।",
+        }[params.action]
+    return "পরিবর্তনের পক্ষে যথেষ্ট যাচাই করা তথ্য নেই। আপাতত বর্তমান দাম ও মজুত পরিকল্পনা বজায় রাখুন।"
+
+
+def _business_reasoning(
+    action: str, analytics: Mapping[str, Any], guard: Mapping[str, Any],
+) -> str:
+    if action == "REORDER":
+        return "নথিভুক্ত বিক্রয় ও মজুতের ভিত্তিতে পুনরায় পণ্য অর্ডার করার পরামর্শ দেওয়া হচ্ছে।"
+    if action == "LOWER":
+        return f"প্রতিযোগীদের সাম্প্রতিক দাম ও প্রযোজ্য ফি বিবেচনায় প্রস্তাবিত দাম ৳{analytics['candidate_price']}।"
+    if action == "RAISE":
+        return f"প্রযোজ্য মূল্যনীতি অনুযায়ী প্রস্তাবিত দাম ৳{analytics['candidate_price']}।"
+    if (
+        {"MARGIN_GUARD_BLOCKED", "MARGIN_GUARD_BLOCKED_PRICE_RECOMMENDATION"}.intersection(analytics["reason_codes"])
+        or ("evidence_validation_version" not in analytics and guard.get("fail_closed"))
+    ):
+        return "দাম পরিবর্তনের প্রস্তাবটি মার্জিন বা মূল্যনীতির শর্ত পূরণ করেনি। আপাতত বর্তমান দাম রাখুন।"
+    if "evidence_validation_version" in analytics and (
+        guard.get("fail_closed") or "INSUFFICIENT_ACTION_EVIDENCE" in analytics["reason_codes"]
+    ):
+        return "প্রস্তাবিত পরিবর্তনের পক্ষে যথেষ্ট নির্ভরযোগ্য তথ্য নেই। আপাতত বর্তমান সিদ্ধান্ত বজায় রাখুন।"
+    inventory = analytics["inventory_evidence"]
+    if inventory["demand_status"] == "INSUFFICIENT":
+        return "দৈনিক চাহিদা নির্ধারণের জন্য যথেষ্ট বিক্রয় তথ্য নেই। আপাতত বর্তমান সিদ্ধান্ত বজায় রাখুন।"
+    if inventory["daily_net_sales_rate"] == "0.0000":
+        return "পর্যবেক্ষিত সময়ে নিট বিক্রি শূন্য ছিল। আপাতত বর্তমান সিদ্ধান্ত বজায় রাখুন।"
+    if inventory["available_units"] is None or inventory["supplier_lead_time_days"] is None:
+        return "হালনাগাদ মজুত বা সরবরাহের সময় সম্পর্কে পর্যাপ্ত তথ্য নেই। আপাতত বর্তমান সিদ্ধান্ত বজায় রাখুন।"
+    if {"MISSING_FEE_DATA", "MISSING_COST_DATA", "INVALID_POLICY", "UNSUPPORTED_CURRENCY"}.intersection(analytics["reason_codes"]):
+        return "দাম পরিবর্তন যাচাই করার জন্য নির্ভরযোগ্য খরচ, ফি বা মূল্যনীতি পাওয়া যায়নি। বর্তমান দাম রাখুন।"
+    return "উপলব্ধ তথ্য অনুযায়ী এখনই দাম বা মজুতে পরিবর্তনের সুপারিশ নেই।"
 
 
 def _guarded_reasoning(reasoning: str, guard_evidence: Mapping[str, Any]) -> str:

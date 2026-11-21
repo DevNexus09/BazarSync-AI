@@ -23,6 +23,7 @@ from app.models.demand_elasticity_estimate import DemandElasticityEstimate, Dema
 from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockDataStatus, DeadStockInventoryAgeState, DeadStockNoSalesState, DeadStockVisibilityStatus
 from app.models.dead_stock_capital_recovery import CapitalRecoveryEstimationMethod, CapitalRecoveryEstimateStatus, DeadStockCapitalRecoveryEstimate
 from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryAction, DeadStockRecoveryRecommendation, DeadStockRecoveryRecommendationStatus
+from app.models.demo_seed_record import DemoSeedRecord
 from app.models.dynamic_pricing_recommendation import DynamicPricingAction, DynamicPricingRecommendation, DynamicPricingRecommendationStatus
 from app.models.inventory_history import InventoryHistory, InventorySnapshotSource
 from app.models.inventory_aging import InventoryAgeSource, InventoryAgingSnapshot
@@ -54,6 +55,7 @@ from app.models.rag_memory import (
 )
 from app.models.rag_index_outbox import RagIndexOutbox, RagIndexOutboxAction, RagIndexOutboxStatus
 from app.models.recommendation import Recommendation
+from app.models.recommendation_job import RecommendationJob, RecommendationJobRequest
 from app.models.reorder_recommendation import ReorderRecommendation, ReorderRecommendationAction, ReorderRecommendationStatus
 from app.models.scrape_run import ScrapeRun
 from app.models.sales_data_coverage import SalesDataCompletenessStatus, SalesDataCoverage
@@ -106,6 +108,7 @@ __all__ = [
     "DynamicPricingAction",
     "DynamicPricingRecommendation",
     "DynamicPricingRecommendationStatus",
+    "DemoSeedRecord",
     "InventoryHistory",
     "InventoryAgeSource",
     "InventoryAgingSnapshot",
@@ -147,6 +150,8 @@ __all__ = [
     "RagIndexOutboxAction",
     "RagIndexOutboxStatus",
     "Recommendation",
+    "RecommendationJob",
+    "RecommendationJobRequest",
     "ReorderRecommendation",
     "ReorderRecommendationAction",
     "ReorderRecommendationStatus",

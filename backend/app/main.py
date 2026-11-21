@@ -103,6 +103,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=[
+            "Idempotency-Key",
             "Content-Type",
             "Authorization",
             "X-Requested-With",

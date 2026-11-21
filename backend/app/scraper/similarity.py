@@ -143,6 +143,18 @@ ATTRIBUTE_KEY_ALIASES = {
     "skin_type": {"skin type", "skin"},
 }
 
+# Product.specifications also stores operational planning inputs and source
+# provenance. Those values describe the seller's record, not the marketplace
+# product identity, and must not dilute or contradict matching evidence.
+NON_MATCHING_SPECIFICATION_KEYS = {
+    "case size", "confirmed incoming quantity", "holding cost bdt per unit per day", "image url",
+    "incoming quantity", "market reference only", "maximum stock", "minimum order quantity", "moq",
+    "pack size", "purchase order quantity", "quantity incoming unconfirmed", "quantity reserved",
+    "reorder budget bdt", "review period days",
+    "safety buffer days", "safety stock", "storage capacity units", "supplier lead time",
+}
+NON_MATCHING_SPECIFICATION_PREFIXES = ("demo ", "inventory ", "source ")
+
 BRAND_ALIASES = {
     "apple": "apple",
     "ipad": "apple",
@@ -297,6 +309,17 @@ def normalize_attributes(attributes: dict[str, str] | None) -> dict[str, str]:
         normalized_value = _normalize_attribute_value(canonical_key, value)
         normalized[canonical_key] = normalized_value
     return normalized
+
+def matching_specifications(specifications: dict[str, str] | None) -> dict[str, str]:
+    """Return only seller fields that can describe marketplace product identity."""
+    if not specifications:
+        return {}
+    return {
+        key: value for key, value in specifications.items()
+        if (normalized_key := normalize_description(str(key)))
+        and normalized_key not in NON_MATCHING_SPECIFICATION_KEYS
+        and not normalized_key.startswith(NON_MATCHING_SPECIFICATION_PREFIXES)
+    }
 
 
 def _map_attribute_key(key: str) -> str:
@@ -798,6 +821,7 @@ def evaluate_competitor_matches(
         return []
     threshold = max(threshold, SIMILARITY_VERIFICATION_FLOOR)
 
+    seller_specifications = matching_specifications(seller_specifications)
     seller_identity = identity_from_listing(seller_title, seller_specifications)
     seller_accessory = bool(seller_identity.accessory) or is_accessory_product(seller_title)
     seller_entities = extract_key_entities(seller_title, specifications=seller_specifications)
