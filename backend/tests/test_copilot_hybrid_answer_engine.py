@@ -252,3 +252,17 @@ class PromptSizeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MissingFactsPromptTests(unittest.TestCase):
+    def test_system_prompt_names_what_is_not_recorded_and_the_closest_data(self):
+        from types import SimpleNamespace
+
+        from app.services.copilot.hybrid_answer_engine import _prompt_from_context
+
+        context = SimpleNamespace(to_prompt_payload=lambda: {"facts": {}}, reply_language=None, conversation=None)
+        system = _prompt_from_context(context)[0]["content"]
+
+        self.assertIn("say exactly what is not recorded", system)
+        self.assertIn("closest available data", system)
+        self.assertIn("NO_MATCHING_RECORDS", system)

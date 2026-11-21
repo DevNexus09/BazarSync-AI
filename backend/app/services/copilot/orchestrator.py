@@ -10,6 +10,7 @@ import logging
 import time
 from typing import Any, Awaitable, Callable, Protocol
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ from app.models.copilot import (
 )
 from app.repositories.copilot_repository import CopilotConversationNotFoundError, CopilotRepository
 from app.services.copilot.action_proposal_service import CopilotActionProposalService
+from app.services.copilot.agent_loop import run_agent_loop
 from app.services.copilot.answer_builder import CopilotAnswerBuilder
 from app.services.copilot.intent_classifier import (
     CopilotIntent,
@@ -215,6 +217,8 @@ class CopilotOrchestrator:
         parallel_tools_enabled: bool | None = None,
         llm_planner_fallback_enabled: bool | None = None,
         tool_session_factory: Callable[[], Session] | None = None,
+        agent_loop_enabled: bool | None = None,
+        always_retrieve_memory: bool | None = None,
     ) -> None:
         if repository is None and db is None:
             raise ValueError("CopilotOrchestrator requires a repository or database session.")
@@ -251,6 +255,8 @@ class CopilotOrchestrator:
             settings.copilot_llm_planner_fallback_enabled if llm_planner_fallback_enabled is None else llm_planner_fallback_enabled
         )
         self._tool_session_factory = tool_session_factory or _default_tool_session_factory
+        self._agent_loop_enabled = settings.copilot_agent_loop_enabled if agent_loop_enabled is None else agent_loop_enabled
+        self._always_retrieve_memory = settings.copilot_always_retrieve_memory if always_retrieve_memory is None else always_retrieve_memory
         self._conversation_memory_enabled = (
             settings.copilot_conversation_memory_enabled if conversation_memory_enabled is None else conversation_memory_enabled
         )
@@ -403,6 +409,14 @@ class CopilotOrchestrator:
         tool_started_ms = now_ms()
         if not selected_tools and self._llm_planner_fallback_enabled:
             selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
+        if self._always_retrieve_memory and request.include_memory and not any(step.tool_name == "retrieve_business_memory" for step in selected_tools):
+            memory_step = PlannedToolCall(
+                tool_name="retrieve_business_memory",
+                args=self._arguments_for_tool(tool_name="retrieve_business_memory", request=request, classification=classification),
+                reason="memory is always retrieved (COPILOT_ALWAYS_RETRIEVE_MEMORY)",
+                required=False,
+            )
+            selected_tools = [*selected_tools[: self._max_tool_calls - 1], memory_step]
         await emit({"stage": "planning", "tools": [_tool_label(step.tool_name) for step in selected_tools[: self._max_tool_calls]]})
         if self._parallel_tools_enabled:
             tool_results = await self._run_tools_concurrently(
@@ -425,6 +439,18 @@ class CopilotOrchestrator:
             )
             for result in tool_results:
                 await emit(_tool_event(result))
+        if self._agent_loop_enabled:
+            tool_results = await self._run_agent_loop(
+                request=request,
+                classification=classification,
+                plan=plan,
+                conversation_id=conversation.id,
+                user_message_id=user_message.id,
+                tool_results=tool_results,
+                language_profile=language_profile,
+                started_ms=total_started_ms,
+                emit=emit,
+            )
         tool_duration_ms = elapsed_ms(tool_started_ms)
         await emit({"stage": "writing"})
         missing_data = _collect_missing_data(tool_results)
@@ -693,6 +719,59 @@ class CopilotOrchestrator:
             if tool_name not in selected_names and include_current_data:
                 selected_names.append(tool_name)
         return [PlannedToolCall(tool_name=name, args={}, reason="legacy routing") for name in selected_names[: self._max_tool_calls]]
+
+    async def _run_agent_loop(
+        self,
+        *,
+        request: CopilotOrchestratorRequest,
+        classification: CopilotIntentResult,
+        plan: CopilotQuestionPlan,
+        conversation_id: UUID,
+        user_message_id: UUID,
+        tool_results: list[ToolExecutionResult],
+        language_profile: LanguageProfile | None,
+        started_ms: float,
+        emit: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> list[ToolExecutionResult]:
+        router = self._llm_router or self._agent_router()
+        # Leave the answer call its own budget inside the overall deadline.
+        deadline_s = self._overall_timeout_seconds - elapsed_ms(started_ms) / 1000 - self._groq_timeout_seconds
+        if router is None or deadline_s <= 0:
+            return tool_results
+
+        async def execute(steps: list[PlannedToolCall]) -> list[ToolExecutionResult]:
+            if self._parallel_tools_enabled:
+                return await self._run_tools_concurrently(
+                    request=request, classification=classification, plan=plan, conversation_id=conversation_id,
+                    user_message_id=user_message_id, selected_tools=steps, emit=emit,
+                )
+            results = self._run_tools(
+                request=request, classification=classification, plan=plan, conversation_id=conversation_id,
+                user_message_id=user_message_id, selected_tools=steps,
+            )
+            for result in results:
+                await emit(_tool_event(result))
+            return results
+
+        return await run_agent_loop(
+            question=request.question,
+            seeded_results=tool_results,
+            router=router,
+            registry=self._tool_registry,
+            execute=execute,
+            max_iterations=self._max_iterations,
+            max_tool_calls=self._max_tool_calls,
+            deadline_s=deadline_s,
+            today=_today_seller(),
+            reply_language=language_profile.reply_language.value if language_profile else None,
+            request_id=request.request_id,
+        )
+
+    def _agent_router(self) -> CopilotLLMRouter | None:
+        # The loop needs a router even when the answer path still uses the legacy Groq call.
+        if not hasattr(self, "_cached_agent_router"):
+            self._cached_agent_router = self._router_from_settings()
+        return self._cached_agent_router
 
     async def _llm_suggested_tools(
         self,
@@ -1472,6 +1551,10 @@ def _search_query_from_question(question: str) -> str:
 def _title_from_question(question: str) -> str:
     clean = " ".join(question.split())
     return clean[:80] or "Copilot conversation"
+
+
+def _today_seller() -> date:
+    return datetime.now(ZoneInfo("Asia/Dhaka")).date()
 
 
 def _today_utc():
