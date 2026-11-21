@@ -110,6 +110,32 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
         self.assertIn("- units sold: 30", answer.answer)
         self.assert_clean(answer.answer)
 
+    def test_period_totals_are_not_replaced_by_the_top_products_figures(self):
+        # Regression: get_revenue_summary's nested top product (59150.00) was reported as the period's gross revenue.
+        summary = ToolExecutionResult(
+            tool_name="get_revenue_summary",
+            tool_version="v1",
+            status=ToolExecutionStatus.SUCCEEDED,
+            data={
+                "gross_revenue": "290360.28",
+                "units_sold": 312,
+                "order_count": 138,
+                "top_products_by_revenue": [{"product": {"title": "Hafsa Sneaker"}, "gross_revenue": "59150.00", "units_sold": 35, "order_count": 15}],
+                "evidence": [{"source_table": "sales_records", "source_id": "1"}],
+                "missing_data": [],
+            },
+            evidence=[{"source_table": "sales_records", "source_id": "1"}],
+            missing_data=[],
+            error=None,
+            runtime_ms=1,
+        )
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[summary], evidence=summary.evidence, missing_data=[])
+
+        self.assertIn("- gross revenue: 290360.28", answer.answer)
+        self.assertIn("- order count: 138", answer.answer)
+        self.assertNotIn("59150.00", answer.answer)
+
     def test_rows_without_usable_facts_say_so_plainly(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.SEO_ADVICE),

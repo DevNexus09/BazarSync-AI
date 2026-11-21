@@ -181,6 +181,11 @@ def _rows_by_tool(tool_results: list[ToolExecutionResult]) -> dict[str, list[dic
     output: dict[str, list[dict[str, Any]]] = {}
     for result in tool_results:
         rows = _extract_rows(result.data)
+        if result.tool_name in FINANCIAL_TOOLS and isinstance(result.data, dict) and any(
+            result.data.get(key) is not None for key in ("gross_revenue", "estimated_profit", "revenue_change", "revenue_delta")
+        ):
+            # Period totals live at the top level; nested per-product rows must not stand in for them.
+            rows = [result.data]
         output[result.tool_name] = rows
     return output
 
