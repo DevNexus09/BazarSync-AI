@@ -1,5 +1,8 @@
 export type CopilotConfidence = "HIGH" | "MEDIUM" | "LOW" | "NO_CONTEXT"
-export type CopilotLanguage = "auto" | "bn" | "en"
+export type CopilotLanguage = "auto" | "bn" | "en" | "banglish"
+/** Language the answer text is written in; Banglish is Bangla in Latin script. */
+export type CopilotReplyLanguage = "en" | "bn" | "banglish"
+export type CopilotReplyScript = "bengali" | "latin"
 export type CopilotSourceMode = "current" | "memory" | "both"
 export type CopilotDomain =
   | "PRODUCT_CATALOG"
@@ -184,7 +187,27 @@ export type CopilotAskResponse = {
   recommended_next_steps?: string[]
   action_proposal?: CopilotActionProposal | null
   memory_coverage_warning?: boolean | string | null
+  reply_language?: CopilotReplyLanguage | null
+  reply_script?: CopilotReplyScript | null
+  suggested_follow_ups?: string[]
 }
+
+export type CopilotStreamStage =
+  | { stage: "understanding"; reply_language?: CopilotReplyLanguage | null }
+  | { stage: "planning"; tools: string[] }
+  | { stage: "tool"; tool: string; status: string }
+  | { stage: "writing" }
+
+export type CopilotFeatures = {
+  multilingual: boolean
+  languages: CopilotLanguage[]
+  streaming: boolean
+  follow_ups: boolean
+  feedback: boolean
+  conversation_memory: boolean
+}
+
+export type CopilotFeedbackRating = "up" | "down"
 
 export type CopilotToolMetadata = {
   name: string
@@ -209,6 +232,8 @@ export type CopilotLocalMessage =
       id: string
       role: "user"
       content: string
+      /** The question never got an answer (network, timeout, rate limit...). */
+      failed?: boolean
     }
   | {
       id: string
@@ -225,4 +250,8 @@ export type CopilotLocalMessage =
       recommendedNextSteps: string[]
       actionProposal: CopilotActionProposal | null
       memoryCoverageWarning?: boolean | string | null
+      replyLanguage?: CopilotReplyLanguage | null
+      replyScript?: CopilotReplyScript | null
+      followUps?: string[]
+      feedback?: CopilotFeedbackRating | null
     }

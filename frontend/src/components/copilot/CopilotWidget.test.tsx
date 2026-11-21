@@ -31,6 +31,9 @@ vi.mock("@/services/copilot-service", () => ({
   listActionProposals: vi.fn(),
   approveActionProposal: vi.fn(),
   rejectActionProposal: vi.fn(),
+  askCopilotStream: vi.fn(),
+  submitCopilotFeedback: vi.fn(),
+  getCopilotFeatures: vi.fn(),
 }))
 
 const askResponse: CopilotAskResponse = {
@@ -166,6 +169,18 @@ describe("CopilotWidget", () => {
       offset: 0,
     })
     vi.mocked(copilotService.askCopilot).mockResolvedValue(askResponse)
+    vi.mocked(copilotService.askCopilotStream).mockReset()
+    vi.mocked(copilotService.submitCopilotFeedback).mockReset()
+    vi.mocked(copilotService.submitCopilotFeedback).mockResolvedValue({ message_id: "message-1", rating: "up" })
+    vi.mocked(copilotService.getCopilotFeatures).mockReset()
+    vi.mocked(copilotService.getCopilotFeatures).mockResolvedValue({
+      multilingual: false,
+      languages: ["auto", "en", "bn"],
+      streaming: false,
+      follow_ups: false,
+      feedback: true,
+      conversation_memory: false,
+    })
     vi.mocked(copilotService.approveActionProposal).mockResolvedValue({
       proposal: {
         ...actionResponse.action_proposal!,
@@ -443,7 +458,7 @@ describe("CopilotWidget", () => {
     await screen.findByText(/restock product a today/i)
     expect(copilotService.askCopilot).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/confidence: high/i)).toBeInTheDocument()
-    expect(screen.getByText(/get_restock_recommendations/i)).toBeInTheDocument()
+    expect(screen.getByText(/restock recommendations/i)).toBeInTheDocument()
     expect(screen.getByText(/evidence \(1\)/i)).toBeInTheDocument()
     expect(screen.getByText(/supplier lead time is missing/i)).toBeInTheDocument()
   })
@@ -610,7 +625,7 @@ describe("CopilotWidget", () => {
     expect(await screen.findByText("Revenue is up this week.")).toBeInTheDocument()
     expect(screen.getByText("What is my revenue this week?")).toBeInTheDocument()
     expect(screen.getByText(/confidence: high/i)).toBeInTheDocument()
-    expect(screen.getByText(/get_revenue_summary/i)).toBeInTheDocument()
+    expect(screen.getByText(/revenue summary/i)).toBeInTheDocument()
     expect(screen.getByText(/evidence \(1\)/i)).toBeInTheDocument()
     expect(screen.getByText(/sales completeness is partial/i)).toBeInTheDocument()
     expect(screen.getAllByText(/sales_records/i).length).toBeGreaterThan(0)

@@ -5,6 +5,7 @@ alembic
 amqp
 annotated-doc
 annotated-types
+anthropic>=2.12,<3
 asyncpg
 anyio
 attrs

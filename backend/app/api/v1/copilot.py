@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -23,13 +28,15 @@ from app.schemas.copilot import (
     CopilotConversationResponse,
     CopilotAskRequest,
     CopilotErrorResponse,
+    CopilotMessageFeedbackRequest,
+    CopilotMessageFeedbackResponse,
     CopilotMessageResponse,
     CopilotSearchResponse,
     CopilotToolMetadataResponse,
     CopilotToolsResponse,
     CopilotToolUsedResponse,
 )
-from app.repositories.copilot_repository import CopilotRepository
+from app.repositories.copilot_repository import CopilotConversationNotFoundError, CopilotMessageNotFoundError, CopilotRepository
 from app.services.copilot.action_proposal_service import (
     CopilotActionProposalNotFoundError,
     CopilotActionProposalService,
@@ -37,9 +44,11 @@ from app.services.copilot.action_proposal_service import (
 )
 from app.services.copilot.observability import capability_snapshot, copilot_health_snapshot
 from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
+from app.services.copilot.rate_limiter import CopilotRateLimitExceeded, copilot_ask_rate_limiter
 from app.services.copilot.tool_registry import CopilotToolRegistry
 
 router = APIRouter(prefix="/copilot", tags=["copilot"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health")
@@ -128,6 +137,80 @@ async def ask_copilot(
     db: Session = Depends(get_db),
     current_seller: Seller = Depends(get_current_seller),
 ) -> CopilotApiAskResponse:
+    debug_allowed = _check_ask_allowed(payload, db=db, current_seller=current_seller)
+    try:
+        result = await CopilotOrchestrator(db=db).ask(_orchestrator_request(payload, current_seller=current_seller, debug_allowed=debug_allowed))
+    except CopilotConversationNotFoundError as exc:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "conversation_not_found", "Conversation not found.") from exc
+    return _ask_response(result, debug_allowed=debug_allowed)
+
+
+@router.post(
+    "/ask/stream",
+    responses={403: {"model": CopilotErrorResponse}, 404: {"model": CopilotErrorResponse}},
+)
+async def ask_copilot_stream(
+    payload: CopilotAskRequest,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> StreamingResponse:
+    """Server-sent events: ``stage`` progress events, then one ``answer`` (same body as /ask) or ``error``.
+
+    Answer text is never streamed before validation, so the grounding guarantee holds.
+    """
+    if not settings.copilot_streaming_enabled:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "streaming_not_enabled", "Copilot streaming is not enabled.")
+    debug_allowed = _check_ask_allowed(payload, db=db, current_seller=current_seller)
+    orchestrator_request = _orchestrator_request(payload, current_seller=current_seller, debug_allowed=debug_allowed)
+    return StreamingResponse(
+        _ask_event_stream(orchestrator_request, debug_allowed=debug_allowed),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+async def _ask_event_stream(orchestrator_request: CopilotOrchestratorRequest, *, debug_allowed: bool):
+    queue: asyncio.Queue[tuple[str, dict[str, Any]] | None] = asyncio.Queue()
+
+    async def progress(event: dict[str, Any]) -> None:
+        await queue.put(("stage", event))
+
+    async def run() -> None:
+        # The streaming body outlives the request dependencies, so it owns its session.
+        session = _stream_session_factory()
+        try:
+            result = await CopilotOrchestrator(db=session).ask(orchestrator_request, progress=progress)
+            await queue.put(("answer", _ask_response(result, debug_allowed=debug_allowed).model_dump(mode="json")))
+        except CopilotConversationNotFoundError:
+            await queue.put(("error", {"error_code": "conversation_not_found", "detail": "Conversation not found."}))
+        except Exception:
+            logger.exception("copilot_stream_failed seller_id=%s", orchestrator_request.seller_id)
+            await queue.put(("error", {"error_code": "copilot_failed", "detail": "Copilot could not answer right now."}))
+        finally:
+            session.close()
+            await queue.put(None)
+
+    task = asyncio.create_task(run())
+    try:
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            event, data = item
+            yield f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, default=str)}\n\n"
+    finally:
+        if not task.done():
+            task.cancel()
+
+
+def _stream_session_factory() -> Session:
+    from app.db.session import SessionLocal
+
+    return SessionLocal()
+
+
+def _check_ask_allowed(payload: CopilotAskRequest, *, db: Session, current_seller: Seller) -> bool:
+    """Ownership, rate-limit, language and debug checks shared by /ask and /ask/stream. Returns debug_allowed."""
     if payload.product_id is not None and not _seller_owns_product(
         db,
         seller_id=current_seller.id,
@@ -135,31 +218,47 @@ async def ask_copilot(
     ):
         raise _http_error(status.HTTP_403_FORBIDDEN, "product_not_owned", "Product is not available for this seller.")
 
+    try:
+        copilot_ask_rate_limiter.check(current_seller.id)
+    except CopilotRateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"error_code": "rate_limited", "detail": "Too many Copilot questions. Please wait a moment."},
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    if payload.language == "banglish" and not settings.copilot_multilingual_enabled:
+        raise _http_error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "language_not_supported",
+            "Banglish replies are not enabled for this deployment.",
+        )
     debug_allowed = payload.debug and (_debug_allowed() or _seller_can_debug(current_seller))
     if payload.debug and not debug_allowed:
         raise _http_error(status.HTTP_403_FORBIDDEN, "debug_not_allowed", "Copilot debug output is not enabled for this account.")
-    try:
-        result = await CopilotOrchestrator(db=db).ask(
-            CopilotOrchestratorRequest(
-                seller_id=current_seller.id,
-                user_id=current_seller.id,
-                conversation_id=payload.conversation_id,
-                question=payload.question,
-                product_id=payload.product_id,
-                requested_language=payload.language,
-                from_date=payload.from_date,
-                to_date=payload.to_date,
-                domain_filters=payload.domain_filters,
-                include_current_data=payload.include_current_data,
-                include_memory=payload.include_memory,
-                memory_source_types=payload.memory_source_types,
-                top_k=payload.top_k,
-                debug_allowed=debug_allowed,
-                include_tool_trace=True,
-            )
-        )
-    except ValueError as exc:
-        raise _http_error(status.HTTP_404_NOT_FOUND, "conversation_not_found", "Conversation not found.") from exc
+    return bool(debug_allowed)
+
+
+def _orchestrator_request(payload: CopilotAskRequest, *, current_seller: Seller, debug_allowed: bool) -> CopilotOrchestratorRequest:
+    return CopilotOrchestratorRequest(
+        seller_id=current_seller.id,
+        user_id=current_seller.id,
+        conversation_id=payload.conversation_id,
+        question=payload.question,
+        product_id=payload.product_id,
+        requested_language=payload.language,
+        from_date=payload.from_date,
+        to_date=payload.to_date,
+        domain_filters=payload.domain_filters,
+        include_current_data=payload.include_current_data,
+        include_memory=payload.include_memory,
+        memory_source_types=payload.memory_source_types,
+        top_k=payload.top_k,
+        debug_allowed=debug_allowed,
+        include_tool_trace=True,
+    )
+
+
+def _ask_response(result: Any, *, debug_allowed: bool) -> CopilotApiAskResponse:
     tools_used = [
         CopilotToolUsedResponse(
             name=item.get("name") or item.get("tool_name", ""),
@@ -186,6 +285,9 @@ async def ask_copilot(
         recommended_next_steps=result.recommended_next_steps,
         action_proposal=result.action_proposal,
         debug={"tool_trace": result.tool_trace} if debug_allowed else None,
+        reply_language=getattr(result, "reply_language", None),
+        reply_script=getattr(result, "reply_script", None),
+        suggested_follow_ups=list(getattr(result, "suggested_follow_ups", None) or []),
     )
 
 
@@ -442,4 +544,33 @@ def reject_action_proposal(
         proposal=CopilotActionProposalResponse.model_validate(proposal),
         message=message,
         executed=False,
+    )
+
+
+@router.post(
+    "/messages/{message_id}/feedback",
+    response_model=CopilotMessageFeedbackResponse,
+    responses={404: {"model": CopilotErrorResponse}},
+)
+def submit_message_feedback(
+    message_id: UUID,
+    payload: CopilotMessageFeedbackRequest,
+    db: Session = Depends(get_db),
+    current_seller: Seller = Depends(get_current_seller),
+) -> CopilotMessageFeedbackResponse:
+    try:
+        feedback = CopilotRepository(db).upsert_message_feedback(
+            seller_id=current_seller.id,
+            message_id=message_id,
+            rating=payload.rating.upper(),
+            reason=payload.reason.strip() if payload.reason else None,
+            comment=payload.comment.strip() if payload.comment else None,
+        )
+    except CopilotMessageNotFoundError as exc:
+        raise _http_error(status.HTTP_404_NOT_FOUND, "message_not_found", "Message not found.") from exc
+    return CopilotMessageFeedbackResponse(
+        message_id=feedback.message_id,
+        rating="up" if feedback.rating == "UP" else "down",
+        reason=feedback.reason,
+        updated_at=feedback.updated_at,
     )

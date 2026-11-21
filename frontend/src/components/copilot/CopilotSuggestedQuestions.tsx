@@ -78,16 +78,34 @@ const suggestedQuestionGroups = [
   },
 ]
 
+const localizedQuestionGroups: Record<"bn" | "banglish", typeof suggestedQuestionGroups> = {
+  bn: [
+    { title: "ব্যবসার সারাংশ", questions: ["আজ আমার ব্যবসার অবস্থা কেমন?", "আজ আমার কী করা উচিত?"] },
+    { title: "বিক্রি", questions: ["গত সপ্তাহে বিক্রি কেন কমেছে?", "কোন পণ্য সবচেয়ে বেশি বিক্রি হয়েছে?"] },
+    { title: "স্টক", questions: ["কী রিস্টক করা উচিত?", "কোন পণ্যের স্টক শেষ হয়ে যেতে পারে?"] },
+    { title: "প্রতিযোগী ও দাম", questions: ["কোন প্রতিযোগী আমার ক্ষতি করছে?", "কোন পণ্যে ছাড় দেওয়া নিরাপদ নয়?"] },
+  ],
+  banglish: [
+    { title: "Business summary", questions: ["Aj amar business er obostha kemon?", "Aj amar ki kora uchit?"] },
+    { title: "Sales", questions: ["Goto shoptahe sales keno komeche?", "Kon product sobcheye beshi bikri hoyeche?"] },
+    { title: "Stock", questions: ["Ki restock kora uchit?", "Kon product er stock shesh hoye jete pare?"] },
+    { title: "Competitor o dam", questions: ["Kon competitor amar khoti korche?", "Kon product e discount deya safe na?"] },
+  ],
+}
+
 export function CopilotSuggestedQuestions({
   onSelect,
   disabled,
+  language = "en",
 }: {
   onSelect: (question: string) => void
   disabled?: boolean
+  language?: "en" | "bn" | "banglish"
 }) {
+  const groups = language === "en" ? suggestedQuestionGroups : localizedQuestionGroups[language]
   return (
-    <div className="space-y-3">
-      {suggestedQuestionGroups.map((group) => (
+    <div className="space-y-3" lang={language === "bn" ? "bn" : language === "banglish" ? "bn-Latn" : undefined}>
+      {groups.map((group) => (
         <section key={group.title}>
           <h4 className="mb-1.5 text-xs font-semibold text-muted-foreground">
             {group.title}

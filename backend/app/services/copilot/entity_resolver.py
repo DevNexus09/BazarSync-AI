@@ -7,6 +7,8 @@ import unicodedata
 from typing import Any, Protocol
 from uuid import UUID
 
+from app.services.copilot.language.normalizer import BANGLA_DIGIT_TRANSLATION
+
 
 class EntityConfidence(str, Enum):
     HIGH = "HIGH"
@@ -110,7 +112,6 @@ class ProductEntitySource(Protocol):
     def list_products(self, *, seller_id: UUID, limit: int = 1000) -> list[ProductEntityCandidate]: ...
 
 
-BANGLA_DIGIT_TRANSLATION = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
 WORD_RE = re.compile(r"[a-z0-9\u0980-\u09FF]+", re.IGNORECASE)
 
 

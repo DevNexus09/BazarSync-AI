@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
-import os
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.copilot_telemetry import CopilotRunTelemetry
 from app.models.rag_memory import RagMemoryDocument, RagMemoryEmbeddingStatus
 from app.services.copilot.metric_catalog import MetricCatalogService, MetricImplementationStatus
@@ -44,6 +44,15 @@ def capability_snapshot(db: Session | None = None, *, seller_id: UUID | None = N
             stale_statement = stale_statement.where(RagMemoryDocument.seller_id == seller_id)
         stale_source_count = int(db.execute(stale_statement).scalar_one() or 0)
     return {
+        # Client-facing switches: the chat UI only uses a feature the backend reports as on.
+        "features": {
+            "multilingual": settings.copilot_multilingual_enabled,
+            "languages": ["auto", "en", "bn", "banglish"] if settings.copilot_multilingual_enabled else ["auto", "en", "bn"],
+            "streaming": settings.copilot_streaming_enabled,
+            "follow_ups": settings.copilot_follow_ups_enabled,
+            "feedback": True,
+            "conversation_memory": settings.copilot_conversation_memory_enabled,
+        },
         "metrics": {
             "declared": len(metrics),
             "implemented": metric_counts.get(MetricImplementationStatus.IMPLEMENTED.value, 0),
@@ -143,10 +152,10 @@ def rag_quality_snapshot() -> dict[str, Any]:
 
 def _limits_snapshot() -> dict[str, int]:
     return {
-        "max_tool_calls": max(1, int(os.getenv("COPILOT_MAX_TOOL_CALLS", "10"))),
-        "max_iterations": max(1, min(int(os.getenv("COPILOT_MAX_ITERATIONS", "3")), 3)),
-        "groq_timeout_seconds": max(1, int(float(os.getenv("COPILOT_GROQ_TIMEOUT_SECONDS", "20")))),
-        "overall_timeout_seconds": max(1, int(float(os.getenv("COPILOT_OVERALL_TIMEOUT_SECONDS", "45")))),
+        "max_tool_calls": max(1, settings.copilot_max_tool_calls),
+        "max_iterations": max(1, min(settings.copilot_max_iterations, 3)),
+        "groq_timeout_seconds": max(1, int(settings.copilot_groq_timeout_seconds)),
+        "overall_timeout_seconds": max(1, int(settings.copilot_overall_timeout_seconds)),
         "prompt_max_chars": 16000,
         "rag_top_k_max": 20,
         "source_result_limit_max": 25,

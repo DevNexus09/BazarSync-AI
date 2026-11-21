@@ -1,14 +1,19 @@
 import apiClient from "@/api/client"
+import { getAuthToken } from "@/services/auth-storage"
 import type {
   CopilotActionProposal,
   CopilotActionProposalTransition,
   CopilotAskRequest,
   CopilotAskResponse,
   CopilotConversation,
+  CopilotFeatures,
+  CopilotFeedbackRating,
   CopilotMessage,
   CopilotMissingData,
+  CopilotStreamStage,
   CopilotToolMetadata,
 } from "@/types/copilot"
+import { env } from "@/utils/env"
 
 type Paginated<T> = {
   items: T[]
@@ -132,6 +137,14 @@ export async function getCopilotConversation(
 export async function askCopilot(
   request: CopilotAskRequest
 ): Promise<CopilotAskResponse> {
+  const { data } = await apiClient.post<BackendAskResponse>(
+    "/copilot/ask",
+    buildAskPayload(request)
+  )
+  return normalizeAskResponse(data)
+}
+
+function buildAskPayload(request: CopilotAskRequest): CopilotAskRequest {
   const payload = omitUndefined<CopilotAskRequest>({
     conversation_id: request.conversation_id,
     question: request.question,
@@ -153,9 +166,10 @@ export async function askCopilot(
   if (request.debug === true && import.meta.env.DEV) {
     payload.debug = true
   }
+  return payload
+}
 
-  const { data } = await apiClient.post<BackendAskResponse>("/copilot/ask", payload)
-
+function normalizeAskResponse(data: BackendAskResponse): CopilotAskResponse {
   return {
     ...data,
     domains_used: data.domains_used ?? [],
@@ -166,7 +180,168 @@ export async function askCopilot(
     recommended_next_steps: data.recommended_next_steps ?? [],
     action_proposal: mapActionProposal(data.action_proposal),
     memory_coverage_warning: data.memory_coverage_warning ?? null,
+    suggested_follow_ups: data.suggested_follow_ups ?? [],
   }
+}
+
+/** Error shaped like an axios error so the widget can classify stream failures the same way. */
+export class CopilotStreamError extends Error {
+  response?: { status: number; data?: unknown; headers?: Record<string, string> }
+  code?: string
+
+  constructor(
+    message: string,
+    options: { status?: number; data?: unknown; code?: string; retryAfter?: string | null } = {}
+  ) {
+    super(message)
+    this.name = "CopilotStreamError"
+    this.code = options.code
+    if (options.status !== undefined) {
+      this.response = {
+        status: options.status,
+        data: options.data,
+        headers: options.retryAfter ? { "retry-after": options.retryAfter } : {},
+      }
+    }
+  }
+}
+
+const STREAM_TIMEOUT_MS = 60_000
+
+/**
+ * POST /copilot/ask/stream: calls ``onStage`` for each progress event and resolves with the
+ * final validated answer (the same body /copilot/ask returns). Answer text is never streamed
+ * before the backend has validated it.
+ */
+export async function askCopilotStream(
+  request: CopilotAskRequest,
+  onStage: (stage: CopilotStreamStage) => void,
+  options: { signal?: AbortSignal } = {}
+): Promise<CopilotAskResponse> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS)
+  options.signal?.addEventListener("abort", () => controller.abort())
+  const token = readAuthToken()
+  try {
+    let response: Response
+    try {
+      response = await fetch(`${env.apiBaseUrl}/copilot/ask/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(buildAskPayload(request)),
+        signal: controller.signal,
+      })
+    } catch (error) {
+      throw controller.signal.aborted
+        ? new CopilotStreamError("Copilot request timed out.", { code: "ECONNABORTED" })
+        : new CopilotStreamError(error instanceof Error ? error.message : "Network error", { code: "ERR_NETWORK" })
+    }
+    if (!response.ok || !response.body) {
+      let data: unknown = undefined
+      try {
+        data = await response.json()
+      } catch {
+        // Non-JSON error body; the status code is enough to classify it.
+      }
+      throw new CopilotStreamError(`Request failed with status code ${response.status}`, {
+        status: response.status,
+        data,
+        retryAfter: response.headers.get("retry-after"),
+      })
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+    for (;;) {
+      const { value, done } = await reader.read()
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done })
+      let boundary = buffer.indexOf("\n\n")
+      while (boundary !== -1) {
+        const event = parseSseEvent(buffer.slice(0, boundary))
+        buffer = buffer.slice(boundary + 2)
+        if (event?.name === "stage") {
+          onStage(event.data as CopilotStreamStage)
+        } else if (event?.name === "answer") {
+          return normalizeAskResponse(event.data as BackendAskResponse)
+        } else if (event?.name === "error") {
+          const detail = event.data as { error_code?: string; detail?: string }
+          throw new CopilotStreamError(detail.detail ?? "Copilot could not answer right now.", {
+            status: detail.error_code === "conversation_not_found" ? 404 : 500,
+            data: { detail },
+          })
+        }
+        boundary = buffer.indexOf("\n\n")
+      }
+      if (done) {
+        break
+      }
+    }
+    throw new CopilotStreamError("The Copilot stream ended without an answer.", { status: 502 })
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
+function readAuthToken(): string | null {
+  try {
+    return getAuthToken()
+  } catch {
+    // Storage can be blocked (privacy mode); the backend then answers 401.
+    return null
+  }
+}
+
+function parseSseEvent(block: string): { name: string; data: unknown } | null {
+  let name = "message"
+  const dataLines: string[] = []
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) {
+      name = line.slice(6).trim()
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart())
+    }
+  }
+  if (!dataLines.length) {
+    return null
+  }
+  try {
+    return { name, data: JSON.parse(dataLines.join("\n")) }
+  } catch {
+    return null
+  }
+}
+
+export async function getCopilotFeatures(): Promise<CopilotFeatures> {
+  // The backend returns {status, capabilities: {features, ...}}.
+  const { data } = await apiClient.get<{
+    capabilities?: { features?: Partial<CopilotFeatures> }
+  }>("/copilot/capabilities")
+  const features = data.capabilities?.features
+  return {
+    multilingual: Boolean(features?.multilingual),
+    languages: features?.languages ?? ["auto", "en", "bn"],
+    streaming: Boolean(features?.streaming),
+    follow_ups: Boolean(features?.follow_ups),
+    feedback: Boolean(features?.feedback),
+    conversation_memory: Boolean(features?.conversation_memory),
+  }
+}
+
+export async function submitCopilotFeedback(
+  messageId: string,
+  rating: CopilotFeedbackRating,
+  reason?: string
+): Promise<{ message_id: string; rating: CopilotFeedbackRating }> {
+  const { data } = await apiClient.post<{ message_id: string; rating: CopilotFeedbackRating }>(
+    `/copilot/messages/${messageId}/feedback`,
+    omitUndefined({ rating, reason })
+  )
+  return data
 }
 
 function omitUndefined<T extends Record<string, unknown>>(value: T): T {

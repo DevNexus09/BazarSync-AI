@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/use-auth"
 export default function DashboardLayout() {
   const { user } = useAuth()
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
-  const desktopToggleRef = useRef<HTMLButtonElement>(null)
   const mobileToggleRef = useRef<HTMLButtonElement>(null)
 
   const closeSidebar = useCallback(() => {
@@ -44,13 +43,16 @@ export default function DashboardLayout() {
           aria-hidden="true"
           className="pointer-events-none fixed -left-28 top-1/3 size-72 rounded-full bg-primary/10 blur-3xl"
         />
+        <div className="fixed left-4 top-4 z-[65] hidden size-16 items-center justify-center rounded-[22px] border border-border/40 bg-card/75 shadow-[0_18px_45px_rgb(var(--overlay)/.38)] backdrop-blur-2xl lg:flex">
+          <span className="flex size-10 items-center justify-center rounded-[14px] bg-primary font-heading text-lg font-bold text-primary-foreground shadow-[0_8px_22px_rgb(var(--primary)/.22)]">
+            B
+          </span>
+        </div>
         <AppSidebar
           isExpanded={sidebarExpanded}
-          onToggle={() => setSidebarExpanded((expanded) => !expanded)}
           onClose={closeSidebar}
-          desktopToggleRef={desktopToggleRef}
         />
-        <div className="relative z-10 flex min-h-screen flex-col lg:pl-[72px]">
+        <div className="relative z-10 flex min-h-screen flex-col lg:pl-24">
           <AppHeader
             isSidebarOpen={sidebarExpanded}
             onMenuClick={() => setSidebarExpanded(true)}

@@ -2,7 +2,6 @@ import type { ReactNode } from "react"
 import { Sparkles } from "lucide-react"
 import { Link } from "react-router-dom"
 
-import { PublicThemeToggle } from "@/components/public/public-theme-toggle"
 import { cn } from "@/lib/utils"
 
 type PublicHeaderProps = {
@@ -31,7 +30,6 @@ export function PublicHeader({ action, className }: PublicHeaderProps) {
         </span>
       </Link>
       <nav aria-label="Public navigation" className="flex items-center gap-1.5 sm:gap-3">
-        <PublicThemeToggle />
         {action}
       </nav>
     </header>

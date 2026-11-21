@@ -9,6 +9,9 @@ from app.services.copilot.tool_registry import ToolExecutionResult, ToolExecutio
 
 NO_CONTEXT_ANSWER_EN = "I could not find enough seller-specific history to answer this reliably."
 NO_CONTEXT_ANSWER_BN = "এই প্রশ্নের নির্ভরযোগ্য উত্তর দেওয়ার মতো পর্যাপ্ত seller-specific তথ্য পাইনি।"
+NO_CONTEXT_ANSWER_BANGLISH = "Ei proshner nirbhorjoggo uttor deyar moto jothesto seller-specific tottho pai ni."
+NO_CONTEXT_MISSING_LABEL_BANGLISH = "Missing data"
+NO_CONTEXT_NEXT_STEP_BANGLISH = "Seller data refresh kore abar jiggesh korun."
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,8 +24,15 @@ class CopilotBuiltAnswer:
     missing_data: list[str]
     recommended_next_steps: list[str]
     action_proposal: dict[str, Any] | None = None
+    reply_language: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
+        payload = self._base_payload()
+        if self.reply_language:
+            payload["reply_language"] = self.reply_language
+        return payload
+
+    def _base_payload(self) -> dict[str, Any]:
         return {
             "answer": self.answer,
             "summary": self.summary,
@@ -191,11 +201,27 @@ class CopilotAnswerBuilder:
         evidence: list[dict[str, Any]],
         missing_data: list[str],
         action_proposal: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> CopilotBuiltAnswer:
         language = classification.language
         rows_by_tool = _rows_by_tool(tool_results)
         evidence = evidence or _collect_evidence(tool_results)
         missing_data = _dedupe(missing_data + _collect_missing(tool_results))
+        if not evidence and not any(rows_by_tool.values()) and reply_language == "banglish":
+            answer = NO_CONTEXT_ANSWER_BANGLISH
+            if missing_data:
+                answer = f"{answer}\n\n{NO_CONTEXT_MISSING_LABEL_BANGLISH}\n- " + "\n- ".join(missing_data)
+            return CopilotBuiltAnswer(
+                answer=answer,
+                summary=answer.splitlines()[0],
+                confidence="NO_CONTEXT",
+                language="bn",
+                evidence=[],
+                missing_data=missing_data or ["No seller-specific evidence was available."],
+                recommended_next_steps=[NO_CONTEXT_NEXT_STEP_BANGLISH],
+                action_proposal=action_proposal,
+                reply_language="banglish",
+            )
         if not evidence and not any(rows_by_tool.values()):
             answer = NO_CONTEXT_ANSWER_BN if language == "bn" else NO_CONTEXT_ANSWER_EN
             if missing_data:

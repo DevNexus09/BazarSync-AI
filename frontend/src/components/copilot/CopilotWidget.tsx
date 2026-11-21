@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, History, SquarePen } from "lucide-react"
 import { useLocation } from "react-router-dom"
 
 import { CopilotChatPanel } from "@/components/copilot/CopilotChatPanel"
@@ -16,9 +16,20 @@ import {
 } from "@/components/copilot/copilot-filter-utils"
 import { shouldShowCopilotWidget } from "@/components/copilot/copilot-visibility"
 import {
+  classifyCopilotError,
+  errorText,
+  languageOptions,
+  resolveUiLanguage,
+  stageText,
+  t,
+  type CopilotErrorKind,
+} from "@/components/copilot/copilot-i18n"
+import {
   useAskCopilot,
   useCopilotConversation,
   useCopilotConversations,
+  useCopilotFeatures,
+  useCopilotFeedback,
 } from "@/hooks/useCopilot"
 import { useProducts } from "@/hooks/use-products"
 import { cn } from "@/lib/utils"
@@ -35,9 +46,32 @@ import type {
   CopilotToolUsed,
   CopilotSourceMode,
   CopilotDomain,
+  CopilotFeedbackRating,
+  CopilotLanguage,
+  CopilotReplyLanguage,
+  CopilotStreamStage,
 } from "@/types/copilot"
 
 const conversationStorageKey = "bazarsync:copilot:conversation-id"
+const languageStorageKey = "bazarsync:copilot:language"
+
+const languagePreference = {
+  get(): CopilotLanguage {
+    try {
+      const value = window.localStorage?.getItem(languageStorageKey)
+      return value === "en" || value === "bn" || value === "banglish" ? value : "auto"
+    } catch {
+      return "auto"
+    }
+  },
+  set(value: CopilotLanguage) {
+    try {
+      window.localStorage?.setItem(languageStorageKey, value)
+    } catch {
+      // The choice still applies for this session.
+    }
+  },
+}
 
 const copilotStorage = {
   get() {
@@ -131,7 +165,23 @@ const toAssistantMessage = (
   recommendedNextSteps: response.recommended_next_steps ?? [],
   actionProposal: response.action_proposal ?? null,
   memoryCoverageWarning: response.memory_coverage_warning ?? null,
+  replyLanguage: response.reply_language ?? null,
+  replyScript: response.reply_script ?? null,
+  followUps: response.suggested_follow_ups ?? [],
+  feedback: null,
 })
+
+const isReplyLanguage = (value: unknown): value is CopilotReplyLanguage =>
+  value === "en" || value === "bn" || value === "banglish"
+
+const storedReplyLanguage = (metadata: Record<string, unknown>): CopilotReplyLanguage | null => {
+  const profile = metadata.language_profile
+  if (profile && typeof profile === "object") {
+    const value = (profile as { reply_language?: unknown }).reply_language
+    return isReplyLanguage(value) ? value : null
+  }
+  return null
+}
 
 const toLocalMessages = (messages: CopilotMessage[]): CopilotLocalMessage[] =>
   messages.flatMap<CopilotLocalMessage>((message) => {
@@ -192,6 +242,7 @@ const toLocalMessages = (messages: CopilotMessage[]): CopilotLocalMessage[] =>
             message.action_proposal ??
             normalizeActionProposal(message.action_proposal_json),
           memoryCoverageWarning: null,
+          replyLanguage: storedReplyLanguage(metadata),
         },
       ]
     }
@@ -311,10 +362,18 @@ export function CopilotWidget() {
   const [selectedDomains, setSelectedDomains] = useState<string[]>([])
   const [sourceMode, setSourceMode] = useState<CopilotSourceMode>("both")
   const [filtersExpanded, setFiltersExpanded] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  // After "New chat" the widget must not jump back to the latest stored conversation.
+  const [freshChat, setFreshChat] = useState(false)
+  const [language, setLanguage] = useState<CopilotLanguage>(() => languagePreference.get())
+  const [stage, setStage] = useState<CopilotStreamStage | null>(null)
+  const [failure, setFailure] = useState<{ question: string; kind: CopilotErrorKind } | null>(null)
+  const [restore, setRestore] = useState<{ text: string; nonce: number } | null>(null)
   const floatingButtonRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const ask = useAskCopilot()
+  const feedback = useCopilotFeedback()
+  const features = useCopilotFeatures(open && visible)
   const conversations = useCopilotConversations(open && visible)
   const conversation = useCopilotConversation(conversationId, open && visible)
   const products = useProducts()
@@ -338,7 +397,7 @@ export function CopilotWidget() {
   }, [open])
 
   useEffect(() => {
-    if (!open || conversationId) {
+    if (!open || conversationId || freshChat) {
       return
     }
 
@@ -352,7 +411,7 @@ export function CopilotWidget() {
     if (latest) {
       window.setTimeout(() => setConversationId(latest.id), 0)
     }
-  }, [conversationId, conversations.data?.items, open])
+  }, [conversationId, conversations.data?.items, freshChat, open])
 
   useEffect(() => {
     if (!conversationId) {
@@ -393,7 +452,20 @@ export function CopilotWidget() {
     }
 
     window.setTimeout(
-      () => setMessages(toLocalMessages(conversation.data.messages)),
+      () =>
+        setMessages((current) => {
+          const hydrated = toLocalMessages(conversation.data.messages)
+          // Keep follow-ups and feedback chosen in this session when the server copy refreshes.
+          const local = new Map(
+            current.flatMap((message) => (message.role === "assistant" ? [[message.id, message] as const] : []))
+          )
+          return hydrated.map((message) => {
+            const previous = message.role === "assistant" ? local.get(message.id) : undefined
+            return previous && previous.role === "assistant" && message.role === "assistant"
+              ? { ...message, followUps: previous.followUps, feedback: previous.feedback, replyLanguage: previous.replyLanguage ?? message.replyLanguage }
+              : message
+          })
+        }),
       0
     )
   }, [conversation.data, open])
@@ -401,6 +473,14 @@ export function CopilotWidget() {
   if (!visible) {
     return null
   }
+
+  const supportedLanguages = features.data?.languages ?? ["auto", "en", "bn"]
+  const activeLanguage: CopilotLanguage = supportedLanguages.includes(language) ? language : "auto"
+  const lastReply = [...messages].reverse().find((message) => message.role === "assistant")
+  const uiLanguage = resolveUiLanguage(
+    activeLanguage,
+    lastReply?.role === "assistant" ? lastReply.replyLanguage : null
+  )
 
   const close = () => setOpen(false)
 
@@ -433,7 +513,7 @@ export function CopilotWidget() {
       domain_filters: domainFilters,
       from_date: dateRange.fromDate,
       to_date: dateRange.toDate,
-      language: "auto",
+      language: activeLanguage,
       include_current_data: sourceMode === "current" || sourceMode === "both",
       include_memory: sourceMode === "memory" || sourceMode === "both",
       top_k: 8,
@@ -452,31 +532,106 @@ export function CopilotWidget() {
     }
 
     setMessages((current) => [...current, userMessage])
-    setErrorMessage(null)
+    setFailure(null)
+    setHistoryOpen(false)
+    const streaming = Boolean(features.data?.streaming)
+    setStage(streaming ? { stage: "understanding" } : null)
 
     const sendQuestion = (activeConversationId?: string, retried = false) => {
-      ask.mutate(buildAskRequest(question, activeConversationId), {
-        onSuccess: (response) => {
-          setConversationId(response.conversation_id)
-          setMessages((current) => [...current, toAssistantMessage(response)])
+      ask.mutate(
+        {
+          request: buildAskRequest(question, activeConversationId),
+          onStage: streaming ? setStage : undefined,
         },
-        onError: (error) => {
-          if (
-            activeConversationId &&
-            !retried &&
-            isCopilotConversationNotFoundError(error)
-          ) {
-            clearConversation()
-            sendQuestion(undefined, true)
-            return
-          }
+        {
+          onSuccess: (response) => {
+            setStage(null)
+            setFreshChat(false)
+            setConversationId(response.conversation_id)
+            setMessages((current) => [...current, toAssistantMessage(response)])
+          },
+          onError: (error) => {
+            if (
+              activeConversationId &&
+              !retried &&
+              isCopilotConversationNotFoundError(error)
+            ) {
+              clearConversation()
+              sendQuestion(undefined, true)
+              return
+            }
 
-          setErrorMessage("Please try again.")
-        },
-      })
+            setStage(null)
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === userMessage.id ? { ...message, failed: true } : message
+              )
+            )
+            setFailure({ question, kind: classifyCopilotError(error) })
+            // Keep the seller's words: put the question back so it can be edited or resent.
+            setRestore({ text: question, nonce: Date.now() })
+          },
+        }
+      )
     }
 
     sendQuestion(conversationId)
+  }
+
+  const retryFailedQuestion = () => {
+    if (!failure) {
+      return
+    }
+    const question = failure.question
+    setMessages((current) =>
+      current.filter((message) => !(message.role === "user" && message.failed && message.content === question))
+    )
+    setRestore({ text: "", nonce: Date.now() })
+    submitQuestion(question)
+  }
+
+  const startNewChat = () => {
+    clearConversation({ clearMessages: true })
+    setFreshChat(true)
+    setFailure(null)
+    setHistoryOpen(false)
+    window.setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  const openConversation = (id: string) => {
+    setFreshChat(false)
+    setConversationId(id)
+    setMessages([])
+    setFailure(null)
+    setHistoryOpen(false)
+  }
+
+  const regenerate = (assistantMessageId: string) => {
+    const index = messages.findIndex((message) => message.id === assistantMessageId)
+    const question = [...messages.slice(0, index)].reverse().find((message) => message.role === "user")
+    if (question) {
+      submitQuestion(question.content)
+    }
+  }
+
+  const rateAnswer = (messageId: string, rating: CopilotFeedbackRating) => {
+    const setRating = (value: CopilotFeedbackRating | null) =>
+      setMessages((current) =>
+        current.map((message) =>
+          message.role === "assistant" && message.id === messageId ? { ...message, feedback: value } : message
+        )
+      )
+    const previous = messages.find((message) => message.id === messageId)
+    setRating(rating)
+    feedback.mutate(
+      { messageId, rating },
+      { onError: () => setRating(previous?.role === "assistant" ? previous.feedback ?? null : null) }
+    )
+  }
+
+  const changeLanguage = (value: CopilotLanguage) => {
+    setLanguage(value)
+    languagePreference.set(value)
   }
 
   const selectedProductTitle =
@@ -491,6 +646,60 @@ export function CopilotWidget() {
     selectedProductTitle,
   ].join(" · ")
 
+  const headerActions = (
+    <div className="flex items-center gap-0.5">
+      <label className="sr-only" htmlFor="copilot-language">
+        {t(uiLanguage, "language")}
+      </label>
+      <select
+        id="copilot-language"
+        aria-label="Reply language"
+        title={t(uiLanguage, "language")}
+        value={activeLanguage}
+        onChange={(event) => changeLanguage(event.target.value as CopilotLanguage)}
+        className="h-8 rounded-md border border-border/70 bg-background px-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      >
+        {languageOptions
+          .filter((option) => supportedLanguages.includes(option.value))
+          .map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+      </select>
+      <button
+        type="button"
+        aria-label={t(uiLanguage, "history")}
+        title={t(uiLanguage, "history")}
+        aria-expanded={historyOpen}
+        aria-controls="copilot-history"
+        onClick={() => setHistoryOpen((current) => !current)}
+        className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      >
+        <History className="size-4" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        aria-label={t(uiLanguage, "newChat")}
+        title={t(uiLanguage, "newChat")}
+        onClick={startNewChat}
+        disabled={ask.isPending}
+        className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40"
+      >
+        <SquarePen className="size-4" aria-hidden="true" />
+      </button>
+    </div>
+  )
+
+  const errorBox = failure ? (
+    <CopilotErrorState
+      title={t(uiLanguage, "errorTitle")}
+      message={errorText(failure.kind, uiLanguage)}
+      retryLabel={t(uiLanguage, "retry")}
+      onRetry={ask.isPending ? undefined : retryFailedQuestion}
+    />
+  ) : null
+
   return (
     <>
       <CopilotFloatingButton
@@ -498,7 +707,42 @@ export function CopilotWidget() {
         open={open}
         onClick={() => setOpen(true)}
       />
-      <CopilotChatPanel open={open} onClose={close}>
+      <CopilotChatPanel
+        open={open}
+        onClose={close}
+        title={t(uiLanguage, "title")}
+        subtitle={t(uiLanguage, "subtitle")}
+        actions={headerActions}
+      >
+        {historyOpen ? (
+          <nav
+            id="copilot-history"
+            aria-label={t(uiLanguage, "history")}
+            className="max-h-56 overflow-y-auto border-b border-border/60 bg-background/70 p-2"
+          >
+            {conversations.data?.items?.length ? (
+              <ul className="space-y-1">
+                {conversations.data.items.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => openConversation(item.id)}
+                      aria-current={item.id === conversationId ? "true" : undefined}
+                      className={cn(
+                        "w-full truncate rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                        item.id === conversationId ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {item.title || item.last_message_preview || t(uiLanguage, "untitled")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-2 py-1.5 text-xs text-muted-foreground">{t(uiLanguage, "noHistory")}</p>
+            )}
+          </nav>
+        ) : null}
         <section className="border-b border-border/60 bg-card">
           <button
             type="button"
@@ -533,28 +777,6 @@ export function CopilotWidget() {
                 onSourceModeChange={setSourceMode}
               />
               <div className="px-3 py-2">
-                {conversations.data?.items?.length ? (
-                  <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                    <span className="sr-only">Recent Copilot conversation</span>
-                    <select
-                      className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground"
-                      value={conversationId ?? ""}
-                      onChange={(event) => {
-                        setConversationId(event.target.value || undefined)
-                        setMessages([])
-                      }}
-                      aria-label="Recent Copilot conversation"
-                    >
-                      {conversations.data.items.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title ||
-                            item.last_message_preview ||
-                            "Untitled conversation"}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
                 <CopilotProductFilter
                   value={selectedProductId}
                   onChange={setSelectedProductId}
@@ -569,25 +791,26 @@ export function CopilotWidget() {
               <CopilotEmptyState
                 onSuggestedQuestion={submitQuestion}
                 disabled={ask.isPending}
+                language={uiLanguage}
               />
-              {errorMessage ? (
-                <div className="mt-3">
-                  <CopilotErrorState message={errorMessage} />
-                </div>
-              ) : null}
+              {errorBox ? <div className="mt-3">{errorBox}</div> : null}
             </div>
           ) : (
             <>
               <CopilotMessageList
                 messages={messages}
                 isLoading={ask.isPending}
+                loadingText={stage ? stageText(stage, uiLanguage) : undefined}
                 onProposalChange={handleProposalChange}
+                language={uiLanguage}
+                actions={{
+                  onRegenerate: regenerate,
+                  onFeedback: features.data?.feedback ? rateAnswer : undefined,
+                  onFollowUp: submitQuestion,
+                  disabled: ask.isPending,
+                }}
               />
-              {errorMessage ? (
-                <div className="px-3 pb-2">
-                  <CopilotErrorState message={errorMessage} />
-                </div>
-              ) : null}
+              {errorBox ? <div className="px-3 pb-2">{errorBox}</div> : null}
             </>
           )}
           <CopilotQuestionInput
@@ -595,6 +818,9 @@ export function CopilotWidget() {
             disabled={ask.isPending}
             onSubmit={submitQuestion}
             onEscape={close}
+            placeholder={t(uiLanguage, "inputPlaceholder")}
+            hint={t(uiLanguage, "inputHint")}
+            restore={restore}
           />
         </div>
       </CopilotChatPanel>

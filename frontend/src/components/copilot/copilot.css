@@ -1,0 +1,11 @@
+/* Bengali-script fallback for the Copilot only; Latin text keeps the app font. */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap");
+
+.copilot-root {
+  font-family: "Inter Variable", "Noto Sans Bengali", sans-serif;
+}
+
+.copilot-root :lang(bn) {
+  font-family: "Noto Sans Bengali", "Inter Variable", sans-serif;
+  line-height: 1.7;
+}

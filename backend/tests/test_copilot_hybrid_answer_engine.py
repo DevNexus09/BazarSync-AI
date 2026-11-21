@@ -49,9 +49,12 @@ class CopilotHybridAnswerEngineTests(unittest.IsolatedAsyncioTestCase):
         )
         return classification, plan
 
-    async def _answer(self, question: str, groq_payload, tools):
+    async def _answer(self, question: str, groq_payload, tools, *, usage=None):
         async def groq(messages, **kwargs):
-            return {"model": "test-model", "content": groq_payload}
+            response = {"model": "test-model", "content": groq_payload}
+            if usage is not None:
+                response["usage"] = usage
+            return response
 
         classification, plan = self._classification_plan(question)
         return await CopilotHybridAnswerEngine(groq_json=groq, model="test-model", timeout_seconds=1).answer(
@@ -119,6 +122,35 @@ class CopilotHybridAnswerEngineTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNotNone(result.validation_error)
         self.assertNotEqual("You have 99 products.", result.payload["answer"])
+
+    async def test_token_usage_recorded_for_validated_answer(self):
+        usage = {"prompt_tokens": 120, "completion_tokens": 40, "total_tokens": 160}
+        result = await self._answer(
+            "How many products do I have?",
+            _payload("You have 12 products.", "count_products:1"),
+            [_tool("count_products", {"count": 12})],
+            usage=usage,
+        )
+
+        self.assertIsNone(result.validation_error)
+        self.assertEqual(usage, result.token_usage)
+
+    async def test_token_usage_kept_when_answer_is_rejected(self):
+        usage = {"prompt_tokens": 120, "completion_tokens": 40, "total_tokens": 160}
+        result = await self._answer(
+            "How many products do I have?",
+            _payload("You have 99 products.", "count_products:1"),
+            [_tool("count_products", {"count": 12})],
+            usage=usage,
+        )
+
+        self.assertIsNotNone(result.validation_error)
+        self.assertEqual(usage, result.token_usage)
+
+    async def test_token_usage_absent_without_model_call(self):
+        result = await self._answer("How many products do I have?", _payload("unused", "none"), [], usage={"total_tokens": 5})
+
+        self.assertIsNone(result.token_usage)
 
     async def test_invalid_evidence_id_removed(self):
         result = await self._answer(

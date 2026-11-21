@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   approveActionProposal,
   askCopilot,
+  askCopilotStream,
+  getCopilotFeatures,
+  submitCopilotFeedback,
   createCopilotConversation,
   getCopilotConversation,
   listActionProposals,
@@ -10,7 +13,11 @@ import {
   listCopilotTools,
   rejectActionProposal,
 } from "@/services/copilot-service"
-import type { CopilotAskRequest } from "@/types/copilot"
+import type {
+  CopilotAskRequest,
+  CopilotFeedbackRating,
+  CopilotStreamStage,
+} from "@/types/copilot"
 
 export const copilotQueryKeys = {
   conversations: ["copilot", "conversations"] as const,
@@ -18,6 +25,30 @@ export const copilotQueryKeys = {
     ["copilot", "conversation", conversationId] as const,
   tools: ["copilot", "tools"] as const,
   actionProposals: ["copilot", "action-proposals"] as const,
+  features: ["copilot", "features"] as const,
+}
+
+export function useCopilotFeatures(enabled = true) {
+  return useQuery({
+    queryKey: copilotQueryKeys.features,
+    queryFn: getCopilotFeatures,
+    enabled,
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+}
+
+export function useCopilotFeedback() {
+  return useMutation({
+    mutationFn: ({ messageId, rating }: { messageId: string; rating: CopilotFeedbackRating }) =>
+      submitCopilotFeedback(messageId, rating),
+  })
+}
+
+export type CopilotAskVariables = {
+  request: CopilotAskRequest
+  /** Set when the backend advertises streaming; receives progress stages. */
+  onStage?: (stage: CopilotStreamStage) => void
 }
 
 export function useCopilotConversations(enabled = true) {
@@ -61,7 +92,8 @@ export function useAskCopilot() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (request: CopilotAskRequest) => askCopilot(request),
+    mutationFn: ({ request, onStage }: CopilotAskVariables) =>
+      onStage ? askCopilotStream(request, onStage) : askCopilot(request),
     onSuccess: (response) => {
       queryClient.invalidateQueries({
         queryKey: copilotQueryKeys.conversations,

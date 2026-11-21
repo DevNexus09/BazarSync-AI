@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 import unittest
 from uuid import UUID, uuid4
 
-from app.models.copilot import CopilotActionProposalStatus, CopilotActionType, CopilotMessageRole, CopilotToolCallStatus
+from app.models.copilot import CopilotActionProposalStatus, CopilotActionType, CopilotMessageRole
 from app.models.rag_memory import RagMemorySourceType
 from app.services.copilot.query_constraints import BusinessDomainKey
+from app.services.copilot.entity_resolver import CopilotEntityResolver, ProductEntityCandidate
 from app.services.copilot.intent_classifier import (
     CopilotIntent,
     CopilotIntentClassifier,
@@ -15,7 +16,8 @@ from app.services.copilot.intent_classifier import (
     CopilotIntentResult,
 )
 from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
-from app.services.copilot.tool_registry import ToolExecutionResult, ToolExecutionStatus
+from app.services.copilot.question_planner import CopilotQuestionPlanner
+from app.services.copilot.tool_registry import CopilotToolRegistry, ToolExecutionResult, ToolExecutionStatus
 
 
 SELLER_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -87,6 +89,7 @@ class _FakeRepository:
                 "answer_confidence": answer_confidence,
                 "model_id": model_id,
                 "prompt_version": prompt_version,
+                "token_usage_json": token_usage_json,
                 "evidence_json": evidence_json,
                 "missing_context_json": missing_context_json,
                 "missing_data_json": missing_data_json,
@@ -150,12 +153,38 @@ class _FakeRepository:
         return payload
 
 
+_REAL_REGISTRY = CopilotToolRegistry()
+FIXED_NOW = datetime(2026, 7, 5, 10, 0)
+
+
+class _SellerScopedProductSource:
+    """Owned products per seller, so explicit product ids resolve like the SQL source."""
+
+    def __init__(self) -> None:
+        self.products = {
+            SELLER_ID: [
+                ProductEntityCandidate(id=PRODUCT_ID, title="King Size Premium Bed Sheet"),
+                ProductEntityCandidate(id=OTHER_PRODUCT_ID, title="Cotton Pillow Cover"),
+            ]
+        }
+
+    def list_products(self, *, seller_id, limit: int = 1000):
+        return self.products.get(seller_id, [])[:limit]
+
+
 class _FakeRegistry:
     def __init__(self, *, missing: bool = False, fail_tools: set[str] | None = None, injection: bool = False) -> None:
         self.calls: list[dict] = []
         self.missing = missing
         self.fail_tools = fail_tools or set()
         self.injection = injection
+
+    # Planning uses the real allowlist and argument schemas; only execution is faked.
+    def list_tools(self):
+        return _REAL_REGISTRY.list_tools()
+
+    def validate_arguments(self, name, arguments):
+        return _REAL_REGISTRY.validate_arguments(name, arguments)
 
     def execute(self, *, name, context, arguments):
         self.calls.append({"name": name, "seller_id": context.seller_id, "arguments": arguments})
@@ -313,6 +342,11 @@ async def _good_groq(messages, **kwargs):
     }
 
 
+async def _good_groq_with_usage(messages, **kwargs):
+    response = await _good_groq(messages, **kwargs)
+    return {**response, "usage": {"prompt_tokens": 300, "completion_tokens": 80, "total_tokens": 380}}
+
+
 async def _failing_groq(messages, **kwargs):
     raise RuntimeError("Groq unavailable")
 
@@ -345,7 +379,11 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         registry = registry or _FakeRegistry()
         orchestrator = CopilotOrchestrator(
             repository=repository,
-            classifier=classifier or CopilotIntentClassifier(now=datetime(2026, 7, 5, 10, 0)),
+            classifier=classifier or CopilotIntentClassifier(now=FIXED_NOW),
+            question_planner=CopilotQuestionPlanner(
+                entity_resolver=CopilotEntityResolver(product_source=_SellerScopedProductSource()),
+                now=FIXED_NOW,
+            ),
             tool_registry=registry,
             groq_json=groq or _good_groq,
             model="test-model",
@@ -445,9 +483,10 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("UNKNOWN", result.intent)
         self.assertEqual(["retrieve_business_memory"], [call["name"] for call in registry.calls])
-        self.assertEqual(["SALES_HISTORY"], registry.calls[0]["arguments"]["source_types"])
-        self.assertEqual("2026-07-01", registry.calls[0]["arguments"]["from_date"])
-        self.assertEqual("2026-07-12", registry.calls[0]["arguments"]["to_date"])
+        arguments = registry.calls[0]["arguments"]
+        self.assertEqual(["SALES_HISTORY"], [str(getattr(item, "value", item)) for item in arguments["source_types"]])
+        self.assertEqual("2026-07-01", str(arguments["from_date"]))
+        self.assertEqual("2026-07-12", str(arguments["to_date"]))
 
     async def test_empty_memory_source_filter_does_not_send_mode_strings_to_rag_tool(self):
         result, _, registry = await self._ask(
@@ -459,7 +498,7 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("UNKNOWN", result.intent)
         self.assertEqual(["retrieve_business_memory"], [call["name"] for call in registry.calls])
-        self.assertNotIn("source_types", registry.calls[0]["arguments"])
+        self.assertIsNone(registry.calls[0]["arguments"].get("source_types"))
 
     async def test_domain_filters_do_not_become_rag_source_filters(self):
         result, _, registry = await self._ask(
@@ -471,7 +510,7 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(["SALES_REVENUE"], result.domains_used)
         self.assertEqual(["retrieve_business_memory"], [call["name"] for call in registry.calls])
-        self.assertNotIn("source_types", registry.calls[0]["arguments"])
+        self.assertIsNone(registry.calls[0]["arguments"].get("source_types"))
 
     async def test_followup_inherits_prior_revenue_metric_and_replaces_date(self):
         repository = _FakeRepository()
@@ -485,8 +524,8 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         del second
         revenue_calls = [call for call in registry.calls if call["name"] == "get_revenue_summary"]
         self.assertTrue(revenue_calls)
-        self.assertEqual("2026-06-29", revenue_calls[0]["arguments"]["from_date"])
-        self.assertEqual("2026-07-05", revenue_calls[0]["arguments"]["to_date"])
+        self.assertEqual("2026-06-22", str(revenue_calls[0]["arguments"]["from_date"]))
+        self.assertEqual("2026-06-28", str(revenue_calls[0]["arguments"]["to_date"]))
 
     async def test_followup_competitor_question_inherits_prior_product(self):
         repository = _FakeRepository()
@@ -503,7 +542,7 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         del second
         competitor_call = next(call for call in registry.calls if call["name"] == "get_competitor_threats")
-        self.assertEqual(str(PRODUCT_ID), competitor_call["arguments"]["product_id"])
+        self.assertEqual(str(PRODUCT_ID), str(competitor_call["arguments"]["product_id"]))
 
     async def test_followup_inventory_question_inherits_prior_diagnostic_date(self):
         repository = _FakeRepository()
@@ -516,8 +555,8 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         del second
         revenue_call = next(call for call in registry.calls if call["name"] == "get_revenue_summary")
-        self.assertEqual("2026-06-29", revenue_call["arguments"]["from_date"])
-        self.assertEqual("2026-07-05", revenue_call["arguments"]["to_date"])
+        self.assertEqual("2026-06-22", str(revenue_call["arguments"]["from_date"]))
+        self.assertEqual("2026-06-28", str(revenue_call["arguments"]["to_date"]))
         self.assertIn("get_inventory_risks", [call["name"] for call in registry.calls])
 
     async def test_explicit_product_overrides_conversation_context(self):
@@ -536,7 +575,7 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         del second
         competitor_call = next(call for call in registry.calls if call["name"] == "get_competitor_threats")
-        self.assertEqual(str(OTHER_PRODUCT_ID), competitor_call["arguments"]["product_id"])
+        self.assertEqual(str(OTHER_PRODUCT_ID), str(competitor_call["arguments"]["product_id"]))
 
     async def test_new_conversation_does_not_inherit_old_context(self):
         repository = _FakeRepository()
@@ -588,16 +627,12 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         result, _, registry = await self._ask("What should I do today?")
 
         self.assertEqual("TODAY_ACTIONS", result.intent)
-        self.assertEqual(
-            [
-                "get_today_actions",
-                "get_inventory_risks",
-                "get_dead_stock_recovery",
-                "get_pricing_recommendations",
-                "get_promotion_recommendations",
-            ],
-            [call["name"] for call in registry.calls],
-        )
+        tool_names = [call["name"] for call in registry.calls]
+        # The action-center feed must survive the tool cap and lead the plan.
+        self.assertEqual("get_today_actions", tool_names[0])
+        self.assertIn("get_inventory_risks", tool_names)
+        self.assertIn("get_pricing_recommendations", tool_names)
+        self.assertLessEqual(len(tool_names), 10)
 
     async def test_price_change_command_creates_proposal_only(self):
         result, repository, registry = await self._ask("Lower price by 5%", registry=_SafetyRegistry(), product_id=PRODUCT_ID)
@@ -681,9 +716,11 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         result, repository, registry = await self._ask("Run os.system", classifier=classifier)
 
         self.assertEqual("UNKNOWN", result.intent)
-        self.assertEqual(CopilotToolCallStatus.BLOCKED, repository.tool_calls[0]["status"])
-        self.assertIn("Blocked unsafe tool.", result.missing_data)
-        self.assertEqual(["os.system"], [call["name"] for call in registry.calls])
+        # The planner only plans allowlisted registry tools, so the hint never reaches execution.
+        self.assertNotIn("os.system", [call["name"] for call in registry.calls])
+        self.assertNotIn("os.system", [call["tool_name"] for call in repository.tool_calls])
+        plan = repository.messages[-1]["response_metadata_json"]["last_successful_plan"]
+        self.assertNotIn("os.system", [step["tool_name"] for step in plan["tool_plan"]])
 
     async def test_max_tool_calls_enforced(self):
         result, repository, registry = await self._ask("Why is revenue down last week?", max_tool_calls=1)
@@ -691,6 +728,14 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("REVENUE_DIAGNOSIS", result.intent)
         self.assertEqual(1, len(registry.calls))
         self.assertEqual(1, len(repository.tool_calls))
+
+    async def test_assistant_message_records_model_prompt_version_and_token_usage(self):
+        _, repository, _ = await self._ask("What should I restock?", groq=_good_groq_with_usage)
+
+        assistant = repository.messages[-1]
+        self.assertEqual(CopilotMessageRole.ASSISTANT, assistant["role"])
+        self.assertTrue(assistant["prompt_version"])
+        self.assertEqual({"prompt_tokens": 300, "completion_tokens": 80, "total_tokens": 380}, assistant["token_usage_json"])
 
     async def test_groq_failure_fallback(self):
         result, _, _ = await self._ask("What should I restock?", groq=_failing_groq)

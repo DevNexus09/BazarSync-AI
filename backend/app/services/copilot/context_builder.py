@@ -4,9 +4,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
+import json
 from typing import Any
 from uuid import UUID
 
+from app.core.config import settings
 from app.services.copilot.evidence_system import (
     CopilotConfidenceScorer,
     CopilotEvidenceBuilder,
@@ -39,8 +41,28 @@ class CopilotAnswerContext:
     has_profit_margin_evidence: bool
     backend_action_executed: bool = False
     confidence_result: dict[str, Any] = field(default_factory=dict)
+    # Set only when multilingual chat is enabled: "en", "bn" or "banglish".
+    reply_language: str | None = None
+    # Set only when conversation memory is enabled: earlier turns, oldest first.
+    conversation: list[dict[str, str]] = field(default_factory=list)
+    # Tools whose facts were shortened or omitted to fit the prompt budget.
+    truncated_facts: list[str] = field(default_factory=list)
 
     def to_prompt_payload(self) -> dict[str, Any]:
+        payload = self._base_prompt_payload()
+        if self.reply_language:
+            payload["language"] = self.reply_language
+            payload["reply_script"] = "bengali" if self.reply_language == "bn" else "latin"
+        if self.conversation:
+            payload["conversation_so_far"] = {
+                "note": "Earlier turns for follow-up context only. Not evidence; numbers must come from current facts.",
+                "turns": self.conversation,
+            }
+        if self.truncated_facts:
+            payload["facts_truncated_for_length"] = self.truncated_facts
+        return payload
+
+    def _base_prompt_payload(self) -> dict[str, Any]:
         return {
             "question": self.question,
             "question_type": self.question_type,
@@ -76,11 +98,15 @@ class CopilotContextBuilder:
         missing_aggregator: CopilotMissingDataAggregator | None = None,
         freshness_analyzer: CopilotFreshnessAnalyzer | None = None,
         confidence_scorer: CopilotConfidenceScorer | None = None,
+        tool_chars_budget: int | None = None,
+        total_chars_budget: int | None = None,
     ) -> None:
         self._evidence_builder = evidence_builder or CopilotEvidenceBuilder()
         self._missing_aggregator = missing_aggregator or CopilotMissingDataAggregator()
         self._freshness_analyzer = freshness_analyzer or CopilotFreshnessAnalyzer()
         self._confidence_scorer = confidence_scorer or CopilotConfidenceScorer()
+        self._tool_chars_budget = tool_chars_budget or settings.copilot_prompt_tool_chars
+        self._total_chars_budget = total_chars_budget or settings.copilot_prompt_total_chars
 
     def build(
         self,
@@ -113,6 +139,7 @@ class CopilotContextBuilder:
         ]
         allowed_ids = {item["evidence_id"] for item in evidence}
         allowed_numbers = _numbers_from_payload({"facts": facts, "evidence": evidence, "question": question})
+        facts, truncated_facts = budget_facts(facts, tool_chars=self._tool_chars_budget, total_chars=self._total_chars_budget)
         tool_names = {result.tool_name for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED}
         has_memory = any(item.get("domain") == "RAG_MEMORY" or str(item.get("evidence_id", "")).startswith("rag:") for item in evidence)
         return CopilotAnswerContext(
@@ -127,6 +154,7 @@ class CopilotContextBuilder:
             facts=facts,
             allowed_evidence_ids=allowed_ids,
             allowed_numbers=allowed_numbers,
+            truncated_facts=truncated_facts,
             has_direct_evidence=any(evidence_item.get("domain") != "RAG_MEMORY" for evidence_item in evidence),
             has_memory_evidence=has_memory,
             has_visibility_evidence=bool(tool_names & {"get_seo_opportunities", "get_visibility_summary", "get_visibility_history", "get_listing_quality_issues"}),
@@ -252,6 +280,56 @@ def _numbers_from_payload(value: Any) -> set[str]:
             continue
         values.add(normalized)
     return values
+
+
+LIST_CAPS = (50, 20, 10, 5, 3, 1)
+MEMORY_TOOL = "retrieve_business_memory"
+
+
+def budget_facts(facts: dict[str, Any], *, tool_chars: int, total_chars: int) -> tuple[dict[str, Any], list[str]]:
+    """Keep the prompt inside a character budget without breaking its JSON shape.
+
+    Each tool's facts are shortened by trimming long lists first; direct tools are kept
+    ahead of RAG memory (the lowest ``context_priority``) when the total budget runs out.
+    """
+    order = sorted(facts, key=lambda name: name == MEMORY_TOOL)
+    fitted: dict[str, Any] = {}
+    truncated: list[str] = []
+    used = 0
+    for name in order:
+        value, shortened = _fit_to_budget(facts[name], tool_chars)
+        size = _json_size(value)
+        if used + size > total_chars:
+            fitted[name] = {"_omitted": "prompt length budget"}
+            truncated.append(name)
+            continue
+        fitted[name] = value
+        used += size
+        if shortened:
+            truncated.append(name)
+    return {name: fitted[name] for name in facts}, truncated
+
+
+def _fit_to_budget(value: Any, limit: int) -> tuple[Any, bool]:
+    if _json_size(value) <= limit:
+        return value, False
+    for cap in LIST_CAPS:
+        shortened = _cap_lists(value, cap)
+        if _json_size(shortened) <= limit:
+            return (shortened | {"_truncated": True} if isinstance(shortened, dict) else shortened), True
+    return {"_truncated": True, "preview": json.dumps(value, ensure_ascii=False, default=str)[: max(0, limit - 64)]}, True
+
+
+def _cap_lists(value: Any, cap: int) -> Any:
+    if isinstance(value, dict):
+        return {key: _cap_lists(item, cap) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_cap_lists(item, cap) for item in value[:cap]]
+    return value
+
+
+def _json_size(value: Any) -> int:
+    return len(json.dumps(value, ensure_ascii=False, default=str))
 
 
 def _bounded_data(data: dict[str, Any]) -> dict[str, Any]:

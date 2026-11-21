@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 
@@ -64,15 +64,10 @@ describe("LandingPage", () => {
     )
   })
 
-  it("supports the public theme toggle", () => {
+  it("does not expose a theme transition control", () => {
     renderPage()
-
-    const toggle = screen.getByRole("button", { name: /Switch to light mode|Switch to dark mode/i })
-    const initialTheme = document.documentElement.dataset.theme
-    fireEvent.click(toggle)
-
-    expect(document.documentElement.dataset.theme).toBe(
-      initialTheme === "dark" ? "light" : "dark"
-    )
+    expect(
+      screen.queryByRole("button", { name: /Switch to light mode|Switch to dark mode/i })
+    ).not.toBeInTheDocument()
   })
 })

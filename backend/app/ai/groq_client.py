@@ -257,6 +257,7 @@ async def generate_completion(
         "model": selected_model,
         "content": content,
         "latency_ms": latency_ms,
+        "usage": usage,
     }
 
 

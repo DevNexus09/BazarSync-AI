@@ -5,9 +5,11 @@ import { CopilotSuggestedQuestions } from "@/components/copilot/CopilotSuggested
 export function CopilotEmptyState({
   onSuggestedQuestion,
   disabled,
+  language = "en",
 }: {
   onSuggestedQuestion: (question: string) => void
   disabled?: boolean
+  language?: "en" | "bn" | "banglish"
 }) {
   return (
     <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
@@ -28,6 +30,7 @@ export function CopilotEmptyState({
       <CopilotSuggestedQuestions
         onSelect={onSuggestedQuestion}
         disabled={disabled}
+        language={language}
       />
     </div>
   )

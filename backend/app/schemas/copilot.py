@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 import logging
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -170,7 +170,8 @@ class CopilotAskRequest(BaseModel):
     conversation_id: UUID | None = None
     question: str = Field(min_length=1, max_length=COPILOT_QUESTION_MAX_LENGTH)
     product_id: UUID | None = None
-    language: str = Field(default="auto", pattern="^(auto|en|bn)$")
+    # "banglish" is accepted only while COPILOT_MULTILINGUAL_ENABLED is on (enforced by the route).
+    language: str = Field(default="auto", pattern="^(auto|en|bn|banglish)$")
     from_date: date | None = None
     to_date: date | None = None
     domain_filters: list[BusinessDomainKey] | None = None
@@ -293,6 +294,12 @@ class CopilotApiAskResponse(BaseModel):
     recommended_next_steps: list[str]
     action_proposal: dict[str, Any] | None = None
     debug: dict[str, Any] | None = None
+    # Multilingual chat only (null otherwise): the language and script the answer text is written in.
+    # ``language`` stays en|bn for older clients; Banglish answers report language="bn", reply_script="latin".
+    reply_language: Literal["en", "bn", "banglish"] | None = None
+    reply_script: Literal["bengali", "latin"] | None = None
+    # Follow-up questions the planner can route; empty unless COPILOT_FOLLOW_UPS_ENABLED is on.
+    suggested_follow_ups: list[str] = Field(default_factory=list)
 
 
 class CopilotAskResponse(BaseModel):
@@ -334,3 +341,18 @@ class CopilotToolsResponse(BaseModel):
 class CopilotErrorResponse(BaseModel):
     detail: str
     error_code: str
+
+
+class CopilotMessageFeedbackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rating: Literal["up", "down"]
+    reason: str | None = Field(default=None, max_length=64)
+    comment: str | None = Field(default=None, max_length=1000)
+
+
+class CopilotMessageFeedbackResponse(BaseModel):
+    message_id: UUID
+    rating: Literal["up", "down"]
+    reason: str | None = None
+    updated_at: datetime

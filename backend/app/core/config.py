@@ -227,6 +227,35 @@ class Settings(BaseModel):
     rag_outbox_initial_backoff_seconds: int = 60
     rag_outbox_max_backoff_seconds: int = 3600
     rag_outbox_processing_lease_seconds: int = 900
+    rag_cosine_distance_enabled: bool = False
+    copilot_groq_model: str | None = None
+    copilot_groq_timeout_seconds: float = 20.0
+    copilot_overall_timeout_seconds: float = 45.0
+    copilot_max_tool_calls: int = 10
+    copilot_max_iterations: int = 3
+    copilot_planning_message_limit: int = 12
+    copilot_planning_character_limit: int = 6000
+    copilot_multilingual_enabled: bool = False
+    copilot_llm_router_enabled: bool = False
+    copilot_llm_answer_routes: str = ""
+    copilot_llm_answer_routes_en: str = ""
+    copilot_llm_answer_routes_bn: str = ""
+    copilot_llm_answer_routes_banglish: str = ""
+    copilot_anthropic_effort: str = "low"
+    copilot_anthropic_max_tokens: int = 16000
+    copilot_prompt_tool_chars: int = 12000
+    copilot_prompt_total_chars: int = 48000
+    copilot_conversation_memory_enabled: bool = False
+    copilot_conversation_memory_turns: int = 4
+    copilot_answer_repair_enabled: bool = False
+    copilot_follow_ups_enabled: bool = False
+    copilot_ask_rate_limit_per_minute: int = 0
+    copilot_parallel_tools_enabled: bool = False
+    copilot_tool_concurrency: int = 4
+    copilot_llm_planner_fallback_enabled: bool = False
+    copilot_streaming_enabled: bool = False
+    copilot_strict_safety_planning_enabled: bool = False
+    rag_query_embedding_cache_size: int = 0
 
     @property
     def durable_recommendation_jobs_enabled(self) -> bool:
@@ -518,6 +547,35 @@ class Settings(BaseModel):
             "rag_outbox_initial_backoff_seconds": int(os.getenv("RAG_OUTBOX_INITIAL_BACKOFF_SECONDS", "60")),
             "rag_outbox_max_backoff_seconds": int(os.getenv("RAG_OUTBOX_MAX_BACKOFF_SECONDS", "3600")),
             "rag_outbox_processing_lease_seconds": int(os.getenv("RAG_OUTBOX_PROCESSING_LEASE_SECONDS", "900")),
+            "rag_cosine_distance_enabled": _parse_bool(os.getenv("RAG_COSINE_DISTANCE_ENABLED"), default=False),
+            "copilot_groq_model": os.getenv("GROQ_COPILOT_MODEL") or os.getenv("GROQ_MODEL"),
+            "copilot_groq_timeout_seconds": float(os.getenv("COPILOT_GROQ_TIMEOUT_SECONDS", "20")),
+            "copilot_overall_timeout_seconds": float(os.getenv("COPILOT_OVERALL_TIMEOUT_SECONDS", "45")),
+            "copilot_max_tool_calls": int(os.getenv("COPILOT_MAX_TOOL_CALLS", "10")),
+            "copilot_max_iterations": int(os.getenv("COPILOT_MAX_ITERATIONS", "3")),
+            "copilot_planning_message_limit": int(os.getenv("COPILOT_PLANNING_MESSAGE_LIMIT", "12")),
+            "copilot_planning_character_limit": int(os.getenv("COPILOT_PLANNING_CHARACTER_LIMIT", "6000")),
+            "copilot_multilingual_enabled": _parse_bool(os.getenv("COPILOT_MULTILINGUAL_ENABLED"), default=False),
+            "copilot_llm_router_enabled": _parse_bool(os.getenv("COPILOT_LLM_ROUTER_ENABLED"), default=False),
+            "copilot_llm_answer_routes": os.getenv("COPILOT_LLM_ANSWER_ROUTES", ""),
+            "copilot_llm_answer_routes_en": os.getenv("COPILOT_LLM_ANSWER_ROUTES_EN", ""),
+            "copilot_llm_answer_routes_bn": os.getenv("COPILOT_LLM_ANSWER_ROUTES_BN", ""),
+            "copilot_llm_answer_routes_banglish": os.getenv("COPILOT_LLM_ANSWER_ROUTES_BANGLISH", ""),
+            "copilot_anthropic_effort": os.getenv("COPILOT_ANTHROPIC_EFFORT", "low"),
+            "copilot_anthropic_max_tokens": int(os.getenv("COPILOT_ANTHROPIC_MAX_TOKENS", "16000")),
+            "copilot_prompt_tool_chars": int(os.getenv("COPILOT_PROMPT_TOOL_CHARS", "12000")),
+            "copilot_prompt_total_chars": int(os.getenv("COPILOT_PROMPT_TOTAL_CHARS", "48000")),
+            "copilot_conversation_memory_enabled": _parse_bool(os.getenv("COPILOT_CONVERSATION_MEMORY_ENABLED"), default=False),
+            "copilot_conversation_memory_turns": int(os.getenv("COPILOT_CONVERSATION_MEMORY_TURNS", "4")),
+            "copilot_answer_repair_enabled": _parse_bool(os.getenv("COPILOT_ANSWER_REPAIR_ENABLED"), default=False),
+            "copilot_follow_ups_enabled": _parse_bool(os.getenv("COPILOT_FOLLOW_UPS_ENABLED"), default=False),
+            "copilot_ask_rate_limit_per_minute": int(os.getenv("COPILOT_ASK_RATE_LIMIT_PER_MINUTE", "0")),
+            "copilot_parallel_tools_enabled": _parse_bool(os.getenv("COPILOT_PARALLEL_TOOLS_ENABLED"), default=False),
+            "copilot_tool_concurrency": int(os.getenv("COPILOT_TOOL_CONCURRENCY", "4")),
+            "copilot_llm_planner_fallback_enabled": _parse_bool(os.getenv("COPILOT_LLM_PLANNER_FALLBACK_ENABLED"), default=False),
+            "copilot_streaming_enabled": _parse_bool(os.getenv("COPILOT_STREAMING_ENABLED"), default=False),
+            "copilot_strict_safety_planning_enabled": _parse_bool(os.getenv("COPILOT_STRICT_SAFETY_PLANNING_ENABLED"), default=False),
+            "rag_query_embedding_cache_size": int(os.getenv("RAG_QUERY_EMBEDDING_CACHE_SIZE", "0")),
         }
         return cls.model_validate(data)
 

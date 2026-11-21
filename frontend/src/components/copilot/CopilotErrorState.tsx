@@ -1,19 +1,34 @@
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, RotateCcw } from "lucide-react"
 
-export function CopilotErrorState({ message }: { message?: string }) {
+import { Button } from "@/components/ui/button"
+
+export function CopilotErrorState({
+  title = "Copilot could not answer right now.",
+  message,
+  retryLabel = "Retry",
+  onRetry,
+}: {
+  title?: string
+  message?: string
+  retryLabel?: string
+  onRetry?: () => void
+}) {
   return (
     <div
       role="alert"
-      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-red-100"
+      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
     >
       <div className="flex items-center gap-2 font-semibold">
         <AlertTriangle className="size-3.5" aria-hidden="true" />
-        Copilot could not answer right now.
+        {title}
       </div>
-      <p className="mt-1 text-red-100/90">
-        {message ?? "Please try again."}
-      </p>
+      <p className="mt-1 text-foreground/80">{message ?? "Please try again."}</p>
+      {onRetry ? (
+        <Button type="button" size="sm" variant="outline" className="mt-2 h-7 gap-1.5 text-xs" onClick={onRetry}>
+          <RotateCcw className="size-3" aria-hidden="true" />
+          {retryLabel}
+        </Button>
+      ) : null}
     </div>
   )
 }
-

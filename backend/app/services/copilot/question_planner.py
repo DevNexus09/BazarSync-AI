@@ -10,9 +10,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.core.config import settings
 from app.services.copilot.business_data_catalog import BusinessDataCatalogService
 from app.services.copilot.date_range_parser import CopilotDateRangeParser, ParsedDateRange
 from app.services.copilot.entity_resolver import CopilotEntityResolver, EntityResolutionResult, ResolvedProductEntity
+from app.services.copilot.safety_rules import apply_strict_safety
 from app.services.copilot.intent_classifier import CopilotIntent, CopilotIntentResult
 from app.services.copilot.metric_catalog import MetricCatalogService
 from app.services.copilot.query_constraints import BusinessDomainKey
@@ -406,8 +408,22 @@ class CopilotPlanValidator:
                     group_by=query.group_by,
                 )
             except Exception as exc:
-                safety_flags.append(f"INVALID_METRIC:{query.metric_key}:{exc}")
-                continue
+                # Snapshot metrics (e.g. product counts) take no dates; drop the chat's date filter instead of the metric.
+                undated = {key: value for key, value in query.filters.items() if key not in {"from_date", "to_date"}}
+                if undated == query.filters:
+                    safety_flags.append(f"INVALID_METRIC:{query.metric_key}:{exc}")
+                    continue
+                try:
+                    metric = self._metric_catalog.validate_metric_query(
+                        query.metric_key,
+                        filters={key: value for key, value in undated.items() if key != "seller_id"} | {"seller_id": "seller_scope"},
+                        group_by=query.group_by,
+                    )
+                except Exception:
+                    safety_flags.append(f"INVALID_METRIC:{query.metric_key}:{exc}")
+                    continue
+                query = query.model_copy(update={"filters": undated})
+                safety_flags.append(f"METRIC_DATE_FILTER_IGNORED:{query.metric_key}")
             if not metric.is_selectable_for_execution:
                 safety_flags.append(f"UNSUPPORTED_METRIC:{query.metric_key}")
                 continue
@@ -464,8 +480,10 @@ class CopilotQuestionPlanner:
         entity_resolver: CopilotEntityResolver | None = None,
         date_range_parser: CopilotDateRangeParser | None = None,
         now: datetime | None = None,
+        strict_safety: bool | None = None,
     ) -> None:
         self._business_catalog = business_catalog or BusinessDataCatalogService()
+        self._strict_safety = settings.copilot_strict_safety_planning_enabled if strict_safety is None else strict_safety
         self._metric_catalog = metric_catalog or MetricCatalogService()
         self._entity_resolver = entity_resolver or CopilotEntityResolver()
         self._date_range_parser = date_range_parser or CopilotDateRangeParser(now=now)
@@ -598,7 +616,7 @@ class CopilotQuestionPlanner:
             competitor_ids=entities.competitor_ids,
             date_range=date_range.to_dict() if date_range else None,
         )
-        return CopilotQuestionPlan(
+        plan = CopilotQuestionPlan(
             question_type=question_type,
             language=language,
             entities=planned_entities,
@@ -611,6 +629,9 @@ class CopilotQuestionPlanner:
             safety_flags=safety_flags,
             execution_plan=execution_plan.model_dump(mode="json"),
         )
+        if self._strict_safety:
+            plan = apply_strict_safety(plan, question=question)
+        return plan
 
     def _build_tool_steps(
         self,
@@ -645,6 +666,9 @@ class CopilotQuestionPlanner:
             steps.append(PlannedToolCall(tool_name=tool_name, args=args or {}, reason=reason, required=required))
 
         if question_type == CopilotQuestionType.GENERAL_BUSINESS:
+            if classification_hint.intent == CopilotIntent.TODAY_ACTIONS:
+                # The action-center feed answers "what should I do today"; keep it ahead of the tool cap.
+                add("get_today_actions", "today's prioritized action candidates requested", _limit_args(product_id))
             add("get_business_overview", "broad business summary requested", _optional_dated_args(None, date_range) | _category_marketplace(category, marketplace))
             add("get_revenue_summary", "broad summary includes revenue trend", _dated_args(product_id, date_range, category, marketplace) | {"compare_to_previous_period": True})
             add("get_profit_summary", "broad summary includes profit health", _dated_args(product_id, date_range, category, marketplace))

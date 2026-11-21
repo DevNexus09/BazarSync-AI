@@ -18,6 +18,7 @@ from app.models.copilot import (
     CopilotToolCall,
     CopilotToolCallStatus,
 )
+from app.models.copilot_feedback import CopilotMessageFeedback
 from app.models.copilot_telemetry import CopilotRunTelemetry
 from app.models.demand_elasticity_estimate import DemandElasticityEstimate, DemandEstimateDataStatus, DemandEstimationMethod
 from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification, DeadStockDataStatus, DeadStockInventoryAgeState, DeadStockNoSalesState, DeadStockVisibilityStatus
@@ -89,6 +90,7 @@ __all__ = [
     "CopilotMessageRole",
     "CopilotToolCall",
     "CopilotToolCallStatus",
+    "CopilotMessageFeedback",
     "CopilotRunTelemetry",
     "DemandElasticityEstimate",
     "DemandEstimateDataStatus",

@@ -6,8 +6,10 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.copilot_feedback import CopilotMessageFeedback
 from app.models.copilot import (
     CopilotActionProposal,
     CopilotActionProposalStatus,
@@ -26,6 +28,14 @@ SECRET_RE = re.compile(
 STACK_TRACE_RE = re.compile(r"(?im)^\s*(traceback \(most recent call last\)|file \".*\", line \d+|stack trace:).*$")
 MAX_PLANNING_MESSAGE_LIMIT = 50
 MAX_PLANNING_CHARACTER_LIMIT = 12_000
+
+
+class CopilotConversationNotFoundError(ValueError):
+    """The conversation does not exist for the authenticated seller."""
+
+
+class CopilotMessageNotFoundError(ValueError):
+    """The assistant message does not exist for the authenticated seller."""
 
 
 class CopilotRepository:
@@ -169,6 +179,56 @@ class CopilotRepository:
         )
         return self._db.execute(statement).scalars().all()
 
+    def upsert_message_feedback(
+        self,
+        *,
+        seller_id: UUID,
+        message_id: UUID,
+        rating: str,
+        reason: str | None = None,
+        comment: str | None = None,
+    ) -> CopilotMessageFeedback:
+        """Record a seller's rating of one of their assistant messages; resubmitting replaces it."""
+        message = self._db.execute(
+            select(CopilotMessage).where(
+                CopilotMessage.id == message_id,
+                CopilotMessage.seller_id == seller_id,
+                CopilotMessage.role == CopilotMessageRole.ASSISTANT,
+            )
+        ).scalar_one_or_none()
+        if message is None:
+            raise CopilotMessageNotFoundError("Assistant message not found for authenticated seller.")
+        values = {"rating": rating, "reason": reason, "comment": comment}
+        existing = self._feedback_for(seller_id=seller_id, message_id=message_id)
+        if existing is None:
+            try:
+                with self._db.begin_nested():
+                    existing = CopilotMessageFeedback(
+                        seller_id=seller_id,
+                        conversation_id=message.conversation_id,
+                        message_id=message_id,
+                        **values,
+                    )
+                    self._db.add(existing)
+            except IntegrityError:
+                # A concurrent submission created the row first; update that one instead.
+                existing = self._feedback_for(seller_id=seller_id, message_id=message_id)
+                if existing is None:
+                    raise
+        for key, value in values.items():
+            setattr(existing, key, value)
+        self._db.commit()
+        self._db.refresh(existing)
+        return existing
+
+    def _feedback_for(self, *, seller_id: UUID, message_id: UUID) -> CopilotMessageFeedback | None:
+        return self._db.execute(
+            select(CopilotMessageFeedback).where(
+                CopilotMessageFeedback.seller_id == seller_id,
+                CopilotMessageFeedback.message_id == message_id,
+            )
+        ).scalar_one_or_none()
+
     def get_recent_messages_for_planning(
         self,
         *,
@@ -179,7 +239,7 @@ class CopilotRepository:
     ) -> list[dict[str, Any]]:
         conversation = self.get_conversation(seller_id=seller_id, conversation_id=conversation_id)
         if conversation is None:
-            raise ValueError("Conversation not found for authenticated seller.")
+            raise CopilotConversationNotFoundError("Conversation not found for authenticated seller.")
 
         bounded_limit = max(1, min(int(message_limit or 1), MAX_PLANNING_MESSAGE_LIMIT))
         bounded_chars = max(1, min(int(character_limit or 1), MAX_PLANNING_CHARACTER_LIMIT))
@@ -406,7 +466,16 @@ def _safe_response_metadata(value: Any) -> dict[str, Any]:
         "last_successful_plan",
         "pending_clarification",
     }
-    return {key: _safe_json(value[key]) for key in allowed if key in value}
+    safe = {key: _safe_json(value[key]) for key in allowed if key in value}
+    profile = value.get("language_profile")
+    if isinstance(profile, dict):
+        # Only the language choice is needed for planning; detector signals stay out of the prompt path.
+        safe["language_profile"] = {
+            key: str(profile[key])[:16]
+            for key in ("input_language", "reply_language", "requested_reply_language", "reply_script", "source")
+            if profile.get(key) is not None
+        }
+    return safe
 
 
 def _safe_string_list(value: Any) -> list[str]:

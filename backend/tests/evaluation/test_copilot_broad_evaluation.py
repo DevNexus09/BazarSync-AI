@@ -22,6 +22,7 @@ from app.services.copilot.query_constraints import CatalogValidationError
 from app.services.copilot.tool_registry import CopilotToolRegistry
 from app.services.rag_retrieval_service import RagRetrievalService
 from app.services.rag_observability import reset_metrics
+from app.services.rag_retrieval_service import settings as rag_retrieval_settings
 
 from tests.evaluation.copilot_evaluation_dataset import EVALUATION_CASES, dataset_counts, dataset_style_counts
 from tests.evaluation.copilot_evaluation_harness import (
@@ -255,6 +256,10 @@ class CopilotModeContractTests(unittest.IsolatedAsyncioTestCase):
 class CopilotRagEvaluationTests(unittest.TestCase):
     def setUp(self) -> None:
         reset_metrics()
+        # Fake distances in these cases are L2 distances; pin the legacy metric.
+        metric = patch.object(rag_retrieval_settings, "rag_cosine_distance_enabled", False)
+        metric.start()
+        self.addCleanup(metric.stop)
 
     def test_rag_passes_seller_product_source_and_date_filters(self) -> None:
         seller_id = EVALUATION_SELLER_ID

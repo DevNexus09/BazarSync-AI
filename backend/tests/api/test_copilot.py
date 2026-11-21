@@ -16,6 +16,7 @@ from app.models.copilot import (
     CopilotMessageRole,
 )
 from app.models.seller import Seller
+from app.repositories.copilot_repository import CopilotConversationNotFoundError
 from app.schemas.copilot import CopilotAskRequest, CopilotConversationCreate
 
 
@@ -75,7 +76,9 @@ class _FakeOrchestrator:
 
     async def ask(self, request):
         if request.conversation_id and request.conversation_id != CONVERSATION_ID:
-            raise ValueError("Conversation not found for authenticated seller.")
+            raise CopilotConversationNotFoundError("Conversation not found for authenticated seller.")
+        if request.question == "trigger internal value error":
+            raise ValueError("Unrelated internal failure.")
         return _Obj(
             conversation_id=request.conversation_id or CONVERSATION_ID,
             assistant_message_id=MESSAGE_ID,
@@ -328,6 +331,18 @@ class CopilotApiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(404, raised.exception.status_code)
         self.assertEqual("conversation_not_found", raised.exception.detail["error_code"])
+
+    async def test_unrelated_value_error_is_not_reported_as_missing_conversation(self):
+        with patch.object(copilot_api, "CopilotOrchestrator", _FakeOrchestrator):
+            with self.assertRaises(ValueError) as raised:
+                await copilot_api.ask_copilot(
+                    CopilotAskRequest(question="trigger internal value error"),
+                    db=_FakeDb(),
+                    current_seller=self.seller,
+                )
+
+        self.assertNotIsInstance(raised.exception, HTTPException)
+        self.assertEqual("Unrelated internal failure.", str(raised.exception))
 
     async def test_no_context_answer(self):
         with patch.object(copilot_api, "CopilotOrchestrator", _NoContextOrchestrator):

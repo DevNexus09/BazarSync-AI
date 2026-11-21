@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from uuid import uuid4
 
 from app.models.rag_memory import RagMemoryEmbeddingStatus, RagMemorySourceType
 from app.repositories.rag_memory_repository import RagMemoryRepository
 from app.services.rag_memory_source_registry import implemented_source_types
 from app.services.rag_retrieval_service import NO_CONTEXT_MESSAGE, RagRetrievalService
+from app.services.rag_retrieval_service import settings as rag_retrieval_settings
 
 
 class FakeEmbeddingService:
@@ -100,6 +102,12 @@ def document_for(item):
 
 
 class RagRetrievalServiceTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # Fake distances below are L2 distances; pin the legacy metric regardless of RAG_COSINE_DISTANCE_ENABLED.
+        metric = patch.object(rag_retrieval_settings, "rag_cosine_distance_enabled", False)
+        metric.start()
+        self.addCleanup(metric.stop)
+
     def test_retrieves_only_seller_own_chunks(self):
         seller_id = uuid4()
         other_seller_id = uuid4()

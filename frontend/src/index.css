@@ -24,253 +24,127 @@
     --font-sans: "Inter Variable", sans-serif;
   }
 
-  :root,
-  :root[data-theme="dark"] {
+:root {
     color-scheme: dark;
-    --background: 9 7 18;
-    --background-secondary: 13 10 25;
-    --background-elevated: 18 14 32;
-    --surface: 18 14 32;
-    --surface-hover: 27 21 46;
-    --surface-active: 35 27 58;
-    --surface-muted: 24 19 40;
-    --foreground: 245 242 252;
-    --foreground-muted: 178 168 198;
-    --foreground-subtle: 139 128 160;
-    --foreground-disabled: 101 92 119;
-    --card: 18 14 32;
-    --card-foreground: 245 242 252;
-    --popover: 22 17 39;
-    --popover-foreground: 245 242 252;
-    --primary: 139 92 246;
-    --primary-hover: 167 139 250;
-    --primary-active: 124 58 237;
-    --primary-foreground: 255 255 255;
-    --secondary: 36 29 54;
-    --secondary-foreground: 231 224 243;
-    --muted: 27 22 42;
-    --muted-foreground: 178 168 198;
-    --accent: 167 139 250;
-    --accent-soft: 83 57 133;
-    --accent-glow: 139 92 246;
-    --accent-foreground: 255 255 255;
+    --background: 26 18 14;
+    --background-secondary: 38 27 21;
+    --background-elevated: 58 36 24;
+    --surface: 58 36 24;
+    --surface-hover: 74 74 70;
+    --surface-active: 107 74 46;
+    --surface-muted: 45 33 27;
+    --foreground: 244 238 230;
+    --foreground-muted: 213 196 174;
+    --foreground-subtle: 168 132 98;
+    --foreground-disabled: 107 74 46;
+    --card: 47 31 22;
+    --card-foreground: 244 238 230;
+    --popover: 58 36 24;
+    --popover-foreground: 244 238 230;
+    --primary: 168 132 98;
+    --primary-hover: 213 196 174;
+    --primary-active: 107 74 46;
+    --primary-foreground: 26 18 14;
+    --secondary: 74 74 70;
+    --secondary-foreground: 244 238 230;
+    --muted: 58 36 24;
+    --muted-foreground: 213 196 174;
+    --accent: 213 196 174;
+    --accent-soft: 58 36 24;
+    --accent-glow: 168 132 98;
+    --accent-foreground: 26 18 14;
     --destructive: 244 63 94;
     --success: 16 185 129;
     --warning: 245 158 11;
     --danger: 244 63 94;
     --info: 56 189 248;
-    --border: 74 58 101;
-    --border-strong: 105 82 140;
-    --border-subtle: 50 39 70;
-    --input: 31 24 49;
-    --input-background: 20 16 36;
-    --input-border: 74 58 101;
-    --input-placeholder: 139 128 160;
-    --ring: 167 139 250;
-    --chart-1: 167 139 250;
-    --chart-2: 45 212 191;
-    --chart-3: 251 191 36;
-    --chart-4: 56 189 248;
-    --chart-5: 251 113 133;
-    --tooltip-background: 22 17 39;
-    --tooltip-foreground: 245 242 252;
-    --tooltip-border: 105 82 140;
-    --overlay: 4 3 10;
+    --border: 107 74 46;
+    --border-strong: 168 132 98;
+    --border-subtle: 74 74 70;
+    --input: 58 36 24;
+    --input-background: 38 27 21;
+    --input-border: 107 74 46;
+    --input-placeholder: 168 132 98;
+    --ring: 213 196 174;
+    --chart-1: 168 132 98;
+    --chart-2: 213 196 174;
+    --chart-3: 107 74 46;
+    --chart-4: 185 154 124;
+    --chart-5: 141 105 76;
+    --tooltip-background: 58 36 24;
+    --tooltip-foreground: 244 238 230;
+    --tooltip-border: 168 132 98;
+    --overlay: 16 11 8;
     --radius: 0.75rem;
-    --sidebar: 11 8 22;
-    --sidebar-foreground: 245 242 252;
-    --sidebar-primary: 139 92 246;
-    --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 27 21 46;
-    --sidebar-accent-foreground: 245 242 252;
-    --sidebar-border: 50 39 70;
-    --sidebar-ring: 167 139 250;
+    --sidebar: 26 18 14;
+    --sidebar-foreground: 244 238 230;
+    --sidebar-primary: 168 132 98;
+    --sidebar-primary-foreground: 26 18 14;
+    --sidebar-accent: 58 36 24;
+    --sidebar-accent-foreground: 244 238 230;
+    --sidebar-border: 107 74 46;
+    --sidebar-ring: 213 196 174;
   }
 
-  :root[data-theme="light"] {
-    color-scheme: light;
-    --background: 247 245 252;
-    --background-secondary: 241 237 248;
-    --background-elevated: 255 255 255;
-    --surface: 255 255 255;
-    --surface-hover: 248 245 253;
-    --surface-active: 241 234 251;
-    --surface-muted: 244 241 249;
-    --foreground: 31 24 44;
-    --foreground-muted: 99 89 117;
-    --foreground-subtle: 125 114 142;
-    --foreground-disabled: 164 153 181;
-    --card: 255 255 255;
-    --card-foreground: 31 24 44;
-    --popover: 255 255 255;
-    --popover-foreground: 31 24 44;
-    --primary: 124 58 237;
-    --primary-hover: 109 40 217;
-    --primary-active: 91 33 182;
-    --primary-foreground: 255 255 255;
-    --secondary: 239 234 248;
-    --secondary-foreground: 55 43 74;
-    --muted: 243 240 249;
-    --muted-foreground: 99 89 117;
-    --accent: 124 58 237;
-    --accent-soft: 237 233 254;
-    --accent-glow: 139 92 246;
-    --accent-foreground: 55 32 110;
-    --destructive: 220 38 38;
-    --success: 5 150 105;
-    --warning: 217 119 6;
-    --danger: 225 29 72;
-    --info: 2 132 199;
-    --border: 225 219 236;
-    --border-strong: 195 184 211;
-    --border-subtle: 238 234 245;
-    --input: 238 234 245;
-    --input-background: 255 255 255;
-    --input-border: 213 204 227;
-    --input-placeholder: 125 114 142;
-    --ring: 124 58 237;
-    --chart-1: 124 58 237;
-    --chart-2: 13 148 136;
-    --chart-3: 217 119 6;
-    --chart-4: 2 132 199;
-    --chart-5: 225 29 72;
-    --tooltip-background: 255 255 255;
-    --tooltip-foreground: 31 24 44;
-    --tooltip-border: 195 184 211;
-    --overlay: 31 24 44;
-    --sidebar: 251 249 254;
-    --sidebar-foreground: 31 24 44;
-    --sidebar-primary: 124 58 237;
-    --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 243 240 249;
-    --sidebar-accent-foreground: 31 24 44;
-    --sidebar-border: 225 219 236;
-    --sidebar-ring: 124 58 237;
-  }
-
-  /*
-   * Product workspace palette. This is deliberately scoped away from the
-   * landing page so the public homepage keeps its established visual system.
-   */
-  :root[data-theme="dark"] .app-theme,
-  :root:not([data-theme]) .app-theme {
+  /* Product workspace refinements derived from the same espresso palette. */
+.app-theme {
     color-scheme: dark;
-    --background: 14 11 29; /* #0E0B1D */
-    --background-secondary: 24 18 46;
-    --background-elevated: 42 30 77; /* #2A1E4D */
-    --surface: 35 27 65;
-    --surface-hover: 42 30 77; /* #2A1E4D */
-    --surface-active: 58 58 82; /* #3A3A52 */
-    --surface-muted: 29 24 51;
-    --foreground: 231 227 243;
-    --foreground-muted: 201 194 227; /* #C9C2E3 */
-    --foreground-subtle: 139 124 199; /* #8B7CC7 */
-    --foreground-disabled: 96 88 125;
-    --card: 27 21 50;
-    --card-foreground: 231 227 243;
-    --popover: 42 30 77; /* #2A1E4D */
-    --popover-foreground: 231 227 243;
-    --primary: 139 124 199; /* #8B7CC7 */
-    --primary-hover: 201 194 227; /* #C9C2E3 */
-    --primary-active: 90 59 140; /* #5A3B8C */
-    --primary-foreground: 14 11 29; /* #0E0B1D */
-    --button-primary: 139 92 246;
-    --button-primary-hover: 167 139 250;
-    --button-primary-active: 124 58 237;
-    --button-primary-foreground: 255 255 255;
-    --secondary: 42 30 77; /* #2A1E4D */
-    --secondary-foreground: 231 227 243;
-    --muted: 58 58 82; /* #3A3A52 */
-    --muted-foreground: 201 194 227; /* #C9C2E3 */
-    --accent: 90 59 140; /* #5A3B8C */
-    --accent-soft: 42 30 77; /* #2A1E4D */
-    --accent-glow: 139 124 199; /* #8B7CC7 */
-    --accent-foreground: 255 255 255;
-    --border: 90 59 140; /* #5A3B8C */
-    --border-strong: 139 124 199; /* #8B7CC7 */
-    --border-subtle: 58 58 82; /* #3A3A52 */
-    --input: 42 30 77; /* #2A1E4D */
-    --input-background: 20 16 39;
-    --input-border: 90 59 140; /* #5A3B8C */
-    --input-placeholder: 139 124 199; /* #8B7CC7 */
-    --ring: 139 124 199; /* #8B7CC7 */
-    --chart-1: 139 124 199;
-    --chart-2: 201 194 227;
-    --chart-3: 90 59 140;
-    --chart-4: 127 106 181;
-    --chart-5: 173 156 213;
-    --tooltip-background: 42 30 77;
-    --tooltip-foreground: 231 227 243;
-    --tooltip-border: 139 124 199;
-    --overlay: 8 6 18;
-    --sidebar: 11 8 22;
-    --sidebar-foreground: 245 242 252;
-    --sidebar-primary: 139 92 246;
-    --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 27 21 46;
-    --sidebar-accent-foreground: 245 242 252;
-    --sidebar-border: 50 39 70;
-    --sidebar-ring: 167 139 250;
-  }
-
-  :root[data-theme="light"] .app-theme {
-    color-scheme: light;
-    --background: 247 245 251;
-    --background-secondary: 239 236 247;
-    --background-elevated: 255 255 255;
-    --surface: 255 255 255;
-    --surface-hover: 242 239 249;
-    --surface-active: 231 226 242;
-    --surface-muted: 239 236 247;
-    --foreground: 14 11 29; /* #0E0B1D */
-    --foreground-muted: 58 58 82; /* #3A3A52 */
-    --foreground-subtle: 90 59 140; /* #5A3B8C */
-    --foreground-disabled: 139 124 199; /* #8B7CC7 */
-    --card: 255 255 255;
-    --card-foreground: 14 11 29;
-    --popover: 255 255 255;
-    --popover-foreground: 14 11 29;
-    --primary: 90 59 140; /* #5A3B8C */
-    --primary-hover: 42 30 77; /* #2A1E4D */
-    --primary-active: 14 11 29; /* #0E0B1D */
-    --primary-foreground: 255 255 255;
-    --button-primary: 124 58 237;
-    --button-primary-hover: 109 40 217;
-    --button-primary-active: 91 33 182;
-    --button-primary-foreground: 255 255 255;
-    --secondary: 201 194 227; /* #C9C2E3 */
-    --secondary-foreground: 42 30 77; /* #2A1E4D */
-    --muted: 233 229 243;
-    --muted-foreground: 58 58 82; /* #3A3A52 */
-    --accent: 139 124 199; /* #8B7CC7 */
-    --accent-soft: 201 194 227; /* #C9C2E3 */
-    --accent-glow: 90 59 140; /* #5A3B8C */
-    --accent-foreground: 14 11 29;
-    --border: 201 194 227; /* #C9C2E3 */
-    --border-strong: 139 124 199; /* #8B7CC7 */
-    --border-subtle: 225 220 238;
-    --input: 239 236 247;
-    --input-background: 255 255 255;
-    --input-border: 201 194 227; /* #C9C2E3 */
-    --input-placeholder: 104 96 128;
-    --ring: 90 59 140; /* #5A3B8C */
-    --chart-1: 90 59 140;
-    --chart-2: 139 124 199;
-    --chart-3: 42 30 77;
-    --chart-4: 113 93 164;
-    --chart-5: 58 58 82;
-    --tooltip-background: 42 30 77;
-    --tooltip-foreground: 255 255 255;
-    --tooltip-border: 90 59 140;
-    --overlay: 14 11 29;
-    --sidebar: 251 249 254;
-    --sidebar-foreground: 31 24 44;
-    --sidebar-primary: 124 58 237;
-    --sidebar-primary-foreground: 255 255 255;
-    --sidebar-accent: 243 240 249;
-    --sidebar-accent-foreground: 31 24 44;
-    --sidebar-border: 225 219 236;
-    --sidebar-ring: 124 58 237;
+    --background: 26 18 14;
+    --background-secondary: 58 36 24;
+    --background-elevated: 213 196 174;
+    --surface: 58 36 24;
+    --surface-hover: 107 74 46;
+    --surface-active: 168 132 98;
+    --surface-muted: 74 74 70;
+    --foreground: 244 238 230;
+    --foreground-muted: 213 196 174;
+    --foreground-subtle: 168 132 98;
+    --foreground-disabled: 107 74 46;
+    --card: 58 36 24;
+    --card-foreground: 244 238 230;
+    --popover: 213 196 174;
+    --popover-foreground: 26 18 14;
+    --primary: 168 132 98;
+    --primary-hover: 213 196 174;
+    --primary-active: 107 74 46;
+    --primary-foreground: 26 18 14;
+    --button-primary: 185 149 116;
+    --button-primary-hover: 213 196 174;
+    --button-primary-active: 168 132 98;
+    --button-primary-foreground: 26 18 14;
+    --secondary: 213 196 174;
+    --secondary-foreground: 26 18 14;
+    --muted: 74 74 70;
+    --muted-foreground: 213 196 174;
+    --accent: 213 196 174;
+    --accent-soft: 58 36 24;
+    --accent-glow: 168 132 98;
+    --accent-foreground: 26 18 14;
+    --border: 168 132 98;
+    --border-strong: 213 196 174;
+    --border-subtle: 107 74 46;
+    --input: 58 36 24;
+    --input-background: 38 27 21;
+    --input-border: 168 132 98;
+    --input-placeholder: 213 196 174;
+    --ring: 213 196 174;
+    --chart-1: 168 132 98;
+    --chart-2: 213 196 174;
+    --chart-3: 107 74 46;
+    --chart-4: 185 154 124;
+    --chart-5: 141 105 76;
+    --tooltip-background: 58 36 24;
+    --tooltip-foreground: 244 238 230;
+    --tooltip-border: 168 132 98;
+    --overlay: 16 11 8;
+    --sidebar: 26 18 14;
+    --sidebar-foreground: 244 238 230;
+    --sidebar-primary: 168 132 98;
+    --sidebar-primary-foreground: 26 18 14;
+    --sidebar-accent: 58 36 24;
+    --sidebar-accent-foreground: 244 238 230;
+    --sidebar-border: 168 132 98;
+    --sidebar-ring: 213 196 174;
   }
 
   * {
@@ -361,6 +235,29 @@
     @apply rounded-xl border border-border/60 bg-card/50 backdrop-blur-xl;
     box-shadow: 0 0 0 1px rgb(var(--accent) / 0.08),
       0 12px 32px rgb(var(--overlay) / 0.18);
+  }
+
+  .app-theme .glass-panel {
+    background-image: linear-gradient(
+      145deg,
+      rgb(var(--card) / 0.9),
+      rgb(var(--primary) / 0.14) 68%,
+      rgb(var(--accent) / 0.08)
+    );
+    box-shadow: inset 0 1px 0 rgb(var(--accent) / 0.12),
+      0 0 0 1px rgb(var(--primary) / 0.18),
+      0 20px 48px rgb(var(--overlay) / 0.3);
+  }
+
+  .app-theme .glass-panel-muted {
+    background-image: linear-gradient(
+      145deg,
+      rgb(var(--card) / 0.68),
+      rgb(var(--primary) / 0.1),
+      rgb(var(--accent) / 0.06)
+    );
+    box-shadow: inset 0 1px 0 rgb(var(--accent) / 0.1),
+      0 12px 32px rgb(var(--overlay) / 0.22);
   }
 
   .glow-border {

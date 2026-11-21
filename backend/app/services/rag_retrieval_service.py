@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import math
 import re
+import threading
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -143,7 +145,7 @@ class RagRetrievalService:
                 start_ms=start_ms,
             )
 
-        query_embedding = self._embedding_service.embed_text(normalized_question)
+        query_embedding = _cached_query_embedding(self._embedding_service, seller_id=seller_id, text=normalized_question)
         vector_rows = self.vector_search(
             seller_id=seller_id,
             query_embedding=query_embedding,
@@ -520,7 +522,41 @@ class RagRetrievalService:
 def _similarity_from_distance(distance: float) -> float:
     if distance < 0:
         distance = 0.0
+    if settings.rag_cosine_distance_enabled:
+        # Cosine distance is 1 - cosine similarity, so the floor in RAG_MIN_SIMILARITY means what it says.
+        return max(0.0, min(1.0, 1.0 - distance))
     return max(0.0, min(1.0, 1.0 / (1.0 + distance)))
+
+
+_QUERY_EMBEDDING_CACHE: OrderedDict[tuple[str, str, str], list[float]] = OrderedDict()
+_QUERY_EMBEDDING_LOCK = threading.Lock()
+
+
+def _cached_query_embedding(embedding_service: RagEmbeddingService, *, seller_id: UUID, text: str) -> list[float]:
+    """Seller-scoped LRU for question embeddings (RAG_QUERY_EMBEDDING_CACHE_SIZE; 0 disables it).
+
+    Repeated and follow-up questions skip the CPU embedding; the key includes the
+    seller and the embedding model so no entry is shared across sellers or models.
+    """
+    size = settings.rag_query_embedding_cache_size
+    if size <= 0:
+        return embedding_service.embed_text(text)
+    key = (str(seller_id), str(getattr(embedding_service, "model_name", "")), text)
+    with _QUERY_EMBEDDING_LOCK:
+        cached = _QUERY_EMBEDDING_CACHE.get(key)
+        if cached is not None:
+            _QUERY_EMBEDDING_CACHE.move_to_end(key)
+            return list(cached)
+    vector = embedding_service.embed_text(text)
+    with _QUERY_EMBEDDING_LOCK:
+        _QUERY_EMBEDDING_CACHE[key] = list(vector)
+        while len(_QUERY_EMBEDDING_CACHE) > size:
+            _QUERY_EMBEDDING_CACHE.popitem(last=False)
+    return vector
+
+
+BENGALI_WORD_RE = re.compile(r"[\u0980-\u09FF]{2,}")
+BENGALI_STOPWORDS = frozenset({"আমার", "আমি", "আমাদের", "কেন", "কি", "কী", "এই", "সেই", "গত", "করে", "হয়েছে", "কত", "কোন", "এবং", "বা"})
 
 
 def _keywords(question: str) -> list[str]:
@@ -540,6 +576,9 @@ def _keywords(question: str) -> list[str]:
         "product",
         "history",
     }
+    if settings.copilot_multilingual_enabled:
+        # Bengali-script keywords (ASCII-only extraction gave Bangla questions no keyword boost).
+        words += [word for word in BENGALI_WORD_RE.findall(question) if word not in BENGALI_STOPWORDS]
     return sorted({word for word in words if word not in stopwords})[:8]
 
 

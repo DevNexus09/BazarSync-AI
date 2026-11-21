@@ -16,6 +16,7 @@ from app.models.competitor_event import CompetitorEvent
 from app.models.competitor_ranking import CompetitorRanking
 from app.models.competitor_snapshot import CompetitorSnapshot
 from app.models.copilot import CopilotActionProposal, CopilotConversation, CopilotMessage, CopilotToolCall
+from app.models.copilot_feedback import CopilotMessageFeedback
 from app.models.copilot_telemetry import CopilotRunTelemetry
 from app.models.demand_elasticity_estimate import DemandElasticityEstimate
 from app.models.dynamic_pricing_recommendation import DynamicPricingRecommendation

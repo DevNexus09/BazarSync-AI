@@ -1,25 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BazarSync AI</title>
-    <script>
-      (() => {
-        try {
-          const saved = localStorage.getItem("bazarsync-theme");
-          const validSaved = saved === "light" || saved === "dark";
-          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          const theme = validSaved ? saved : prefersDark ? "dark" : "light";
-          document.documentElement.dataset.theme = theme;
-          document.documentElement.style.colorScheme = theme;
-        } catch {
-          document.documentElement.dataset.theme = "dark";
-          document.documentElement.style.colorScheme = "dark";
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

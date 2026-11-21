@@ -8,6 +8,7 @@ from sqlalchemy import bindparam, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.vector_type import _to_pgvector_literal
 from app.models.rag_memory import (
     RagMemoryChunk,
@@ -224,8 +225,10 @@ class RagMemoryRepository:
         self._validate_vector(query_embedding)
         source_values = [source_type.value for source_type in source_types or []]
 
-        query = """
-            SELECT c.id, c.embedding <-> CAST(:query_embedding AS vector) AS distance
+        # "<=>" (cosine) matches the vector_cosine_ops HNSW index; "<->" (L2) is the legacy default.
+        operator = "<=>" if settings.rag_cosine_distance_enabled else "<->"
+        query = f"""
+            SELECT c.id, c.embedding {operator} CAST(:query_embedding AS vector) AS distance
             FROM rag_memory_chunks c
             JOIN rag_memory_documents d ON d.id = c.memory_document_id
             WHERE c.seller_id = :seller_id
@@ -240,7 +243,7 @@ class RagMemoryRepository:
               AND (:from_event_time IS NULL OR c.event_time >= :from_event_time)
               AND (:to_event_time IS NULL OR c.event_time <= :to_event_time)
               AND (:source_types_disabled = true OR c.source_type::text IN :source_types)
-            ORDER BY c.embedding <-> CAST(:query_embedding AS vector), c.event_time DESC NULLS LAST, c.created_at DESC
+            ORDER BY c.embedding {operator} CAST(:query_embedding AS vector), c.event_time DESC NULLS LAST, c.created_at DESC
             LIMIT :limit
         """
         statement = text(query).bindparams(bindparam("source_types", expanding=True))

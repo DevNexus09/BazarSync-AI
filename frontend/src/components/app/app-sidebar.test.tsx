@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -33,7 +33,6 @@ function SidebarHarness({
   initialExpanded?: boolean
 }) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
-  const desktopToggleRef = useRef<HTMLButtonElement>(null)
 
   return (
     <ThemeProvider>
@@ -47,9 +46,7 @@ function SidebarHarness({
         </button>
         <AppSidebar
           isExpanded={isExpanded}
-          onToggle={() => setIsExpanded((current) => !current)}
           onClose={() => setIsExpanded(false)}
-          desktopToggleRef={desktopToggleRef}
         />
       </MemoryRouter>
     </ThemeProvider>
@@ -63,72 +60,41 @@ afterEach(() => {
 })
 
 describe("AppSidebar", () => {
-  it("renders a collapsed icon rail with accessible page tooltips", () => {
-    setViewport(1440)
-    render(<SidebarHarness />)
-
-    expect(screen.getByRole("button", { name: "Expand navigation" })).toBeInTheDocument()
-    expect(screen.getByTestId("sidebar-label-Dashboard")).toHaveClass("max-w-0")
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
-      "title",
-      "Dashboard"
-    )
-  })
-
-  it("temporarily expands the desktop rail while the pointer is over it", () => {
+  it("renders a floating glass icon rail without embedded branding", () => {
     setViewport(1440)
     render(<SidebarHarness />)
 
     const sidebar = screen.getByTestId("app-sidebar")
     const dashboardLabel = screen.getByTestId("sidebar-label-Dashboard")
 
-    expect(dashboardLabel).toHaveClass("max-w-0")
-
-    fireEvent.mouseEnter(sidebar)
-    expect(dashboardLabel).toHaveClass("max-w-[190px]")
-
-    fireEvent.mouseLeave(sidebar)
-    expect(dashboardLabel).toHaveClass("max-w-0")
+    expect(sidebar).toHaveClass("rounded-[24px]", "backdrop-blur-2xl", "lg:w-16")
+    expect(dashboardLabel).toHaveClass("max-w-0", "opacity-0")
+    expect(dashboardLabel).toHaveAttribute("aria-hidden", "true")
+    expect(screen.queryByText("BazarSync AI")).not.toBeInTheDocument()
+    expect(screen.queryByText(/^B$/)).not.toBeInTheDocument()
   })
 
-  it("expands on toggle and reveals the existing English labels", async () => {
+  it("expands labels when the desktop rail is hovered", () => {
     setViewport(1440)
-    const user = userEvent.setup()
-    render(<SidebarHarness />)
-
-    await user.click(screen.getByRole("button", { name: "Expand navigation" }))
-
-    expect(screen.getByRole("button", { name: "Collapse navigation" })).toHaveAttribute(
-      "aria-expanded",
-      "true"
-    )
-    expect(screen.getByTestId("sidebar-label-Dashboard")).toHaveClass("max-w-[190px]")
-  })
-
-  it("collapses a desktop expansion when the pointer leaves the rail", async () => {
-    setViewport(1440)
-    const user = userEvent.setup()
     render(<SidebarHarness />)
 
     const sidebar = screen.getByTestId("app-sidebar")
-    await user.click(screen.getByRole("button", { name: "Expand navigation" }))
-    expect(screen.getByRole("button", { name: "Collapse navigation" })).toBeInTheDocument()
+    const dashboardLabel = screen.getByTestId("sidebar-label-Dashboard")
+
+    fireEvent.mouseEnter(sidebar)
+    expect(sidebar).toHaveClass("lg:w-[248px]")
+    expect(dashboardLabel).toHaveClass("max-w-[180px]", "opacity-100")
+    expect(dashboardLabel).toHaveAttribute("aria-hidden", "false")
 
     fireEvent.mouseLeave(sidebar)
-
-    expect(screen.getByRole("button", { name: "Expand navigation" })).toBeInTheDocument()
-    expect(screen.getByTestId("sidebar-label-Dashboard")).toHaveClass("max-w-0")
+    expect(sidebar).not.toHaveClass("lg:w-[248px]")
+    expect(dashboardLabel).toHaveClass("max-w-0", "opacity-0")
   })
 
-  it("marks the active route without changing the configured routes", () => {
+  it("keeps every existing route and label available", () => {
     setViewport(1440)
-    render(<SidebarHarness initialPath="/app/products" />)
+    render(<SidebarHarness />)
 
-    const activeLink = screen.getByRole("link", { name: "Products" })
-    expect(activeLink).toHaveAttribute("aria-current", "page")
-    expect(activeLink).not.toHaveClass("bg-primary/10")
-    expect(activeLink).not.toHaveClass("border-primary/20")
-    expect(activeLink).not.toHaveClass("shadow-[inset_3px_0_0_rgb(var(--primary))]")
     for (const item of appNavItems) {
       expect(screen.getByRole("link", { name: item.label })).toHaveAttribute(
         "href",
@@ -137,15 +103,36 @@ describe("AppSidebar", () => {
     }
   })
 
-  it("closes with Escape and returns focus to the desktop toggle", async () => {
+  it("uses a single theme-colored pill for the active route", () => {
     setViewport(1440)
-    const user = userEvent.setup()
+    render(<SidebarHarness initialPath="/app/products" />)
+
+    const activeLink = screen.getByRole("link", { name: "Products" })
+    const inactiveLink = screen.getByRole("link", { name: "Dashboard" })
+
+    expect(activeLink).toHaveAttribute("aria-current", "page")
+    expect(activeLink).toHaveClass("rounded-full", "bg-primary", "text-primary-foreground")
+    expect(inactiveLink).not.toHaveClass("bg-primary")
+  })
+
+  it("uses icon glow without adding a hover row color", () => {
+    setViewport(1440)
     render(<SidebarHarness />)
 
-    await user.click(screen.getByRole("button", { name: "Expand navigation" }))
-    fireEvent.keyDown(window, { key: "Escape" })
+    const productsLink = screen.getByRole("link", { name: "Products" })
+    const icon = productsLink.querySelector("svg")
 
-    expect(screen.getByRole("button", { name: "Expand navigation" })).toHaveFocus()
+    expect(productsLink.className).not.toContain("hover:bg-")
+    expect(icon).toHaveClass("group-hover:drop-shadow-[0_0_9px_rgb(var(--accent))]")
+  })
+
+  it("closes the mobile drawer with Escape", () => {
+    setViewport(390)
+    render(<SidebarHarness initialExpanded />)
+
+    expect(screen.getByRole("button", { name: "Close navigation" })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(screen.queryByRole("button", { name: "Close navigation" })).not.toBeInTheDocument()
   })
 
   it("closes the mobile drawer from the backdrop and after navigation", async () => {
@@ -155,6 +142,10 @@ describe("AppSidebar", () => {
 
     await user.click(screen.getByTestId("mobile-open"))
     expect(screen.getByRole("button", { name: "Close navigation" })).toBeInTheDocument()
+    expect(screen.getByTestId("sidebar-label-Dashboard")).toHaveClass(
+      "max-w-[180px]",
+      "opacity-100"
+    )
 
     await user.click(screen.getByRole("link", { name: "Products" }))
     expect(screen.queryByRole("button", { name: "Close navigation" })).not.toBeInTheDocument()
@@ -164,7 +155,7 @@ describe("AppSidebar", () => {
     expect(screen.queryByRole("button", { name: "Close navigation" })).not.toBeInTheDocument()
   })
 
-  it("keeps navigation items keyboard accessible in collapsed mode", () => {
+  it("keeps navigation items keyboard accessible", () => {
     setViewport(1440)
     render(<SidebarHarness />)
 
@@ -175,44 +166,10 @@ describe("AppSidebar", () => {
     expect(competitorsLink).toHaveAttribute("title", "Competitors")
   })
 
-  it("reveals the theme toggle on hover or focus in the collapsed rail", () => {
+  it("does not render a theme transition control", () => {
     setViewport(1440)
     render(<SidebarHarness />)
 
     expect(screen.queryByRole("switch")).not.toBeInTheDocument()
-
-    fireEvent.mouseEnter(screen.getByTestId("app-sidebar"))
-    expect(screen.getByRole("switch")).toBeVisible()
-
-    fireEvent.mouseLeave(screen.getByTestId("app-sidebar"))
-    fireEvent.focus(screen.getByRole("button", { name: "Expand navigation" }))
-    expect(screen.getByRole("switch")).toBeVisible()
-  })
-
-  it("keeps the theme toggle visible in the open mobile drawer", async () => {
-    setViewport(390)
-    const user = userEvent.setup()
-    render(<SidebarHarness />)
-
-    await user.click(screen.getByTestId("mobile-open"))
-
-    expect(screen.getByRole("switch")).toBeVisible()
-  })
-
-  it("changes the root theme without changing navigation", async () => {
-    setViewport(1440)
-    const user = userEvent.setup()
-    render(<SidebarHarness initialExpanded />)
-
-    const themeSwitch = screen.getByRole("switch")
-    const initialTheme = themeSwitch.getAttribute("aria-checked") === "true" ? "dark" : "light"
-    await user.click(themeSwitch)
-
-    expect(document.documentElement).toHaveAttribute(
-      "data-theme",
-      initialTheme === "dark" ? "light" : "dark"
-    )
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument()
-    expect(screen.getByRole("switch")).toBeInTheDocument()
   })
 })

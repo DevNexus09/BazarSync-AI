@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 
 import { CopilotAssistantMessage } from "@/components/copilot/CopilotAssistantMessage"
@@ -39,6 +40,7 @@ describe("Copilot evidence and missing data UI", () => {
 
   it("groups missing data by domain and marks blocking items", () => {
     render(
+      <MemoryRouter>
       <CopilotMissingDataPanel
         missingData={[
           {
@@ -63,10 +65,13 @@ describe("Copilot evidence and missing data UI", () => {
           },
         ]}
       />
+      </MemoryRouter>
     )
 
-    expect(screen.getByText("PROFIT_MARGIN")).toBeInTheDocument()
-    expect(screen.getByText("SALES_REVENUE")).toBeInTheDocument()
+    // Readable domain names instead of raw enums.
+    expect(screen.getByText("Profit")).toBeInTheDocument()
+    expect(screen.getByText("Sales")).toBeInTheDocument()
+    expect(screen.queryByText("PROFIT_MARGIN")).toBeNull()
     expect(screen.getByText("Blocking")).toBeInTheDocument()
     expect(screen.getByText("Optional")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /open setup/i })).toHaveAttribute(
@@ -110,8 +115,9 @@ describe("Copilot evidence and missing data UI", () => {
     render(<CopilotAssistantMessage message={message} />)
 
     expect(screen.getByText(/confidence: low/i)).toBeInTheDocument()
-    expect(screen.getAllByText("SALES_REVENUE").length).toBeGreaterThan(0)
-    expect(screen.getByText("get_revenue_summary")).toBeInTheDocument()
+    expect(screen.getAllByText("Sales").length).toBeGreaterThan(0)
+    expect(screen.getByText("Revenue summary")).toBeInTheDocument()
+    expect(screen.queryByText("get_revenue_summary")).toBeNull()
     expect(screen.getByText(/data freshness warnings/i)).toBeInTheDocument()
     expect(screen.getByText(/sales data is stale/i)).toBeInTheDocument()
   })
