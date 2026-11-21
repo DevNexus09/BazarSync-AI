@@ -46,6 +46,7 @@ from app.models.scrape_run import ScrapeRun
 from app.models.stockout_prediction import StockoutPrediction
 from app.models.telegram_connection import SellerTelegramConnection
 from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
+from app.services.copilot.records_query import RecordsQueryArgs, query_business_records
 from app.services.copilot.business_change_analytics_service import BusinessChangeAnalyticsService
 from app.services.copilot.business_data_catalog import BusinessDataCatalogService
 from app.services.copilot.metric_catalog import MetricCatalogService
@@ -711,6 +712,7 @@ class CopilotToolRegistry:
         self._register("get_product_profile", ProductProfileArgs, "Return a seller-owned product business profile with latest related signals.", self._get_product_profile, domains=(BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.INVENTORY, BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.COMPETITOR, BusinessDomainKey.PRICING, BusinessDomainKey.DEAD_STOCK, BusinessDomainKey.SEO_VISIBILITY))
         self._register("get_products_missing_setup", ProductsMissingSetupArgs, "List seller-owned products missing required setup data and recommended next actions.", self._get_products_missing_setup, domains=(BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.INVENTORY, BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.SEO_VISIBILITY), metrics=("products_missing_cost_count", "products_missing_fee_policy_count"))
         self._register("run_seller_metric_query", SellerMetricQueryArgs, "Execute one allowlisted catalog metric with backend-owned SQLAlchemy handlers only; raw SQL is never accepted.", self._run_seller_metric_query, domains=(BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.INVENTORY, BusinessDomainKey.COMPETITOR, BusinessDomainKey.DEAD_STOCK, BusinessDomainKey.RECOMMENDATIONS, BusinessDomainKey.ALERTS), metrics=("product_count", "active_product_count", "listed_product_count", "products_missing_cost_count", "products_missing_fee_policy_count", "products_missing_pricing_policy_count", "products_with_stock_count", "products_with_no_sales_count", "products_with_no_valid_imported_sales_count", "gross_revenue", "units_sold", "order_count", "average_order_value", "top_products_by_revenue", "revenue_trend", "previous_period_revenue", "revenue_change", "percentage_revenue_change", "products_with_revenue_decline", "average_selling_price_delta", "estimated_profit", "margin_rate", "products_excluded_from_profit", "current_inventory_value", "low_stock_product_count", "stockout_risk_count", "dead_stock_count", "locked_capital", "competitor_undercut_count", "competitor_price_gap", "pending_recommendation_count", "unresolved_alert_count"))
+        self._register("query_business_records", RecordsQueryArgs, "Query the seller's own records (sales, stock_ins, inventory_history, price_history, promotions, alerts, recommendations, competitor_snapshots, products) with filters, list/count/sum/avg/min/max over an allowlisted measure, and day/week/month/product/category/marketplace grouping. Deterministic, exact Decimal totals; raw SQL is never accepted.", self._query_business_records, max_runtime_ms=4000, domains=(BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.INVENTORY, BusinessDomainKey.PRICING, BusinessDomainKey.PROMOTION, BusinessDomainKey.ALERTS, BusinessDomainKey.RECOMMENDATIONS, BusinessDomainKey.COMPETITOR, BusinessDomainKey.PRODUCT_CATALOG))
         self._register("get_revenue_summary", RevenueSummaryArgs, "Return deterministic seller revenue, units, AOV, previous-period comparison, top products, and completeness.", self._get_revenue_summary, domains=(BusinessDomainKey.SALES_REVENUE,), metrics=("gross_revenue", "net_revenue", "units_sold", "order_count", "average_order_value", "previous_period_revenue", "revenue_change", "percentage_revenue_change", "top_products_by_revenue", "products_with_revenue_decline"))
         self._register("get_sales_trends", SalesTrendsArgs, "Return deterministic seller sales trend time series by day, week, or month.", self._get_sales_trends, domains=(BusinessDomainKey.SALES_REVENUE,), metrics=("revenue_trend", "gross_revenue", "units_sold"))
         self._register("get_profit_summary", ProfitSummaryArgs, "Return deterministic estimated profit and margin summary with explicit product exclusions.", self._get_profit_summary, domains=(BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.SALES_REVENUE), metrics=("estimated_profit", "margin_rate", "products_excluded_from_profit"))
@@ -766,6 +768,16 @@ class CopilotToolRegistry:
             self._business_catalog.get_domain(domain)
         for metric in metrics:
             self._metric_catalog.get_metric(metric)
+
+    def _query_business_records(self, context: CopilotToolContext, args: dict[str, Any]) -> dict[str, Any]:
+        data_access = self._data_access
+        if data_access is not None and hasattr(data_access, "query_business_records"):
+            payload, missing = data_access.query_business_records(seller_id=context.seller_id, **args)
+            payload["missing_data"] = missing or payload.get("missing_data", [])
+            return payload
+        if context.db is None:
+            raise RuntimeError("query_business_records requires a database session.")
+        return query_business_records(context.db, seller_id=context.seller_id, args=args)
 
     def _get_business_overview(self, context: CopilotToolContext, args: dict[str, Any]) -> dict[str, Any]:
         payload, missing = self._data(context).get_business_overview(

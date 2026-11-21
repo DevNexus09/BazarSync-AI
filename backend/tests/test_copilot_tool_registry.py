@@ -175,6 +175,19 @@ class _FakeDataAccess:
     def get_recommendation_summary(self, **kwargs):
         return self._payload("get_recommendation_summary", {"summary": {"open_action_center_items": 1}, "top_prioritized_actions": [], "freshness": [], "evidence": [_evidence("action_center_items")]})
 
+    def query_business_records(self, **kwargs):
+        return self._payload(
+            "query_business_records",
+            {
+                "entity": kwargs.get("entity"),
+                "rows": [{"value": "2", "row_count": 2}],
+                "row_count": 2,
+                "truncated": False,
+                "evidence": [_evidence("sales_records")],
+                "calculation_version": "records_query_v1",
+            },
+        )
+
     def run_seller_metric_query(self, **kwargs):
         return self._payload(
             "run_seller_metric_query",
@@ -464,6 +477,7 @@ class CopilotToolRegistryTests(unittest.TestCase):
             "get_alert_summary": {"product_id": product_id, "from_date": "2026-07-01", "to_date": "2026-07-05", "category": "cat", "limit": 5, "offset": 0},
             "get_recommendation_summary": {"product_id": product_id, "from_date": "2026-07-01", "to_date": "2026-07-05", "category": "cat", "limit": 5, "offset": 0},
             "run_seller_metric_query": {"metric_key": "product_count", "filters": {"category": "cat"}, "limit": 5, "offset": 0},
+            "query_business_records": {"entity": "sales", "product_id": product_id, "aggregate": "sum", "measure": "revenue", "from_date": "2026-07-01", "to_date": "2026-07-05"},
             "get_today_actions": {"product_id": product_id, "limit": 5},
             "get_restock_recommendations": {"product_id": product_id, "category": "cat", "limit": 5},
             "get_inventory_risks": {"product_id": product_id, "risk_level": "high", "limit": 5},
@@ -536,6 +550,7 @@ class CopilotToolRegistryTests(unittest.TestCase):
                 "get_alert_summary",
                 "get_recommendation_summary",
                 "run_seller_metric_query",
+                "query_business_records",
                 "get_restock_recommendations",
                 "get_inventory_risks",
                 "explain_revenue_drop",
