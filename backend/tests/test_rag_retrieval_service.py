@@ -300,6 +300,22 @@ class RagRrfRetrievalTests(unittest.TestCase):
 
         self.assertEqual([sku_chunk.id], [item.chunk_id for item in result.retrieved_chunks])
 
+    def test_keyword_only_hits_need_whole_words_and_a_specific_match(self):
+        seller_id = uuid4()
+        substring_only = chunk(seller_id=seller_id, text="competitor comparison listing")  # "paris" is inside "comparison"
+        one_generic_word = chunk(seller_id=seller_id, text="weekly sales digest")
+        product_name = chunk(seller_id=seller_id, text="Lex Loafer in Brown sold 2 units")
+        repo = FakeRepository(
+            keyword_rows=[substring_only, one_generic_word, product_name],
+            documents={item.memory_document_id: document_for(item) for item in (substring_only, one_generic_word, product_name)},
+        )
+
+        weather = self._service(repo).retrieve_context(seller_id=seller_id, question="weather in paris tomorrow", min_similarity=0.45)
+        loafer = self._service(repo).retrieve_context(seller_id=seller_id, question="lex loafer sales", min_similarity=0.45)
+
+        self.assertEqual([], weather.retrieved_chunks)
+        self.assertEqual([product_name.id], [item.chunk_id for item in loafer.retrieved_chunks])
+
     def test_keyword_only_hit_is_dropped_without_rrf(self):
         seller_id = uuid4()
         sku_chunk = chunk(seller_id=seller_id, text="SKU DEMO-BATA-122185090 received")

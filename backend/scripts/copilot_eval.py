@@ -8,7 +8,8 @@ appears in the answer. Live LLM calls may cost money; questions run sequentially
     python scripts/copilot_eval.py --seller-id <uuid> --only rev_october,stock_in_week
 
 The orchestrator persists one Copilot conversation per question for that seller, exactly
-like the API does. Results go to ``artifacts/copilot_eval/<timestamp>.json``.
+like the API does; those conversations are tagged ``metadata_json.source = "copilot_eval"``
+so RAG backfill never indexes them as the seller's history. Results go to ``artifacts/copilot_eval/<timestamp>.json``.
 """
 
 from __future__ import annotations
@@ -79,7 +80,9 @@ def grade(case: dict[str, Any], answer: str, tools: list[str]) -> dict[str, Any]
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     from app.db.session import SessionLocal
+    from app.repositories.copilot_repository import CopilotRepository
     from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
+    from app.services.rag_memory_backfill_service import EVAL_CONVERSATION_SOURCE
 
     cases = json.loads(FIXTURE.read_text(encoding="utf-8"))["questions"]
     if args.only:
@@ -91,10 +94,15 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         started = time.monotonic()
         with SessionLocal() as session:
             try:
+                # Tagged so RAG backfill never indexes eval turns as the seller's Copilot history.
+                conversation = CopilotRepository(session).create_conversation(
+                    seller_id=seller_id, user_id=seller_id, title=f"[eval] {case['id']}", metadata_json={"source": EVAL_CONVERSATION_SOURCE}
+                )
                 result = await CopilotOrchestrator(db=session).ask(
                     CopilotOrchestratorRequest(
                         seller_id=seller_id,
                         user_id=seller_id,
+                        conversation_id=conversation.id,
                         question=case["question"],
                         requested_language="auto",
                         include_tool_trace=True,

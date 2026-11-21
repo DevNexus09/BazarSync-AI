@@ -65,6 +65,8 @@ class _RankedChunk:
     similarity_score: float
     vector_rank: int | None
     keyword_score: float = 0.0
+    # RRF only: a whole-word match on 2+ keywords (a product name) or on a SKU-like token.
+    keyword_specific: bool = False
     recency_boost: float = 0.0
     source_type_weight: float = 1.0
     product_match_boost: float = 0.0
@@ -192,7 +194,7 @@ class RagRetrievalService:
         filtered = [
             item
             for item in ranked
-            if item.similarity_score >= min_similarity or (settings.rag_rrf_enabled and item.keyword_score > 0)
+            if item.similarity_score >= min_similarity or (settings.rag_rrf_enabled and item.keyword_specific)
         ]
         selected = filtered[:top_k]
         if not selected:
@@ -335,12 +337,19 @@ class RagRetrievalService:
                 vector_rank=index,
             )
         keywords = _keywords(question)
+        use_rrf = settings.rag_rrf_enabled
         for chunk in keyword_rows:
             item = ranked_by_id.get(chunk.id)
             if item is None:
                 item = _RankedChunk(chunk=chunk, similarity_score=0.0, vector_rank=None)
                 ranked_by_id[chunk.id] = item
-            item.keyword_score = max(item.keyword_score, _keyword_score(chunk.chunk_text, keywords))
+            if use_rrf:
+                # The SQL prefilter is a substring ILIKE ("paris" hits "comparison"); rank on whole words only.
+                matched = _whole_word_matches(chunk.chunk_text, keywords)
+                item.keyword_score = max(item.keyword_score, min(0.12, 0.03 * len(matched)))
+                item.keyword_specific = item.keyword_specific or len(matched) >= 2 or any(any(ch.isdigit() for ch in word) for word in matched)
+            else:
+                item.keyword_score = max(item.keyword_score, _keyword_score(chunk.chunk_text, keywords))
 
         ranked = list(ranked_by_id.values())
         if use_recency_boost:
@@ -350,7 +359,6 @@ class RagRetrievalService:
             for item in ranked:
                 if item.chunk.source_type in boosted_source_types:
                     item.source_type_weight *= QUESTION_SOURCE_TYPE_BOOST
-        use_rrf = settings.rag_rrf_enabled
         keyword_ranks: dict[UUID, int] = {}
         if use_rrf:
             # Stable sort keeps the repository order among equal keyword scores.
@@ -635,6 +643,11 @@ def _source_types_for_question(question: str) -> list[RagMemorySourceType] | Non
         if any(re.search(rf"\b{re.escape(term)}", text) for term in terms):
             selected.extend(source_types)
     return list(dict.fromkeys(selected)) or None
+
+
+def _whole_word_matches(text: str, keywords: list[str]) -> list[str]:
+    normalized = text.lower()
+    return [keyword for keyword in keywords if re.search(rf"(?<![\w-]){re.escape(keyword)}(?![\w-])", normalized)]
 
 
 def _keyword_score(text: str, keywords: list[str]) -> float:
