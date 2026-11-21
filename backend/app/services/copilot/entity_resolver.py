@@ -161,6 +161,9 @@ class CopilotEntityResolver:
         category_resolution = self._category_resolver.resolve(seller_id=seller_id, query_text=question)
         marketplace_resolution = self._marketplace_resolver.resolve(seller_id=seller_id, query_text=question)
         competitor_resolution = self._competitor_resolver.resolve(seller_id=seller_id, query_text=question)
+        if competitor_resolution.ambiguous and product_resolution.selected_id and not self._competitor_resolver.has_explicit_mention(question):
+            # A question about the seller's own product is not about a competitor just because competitors track it.
+            competitor_resolution = EntityResolution("COMPETITOR", question)
 
         products = _legacy_products(product_resolution)
         categories = _selected_canonical_values(category_resolution)

@@ -129,6 +129,28 @@ class EntityResolverUnitTests(unittest.TestCase):
         self.assertTrue(ambiguous.ambiguous)
         self.assertIsNone(ambiguous.selected_id)
 
+    def test_own_product_question_is_not_a_competitor_clarification(self) -> None:
+        # Baseline eval: "selling price of <own product>" asked "Which competitor do you mean?" because every
+        # competitor tracked for that product matched, and a store named like the brand matched inside the SKU.
+        competitors = [
+            CompetitorCandidate(uuid4(), "Fresh Rice 5kg", "Fresh Mart", PRODUCT_A_ID, "Rice 5kg Pack", None, "Daraz"),
+            CompetitorCandidate(uuid4(), "Daily Rice 5kg", "Daily Mart", PRODUCT_A_ID, "Rice 5kg Pack", None, "Daraz"),
+        ]
+        resolver = CopilotEntityResolver(
+            product_resolver=self.product_resolver,
+            category_resolver=CategoryResolver(categories=[]),
+            marketplace_resolver=MarketplaceResolver(marketplaces=[]),
+            competitor_resolver=CompetitorResolver(competitors=competitors),
+        )
+
+        own = resolver.resolve(seller_id=SELLER_ID, question="What is the selling price of Rice 5kg Pack?")
+        asked = resolver.resolve(seller_id=SELLER_ID, question="Which competitors undercut Rice 5kg Pack?")
+
+        self.assertIsNone(own.clarification_question)
+        self.assertEqual(str(PRODUCT_A_ID), own.product_resolution.selected_id)
+        self.assertFalse(own.competitor_resolution.ambiguous)
+        self.assertIsNotNone(asked.clarification_question)
+
     def test_follow_up_inherits_entity_and_explicit_entity_overrides_it(self) -> None:
         resolver = CopilotEntityResolver(
             product_resolver=self.product_resolver,
