@@ -279,5 +279,106 @@ class RagRetrievalServiceTests(unittest.TestCase):
         self.assertIn("lower(rag_memory_chunks.chunk_text)", compiled)
 
 
+class RagRrfRetrievalTests(unittest.TestCase):
+    """RAG_RRF_ENABLED + cosine distance (the HNSW index metric)."""
+
+    def setUp(self) -> None:
+        for name, value in (("rag_cosine_distance_enabled", True), ("rag_rrf_enabled", True)):
+            flag = patch.object(rag_retrieval_settings, name, value)
+            flag.start()
+            self.addCleanup(flag.stop)
+
+    def _service(self, repo):
+        return RagRetrievalService(repository=repo, embedding_service=FakeEmbeddingService(), now=datetime(2026, 11, 22, tzinfo=timezone.utc))
+
+    def test_keyword_only_exact_sku_hit_is_returned(self):
+        seller_id = uuid4()
+        sku_chunk = chunk(seller_id=seller_id, source_type=RagMemorySourceType.INVENTORY_LIFECYCLE, text="Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090) received 72 units")
+        repo = FakeRepository(keyword_rows=[sku_chunk], documents={sku_chunk.memory_document_id: document_for(sku_chunk)})
+
+        result = self._service(repo).retrieve_context(seller_id=seller_id, question="stock received for demo-bata-122185090", min_similarity=0.45)
+
+        self.assertEqual([sku_chunk.id], [item.chunk_id for item in result.retrieved_chunks])
+
+    def test_keyword_only_hit_is_dropped_without_rrf(self):
+        seller_id = uuid4()
+        sku_chunk = chunk(seller_id=seller_id, text="SKU DEMO-BATA-122185090 received")
+        repo = FakeRepository(keyword_rows=[sku_chunk], documents={sku_chunk.memory_document_id: document_for(sku_chunk)})
+
+        with patch.object(rag_retrieval_settings, "rag_rrf_enabled", False):
+            result = self._service(repo).retrieve_context(seller_id=seller_id, question="demo-bata-122185090", min_similarity=0.45)
+
+        self.assertEqual([], result.retrieved_chunks)
+
+    def test_cosine_threshold_drops_unrelated_chunk(self):
+        seller_id = uuid4()
+        unrelated = chunk(seller_id=seller_id, text="weather report")
+        related = chunk(seller_id=seller_id, text="sales summary")
+        repo = FakeRepository(
+            vector_rows=[(related, 0.2), (unrelated, 0.9)],
+            documents={item.memory_document_id: document_for(item) for item in (related, unrelated)},
+        )
+
+        result = self._service(repo).retrieve_context(seller_id=seller_id, question="zzz", min_similarity=0.45)
+
+        # distance 0.9 -> cosine similarity 0.1, below the floor; distance 0.2 -> 0.8 survives.
+        self.assertEqual([related.id], [item.chunk_id for item in result.retrieved_chunks])
+        self.assertAlmostEqual(0.8, result.retrieved_chunks[0].similarity_score)
+
+    def test_source_types_boost_not_filter(self):
+        seller_id = uuid4()
+        inventory = chunk(seller_id=seller_id, source_type=RagMemorySourceType.INVENTORY_HISTORY, text="stock count snapshot")
+        sales = chunk(seller_id=seller_id, source_type=RagMemorySourceType.SALES_HISTORY, text="daily sales digest")
+        fillers = [chunk(seller_id=seller_id, text=f"unrelated {index}") for index in range(2)]
+        # Sales ranks 4th by vector; only the 1.15x question boost lifts it above inventory.
+        repo = FakeRepository(
+            vector_rows=[(inventory, 0.3), (fillers[0], 0.9), (fillers[1], 0.9), (sales, 0.3)],
+            documents={item.memory_document_id: document_for(item) for item in (inventory, sales, *fillers)},
+        )
+
+        result = self._service(repo).retrieve_context(seller_id=seller_id, question="what about my order volume", min_similarity=0.45, use_recency_boost=False)
+
+        # "order" routes to sales: the sales chunk is boosted, the inventory chunk is still returned.
+        self.assertEqual(implemented_source_types(), repo.calls[0][1]["source_types"])
+        self.assertEqual([sales.id, inventory.id], [item.chunk_id for item in result.retrieved_chunks])
+
+    def test_explicit_source_types_still_filter(self):
+        repo = FakeRepository()
+        self._service(repo).retrieve_context(seller_id=uuid4(), question="order", source_types=[RagMemorySourceType.PRICE_HISTORY])
+        self.assertEqual([RagMemorySourceType.PRICE_HISTORY], repo.calls[0][1]["source_types"])
+
+    def test_question_terms_match_whole_words_only(self):
+        from app.services.rag_retrieval_service import _source_types_for_question
+
+        self.assertIsNone(_source_types_for_question("frankly this transaction"))
+        self.assertIn(RagMemorySourceType.SEO_VISIBILITY_HISTORY, _source_types_for_question("my search rank dropped") or [])
+
+    def test_cross_seller_chunk_never_returned(self):
+        seller_id = uuid4()
+        foreign = chunk(seller_id=uuid4(), text="SKU DEMO-1 foreign")
+        repo = FakeRepository()
+        # Simulate a repository bug that leaks another seller's rows on both paths.
+        repo.vector_search = lambda **kwargs: [(foreign, 0.0)]
+        repo.keyword_search = lambda **kwargs: [foreign]
+
+        result = self._service(repo).retrieve_context(seller_id=seller_id, question="demo-1", min_similarity=0.0)
+
+        self.assertEqual([], result.retrieved_chunks)
+
+    def test_rrf_prefers_items_found_by_both_searches(self):
+        seller_id = uuid4()
+        both = chunk(seller_id=seller_id, text="lex loafer sales digest")
+        vector_only = chunk(seller_id=seller_id, text="footwear summary")
+        repo = FakeRepository(
+            vector_rows=[(vector_only, 0.1), (both, 0.15)],
+            keyword_rows=[both],
+            documents={item.memory_document_id: document_for(item) for item in (both, vector_only)},
+        )
+
+        result = self._service(repo).retrieve_context(seller_id=seller_id, question="lex loafer", min_similarity=0.45, use_recency_boost=False)
+
+        self.assertEqual([both.id, vector_only.id], [item.chunk_id for item in result.retrieved_chunks])
+
+
 if __name__ == "__main__":
     unittest.main()

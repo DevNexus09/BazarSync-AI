@@ -214,7 +214,7 @@ class Settings(BaseModel):
     rag_chunking_version: str = "v1"
     rag_max_chunk_chars: int = 1500
     rag_chunk_overlap_chars: int = 150
-    rag_retrieval_top_k: int = 8
+    rag_retrieval_top_k: int = 12
     rag_min_similarity: float = 0.35
     rag_prompt_version: str = "v1"
     rag_groq_model: str | None = None
@@ -228,6 +228,7 @@ class Settings(BaseModel):
     rag_outbox_max_backoff_seconds: int = 3600
     rag_outbox_processing_lease_seconds: int = 900
     rag_cosine_distance_enabled: bool = False
+    rag_rrf_enabled: bool = False
     copilot_groq_model: str | None = None
     copilot_groq_timeout_seconds: float = 20.0
     copilot_overall_timeout_seconds: float = 45.0
@@ -536,7 +537,7 @@ class Settings(BaseModel):
             "rag_chunking_version": os.getenv("RAG_CHUNKING_VERSION", "v1"),
             "rag_max_chunk_chars": int(os.getenv("RAG_MAX_CHUNK_CHARS", "1500")),
             "rag_chunk_overlap_chars": int(os.getenv("RAG_CHUNK_OVERLAP_CHARS", "150")),
-            "rag_retrieval_top_k": int(os.getenv("RAG_RETRIEVAL_TOP_K", "8")),
+            "rag_retrieval_top_k": int(os.getenv("RAG_RETRIEVAL_TOP_K", "12")),
             "rag_min_similarity": float(os.getenv("RAG_MIN_SIMILARITY", "0.35")),
             "rag_prompt_version": os.getenv("RAG_PROMPT_VERSION", "v1"),
             "rag_groq_model": os.getenv("RAG_GROQ_MODEL"),
@@ -550,6 +551,7 @@ class Settings(BaseModel):
             "rag_outbox_max_backoff_seconds": int(os.getenv("RAG_OUTBOX_MAX_BACKOFF_SECONDS", "3600")),
             "rag_outbox_processing_lease_seconds": int(os.getenv("RAG_OUTBOX_PROCESSING_LEASE_SECONDS", "900")),
             "rag_cosine_distance_enabled": _parse_bool(os.getenv("RAG_COSINE_DISTANCE_ENABLED"), default=False),
+            "rag_rrf_enabled": _parse_bool(os.getenv("RAG_RRF_ENABLED"), default=False),
             "copilot_groq_model": os.getenv("GROQ_COPILOT_MODEL") or os.getenv("GROQ_MODEL"),
             "copilot_groq_timeout_seconds": float(os.getenv("COPILOT_GROQ_TIMEOUT_SECONDS", "20")),
             "copilot_overall_timeout_seconds": float(os.getenv("COPILOT_OVERALL_TIMEOUT_SECONDS", "45")),

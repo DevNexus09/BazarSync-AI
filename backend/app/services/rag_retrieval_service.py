@@ -22,6 +22,10 @@ import logging
 
 NO_CONTEXT_MESSAGE = "I could not find enough seller-specific history to answer this reliably."
 MAX_RETRIEVAL_TOP_K = 20
+RRF_K = 60
+# Scales reciprocal rank fusion into [0, 1] (rank 1 in both lists), so the existing boosts keep their weight.
+RRF_SCALE = (RRF_K + 1) / 2
+QUESTION_SOURCE_TYPE_BOOST = 1.15
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +142,10 @@ class RagRetrievalService:
             if requested_source_types
             else implemented_source_types()
         )
+        # Question terms boost likely source types; only an explicit caller filter narrows the search.
+        boosted_source_types = (
+            set(_source_types_for_question(normalized_question) or []) if settings.rag_rrf_enabled and not requested_source_types else set()
+        )
         if requested_source_types and not inferred_source_types:
             return self._no_context(
                 [f"Requested RAG sources are not implemented: {', '.join(unimplemented_requested)}."],
@@ -178,8 +186,14 @@ class RagRetrievalService:
             product_id=product_id,
             use_recency_boost=use_recency_boost,
             use_source_type_weights=use_source_type_weights,
+            boosted_source_types=boosted_source_types,
         )
-        filtered = [item for item in ranked if item.similarity_score >= min_similarity]
+        # With RRF, exact keyword hits (SKUs, product names) survive; the floor applies to vector-only matches.
+        filtered = [
+            item
+            for item in ranked
+            if item.similarity_score >= min_similarity or (settings.rag_rrf_enabled and item.keyword_score > 0)
+        ]
         selected = filtered[:top_k]
         if not selected:
             record_rag_retrieval_quality(
@@ -311,6 +325,7 @@ class RagRetrievalService:
         product_id: UUID | None = None,
         use_recency_boost: bool = True,
         use_source_type_weights: bool = True,
+        boosted_source_types: set[RagMemorySourceType] | frozenset[RagMemorySourceType] = frozenset(),
     ) -> list[_RankedChunk]:
         ranked_by_id: dict[UUID, _RankedChunk] = {}
         for index, (chunk, distance) in enumerate(vector_rows):
@@ -332,11 +347,28 @@ class RagRetrievalService:
             ranked = self.apply_recency_boost(ranked)
         if use_source_type_weights:
             ranked = self.apply_source_type_weights(ranked)
+            for item in ranked:
+                if item.chunk.source_type in boosted_source_types:
+                    item.source_type_weight *= QUESTION_SOURCE_TYPE_BOOST
+        use_rrf = settings.rag_rrf_enabled
+        keyword_ranks: dict[UUID, int] = {}
+        if use_rrf:
+            # Stable sort keeps the repository order among equal keyword scores.
+            by_keyword = sorted((item for item in ranked if item.keyword_score > 0), key=lambda item: -item.keyword_score)
+            keyword_ranks = {item.chunk.id: rank for rank, item in enumerate(by_keyword, start=1)}
         for item in ranked:
             if product_id is not None and item.chunk.product_id == product_id:
                 item.product_match_boost = 0.05
             item.business_importance_boost = _business_importance_boost(item.chunk.metadata_json or {})
-            base = item.similarity_score + min(item.keyword_score, 0.12)
+            if use_rrf:
+                fused = 0.0
+                if item.vector_rank is not None:
+                    fused += 1 / (RRF_K + item.vector_rank + 1)
+                if item.chunk.id in keyword_ranks:
+                    fused += 1 / (RRF_K + keyword_ranks[item.chunk.id])
+                base = fused * RRF_SCALE
+            else:
+                base = item.similarity_score + min(item.keyword_score, 0.12)
             item.final_score = (
                 base * item.source_type_weight
                 + item.recency_boost
@@ -583,6 +615,7 @@ def _keywords(question: str) -> list[str]:
 
 
 def _source_types_for_question(question: str) -> list[RagMemorySourceType] | None:
+    """Source types a question is likely about. Callers use it as a ranking boost, never a filter."""
     text = question.lower()
     selected: list[RagMemorySourceType] = []
     rules = (
@@ -598,7 +631,8 @@ def _source_types_for_question(question: str) -> list[RagMemorySourceType] | Non
         (("copilot", "asked", "conversation"), (RagMemorySourceType.COPILOT_HISTORY,)),
     )
     for terms, source_types in rules:
-        if any(term in text for term in terms):
+        # Word-start match: "rank" must not fire on "frankly", nor "action" on "transaction".
+        if any(re.search(rf"\b{re.escape(term)}", text) for term in terms):
             selected.extend(source_types)
     return list(dict.fromkeys(selected)) or None
 
