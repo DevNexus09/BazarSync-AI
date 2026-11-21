@@ -119,9 +119,12 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         if error:
             row["passed"] = False
         rows.append(row)
-        print(f"{'PASS' if row['passed'] else 'FAIL'}  {case['id']:<28} tools={'ok' if row['tool_match'] else 'miss'}  {row['latency_ms']}ms")
+        print(f"{'PASS' if row['passed'] else 'FAIL'}  {case['id']:<28} tools={'ok' if row['tool_match'] else 'miss'}  {row['latency_ms']}ms", flush=True)
         if not row["passed"] and args.verbose:
-            print(f"      answer: {answer[:300]!r}  error={error}")
+            print(f"      answer: {answer[:300]!r}  error={error}", flush=True)
+        if args.pause:
+            # Free tiers limit tokens per minute (Groq: 8000); pacing keeps 429s from turning answers into fallbacks.
+            await asyncio.sleep(args.pause)
     passed = sum(row["passed"] for row in rows)
     summary = {
         "ran_at": datetime.now(timezone.utc).isoformat(),
@@ -144,6 +147,7 @@ def main() -> int:
     cli.add_argument("--seller-id", required=True)
     cli.add_argument("--only", help="Comma-separated question ids.")
     cli.add_argument("--verbose", action="store_true", help="Print failing answers.")
+    cli.add_argument("--pause", type=float, default=0.0, help="Seconds to wait between questions (provider rate limits).")
     asyncio.run(run(cli.parse_args()))
     return 0
 
