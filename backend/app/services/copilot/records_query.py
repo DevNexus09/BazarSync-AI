@@ -224,6 +224,9 @@ class RecordsQueryArgs(BaseModel):
                 raise ValueError(f"aggregate {self.aggregate} needs a measure; allowed for {self.entity}: {sorted(spec.measures) or 'none'}")
         if self.measure and self.measure not in spec.measures:
             raise ValueError(f"measure {self.measure!r} is not allowed for {self.entity}; allowed: {sorted(spec.measures) or 'none'}")
+        if self.entity == "inventory_history" and self.aggregate == "sum":
+            # Snapshots are point-in-time stock levels; adding days together counts the same units again.
+            raise ValueError("inventory_history holds daily snapshots and cannot be summed; use list, max, min or avg, or products.stock_quantity for current stock")
         if self.group_by not in spec.groups:
             raise ValueError(f"group_by {self.group_by!r} is not allowed for {self.entity}; allowed: {sorted(spec.groups)}")
         if self.group_by != "none" and self.aggregate == "list":

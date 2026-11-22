@@ -367,6 +367,8 @@ def _prompt_from_context(context: CopilotAnswerContext) -> list[dict[str, str]]:
                 "Use only supplied facts. Do not calculate metrics. Do not invent numbers, evidence, or data. "
                 "When the facts do not answer the question, say exactly what is not recorded (for example, that invoices are not recorded) "
                 "and name the closest available data instead of guessing. "
+                "Never present one kind of record as another (orders or sales are not invoices, plans are not completed promotions). "
+                "Say something is not recorded only when no supplied fact covers it. "
                 "NO_MATCHING_RECORDS means the seller has no such records in that scope: say 'no sales recorded' rather than '0 revenue', "
                 "and never treat unavailable data as zero. "
                 f"{language_rule}{ANSWER_STYLE_RULES} "

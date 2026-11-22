@@ -163,6 +163,15 @@ class RecordsQueryToolTests(unittest.TestCase):
         # An observed zero is a fact ("no sales recorded"), so it is citable too.
         self.assertEqual(0, empty.evidence[0]["payload"]["row_count"])
 
+    def test_point_in_time_stock_snapshots_cannot_be_summed(self):
+        # Live eval: summing every daily snapshot reported 36544 units instead of 726 on hand.
+        from app.services.copilot.records_query import RecordsQueryArgs
+
+        with self.assertRaises(ValueError):
+            RecordsQueryArgs.model_validate({"entity": "inventory_history", "aggregate": "sum", "measure": "quantity_on_hand"})
+        RecordsQueryArgs.model_validate({"entity": "inventory_history", "aggregate": "max", "measure": "quantity_on_hand"})
+        RecordsQueryArgs.model_validate({"entity": "stock_ins", "aggregate": "sum", "measure": "quantity"})
+
     def test_limit_truncation_flagged(self):
         listed = self._run(entity="sales", aggregate="list", limit=2)
         grouped = self._run(entity="sales", aggregate="count", group_by="day", limit=1)

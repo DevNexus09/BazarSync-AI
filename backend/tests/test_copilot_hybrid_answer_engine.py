@@ -266,6 +266,9 @@ class MissingFactsPromptTests(unittest.TestCase):
         self.assertIn("say exactly what is not recorded", system)
         self.assertIn("closest available data", system)
         self.assertIn("NO_MATCHING_RECORDS", system)
+        # Live eval: "You issued 138 invoices" restated orders as invoices.
+        self.assertIn("Never present one kind of record as another", system)
+        self.assertIn("only when no supplied fact covers it", system)
 
 
 class RepeatedToolFactsTests(unittest.TestCase):

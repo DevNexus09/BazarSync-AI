@@ -251,7 +251,7 @@ def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]
     lines: list[str] = []
     for tool_name in FINANCIAL_TOOLS:
         for row in (rows_by_tool.get(tool_name) or [])[:1]:
-            if row.get("order_count") == 0 and not row.get("units_sold"):
+            if row.get("order_count") == 0 and not row.get("units_sold") or _is_zero(row.get("gross_revenue")) and not row.get("units_sold"):
                 # Observed zero: say nothing was recorded instead of listing zero figures.
                 lines.append("No sales recorded for this period")
                 continue
@@ -262,6 +262,13 @@ def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]
                 if row.get(key) is not None and not (key == "net_revenue" and repeats_gross)
             )
     return lines
+
+
+def _is_zero(value: Any) -> bool:
+    try:
+        return value is not None and Decimal(str(value)) == 0
+    except (ArithmeticError, ValueError):
+        return False
 
 
 def _memory_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:

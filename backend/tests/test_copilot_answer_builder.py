@@ -155,6 +155,11 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
         self.assertNotIn("gross revenue: 0", answer.answer)
         self.assertNotIn("order count: 0", answer.answer)
 
+        profit = ToolExecutionResult(tool_name="get_profit_summary", tool_version="v1", status=ToolExecutionStatus.SUCCEEDED, data={"gross_revenue": "0", "estimated_profit": "0", "missing_data": []}, evidence=[], missing_data=[], error=None, runtime_ms=1)
+        both = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[empty, profit], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[])
+        self.assertEqual(1, both.answer.count("No sales recorded for this period"))
+        self.assertNotIn(": 0", both.answer)
+
     def test_rows_without_usable_facts_say_so_plainly(self):
         answer = self.builder.build(
             classification=_classification(CopilotIntent.SEO_ADVICE),
