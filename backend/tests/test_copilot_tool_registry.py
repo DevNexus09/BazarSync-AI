@@ -184,7 +184,7 @@ class _FakeDataAccess:
                 "row_count": 2,
                 "truncated": False,
                 "evidence": [_evidence("sales_records")],
-                "calculation_version": "records_query_v1",
+                "calculation_version": "records_query_v2",
             },
         )
 

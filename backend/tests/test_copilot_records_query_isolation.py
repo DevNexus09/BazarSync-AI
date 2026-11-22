@@ -14,11 +14,13 @@ from sqlalchemy.orm import Session
 
 from app.db.base import Base
 from app.models.alert import Alert, AlertActionType, AlertConfidence
+from app.models.business_finance import BusinessExpense, BusinessExpenseStatus, BusinessExpenseType, MarketplaceStoreMetric
 from app.models.competitor_snapshot import CompetitorSnapshot
 from app.models.inventory_history import InventoryHistory, InventorySnapshotSource
 from app.models.inventory_stock_in import InventoryStockIn
-from app.models.product import Product
+from app.models.product import Product, ProductMarketplaceListing
 from app.models.product_price_history import ProductPriceHistory, ProductPriceHistorySource
+from app.models.product_visibility_metric import ProductVisibilityMetric
 from app.models.promotion import PromotionPlan
 from app.models.recommendation import Recommendation, RecommendationConfidence
 from app.models.sales_record import SalesRecord, SalesRecordPriceSource, SalesRecordStatus
@@ -33,7 +35,7 @@ def _compile_jsonb_sqlite(_type, _compiler, **_kwargs) -> str:
 
 
 NOW = datetime(2026, 11, 10, 6, 0, tzinfo=timezone.utc)
-MODELS = [Seller, Product, SalesRecord, InventoryStockIn, InventoryHistory, ProductPriceHistory, PromotionPlan, Recommendation, Alert, CompetitorSnapshot]
+MODELS = [Seller, Product, SalesRecord, InventoryStockIn, InventoryHistory, ProductPriceHistory, PromotionPlan, Recommendation, Alert, CompetitorSnapshot, BusinessExpense, ProductMarketplaceListing, MarketplaceStoreMetric, ProductVisibilityMetric]
 
 
 def _rows_for(product: Product) -> dict[str, object]:
@@ -47,6 +49,10 @@ def _rows_for(product: Product) -> dict[str, object]:
         "alerts": Alert(seller_id=seller_id, product_id=product.id, alert_type="LOW_STOCK", action_type=list(AlertActionType)[0], confidence=list(AlertConfidence)[0], created_at=NOW),
         "recommendations": Recommendation(product_id=product.id, confidence=list(RecommendationConfidence)[0], reasoning_bn="x", recommendation_context={"source": "test"}, created_at=NOW),
         "competitor_snapshots": CompetitorSnapshot(scrape_run_id=uuid4(), competitor_id=uuid4(), product_id=product.id, stock_status="IN_STOCK", price=Decimal("9"), currency="BDT", captured_at=NOW),
+        "expenses": BusinessExpense(seller_id=seller_id, expense_type=BusinessExpenseType.SUPPLIER_PURCHASE, amount=Decimal("50"), currency="BDT", incurred_at=NOW, payment_status=BusinessExpenseStatus.DUE, counterparty=f"supplier-of-{product.title}"),
+        "listings": ProductMarketplaceListing(seller_id=seller_id, product_id=product.id, marketplace="Daraz", rating=Decimal("4.5"), review_count=3, created_at=NOW),
+        "store_metrics": MarketplaceStoreMetric(seller_id=seller_id, marketplace=f"store-of-{product.title}", seller_rating=Decimal("4.1"), captured_at=NOW),
+        "visibility": ProductVisibilityMetric(seller_id=seller_id, product_id=product.id, marketplace="Daraz", metric_date=date(2026, 11, 10), impressions=100, search_rank=4),
     }
 
 
@@ -90,6 +96,36 @@ class RecordsQuerySellerIsolationTests(unittest.TestCase):
                 foreign = self.foreign_rows.get(entity)
                 self.assertNotIn(str(foreign.id) if foreign is not None else self.foreign_product_id, ids)
                 self.assertNotIn("foreign-product", str(listed.data))
+
+    def _run(self, **arguments):
+        result = CopilotToolRegistry().execute(name="query_business_records", context=CopilotToolContext(seller_id=self.seller.id, db=self.db), arguments=arguments)
+        self.assertEqual(ToolExecutionStatus.SUCCEEDED, result.status, result.error)
+        return result.data
+
+    def test_customer_and_district_groups_exclude_other_seller(self):
+        self.db.add_all([
+            SalesRecord(seller_id=row.seller_id, product_id=row.product_id, status=SalesRecordStatus.COMPLETED, sold_at=NOW, quantity_sold=1, unit_price=Decimal("10"), line_total=Decimal("10"), currency="BDT", price_source=SalesRecordPriceSource.TRANSACTION, customer_reference=customer, delivery_district=district)
+            for row, customer, district in ((self.foreign_rows["sales"], "FOREIGN-CUSTOMER", "Chittagong"),)
+        ])
+        self.db.commit()
+        customers = self._run(entity="sales", aggregate="count", group_by="customer")
+        districts = self._run(entity="sales", aggregate="count", group_by="district")
+        self.assertNotIn("FOREIGN-CUSTOMER", str(customers))
+        self.assertNotIn("Chittagong", str(districts))
+        self.assertEqual(1, sum(row["row_count"] for row in customers["rows"]))
+
+    def test_expenses_entity_is_seller_scoped(self):
+        data = self._run(entity="expenses", aggregate="sum", measure="amount", group_by="expense_type")
+        self.assertEqual([("SUPPLIER_PURCHASE", "50.00")], [(row["expense_type"], row["value"]) for row in data["rows"]])
+        self.assertNotIn("foreign-product", str(self._run(entity="expenses", limit=200)))
+
+
+    def test_date_bounds_include_the_whole_last_day_for_date_and_timestamp_columns(self):
+        # visibility.metric_date is a DATE; expenses.incurred_at is a timestamp. Both rows are on 2026-11-10.
+        for entity in ("visibility", "expenses"):
+            with self.subTest(entity=entity):
+                self.assertEqual(1, self._run(entity=entity, aggregate="count", from_date="2026-11-10", to_date="2026-11-10")["rows"][0]["value"])
+                self.assertEqual(0, self._run(entity=entity, aggregate="count", from_date="2026-11-11", to_date="2026-11-12")["rows"][0]["value"])
 
 
 if __name__ == "__main__":

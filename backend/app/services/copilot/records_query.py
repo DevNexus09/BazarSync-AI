@@ -9,7 +9,7 @@ so sums are exact and day/week/month buckets follow the seller's timezone on any
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Callable, Literal
@@ -21,25 +21,39 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.alert import Alert
+from app.models.business_finance import BusinessExpense, BusinessExpenseStatus, BusinessExpenseType, MarketplaceStoreMetric
 from app.models.competitor_snapshot import CompetitorSnapshot
 from app.models.inventory_history import InventoryHistory
 from app.models.inventory_stock_in import InventoryStockIn
-from app.models.product import Product
+from app.models.product import Product, ProductMarketplaceListing
 from app.models.product_price_history import ProductPriceHistory
+from app.models.product_visibility_metric import ProductVisibilityMetric
 from app.models.promotion import PromotionPlan
 from app.models.recommendation import Recommendation
 from app.models.sales_record import SalesRecord, SalesRecordStatus
 
-CALCULATION_VERSION = "records_query_v1"
+CALCULATION_VERSION = "records_query_v2"
 SELLER_TIMEZONE = ZoneInfo("Asia/Dhaka")
 # Rows scanned per query; past this the caller must narrow the date range.
 MAX_SCAN_ROWS = 50_000
 VALID_SALES_STATUSES = (SalesRecordStatus.COMPLETED, SalesRecordStatus.FULFILLED)
+SALES_STATUS_FILTERS = {"valid": VALID_SALES_STATUSES, "cancelled": (SalesRecordStatus.CANCELLED,), "all": None}
+# The Bangladesh weekend.
+WEEKEND_DAYS = {"Friday", "Saturday"}
 
-Entity = Literal["sales", "stock_ins", "inventory_history", "price_history", "promotions", "alerts", "recommendations", "competitor_snapshots", "products"]
+Entity = Literal[
+    "sales", "stock_ins", "inventory_history", "price_history", "promotions", "alerts", "recommendations", "competitor_snapshots", "products",
+    "expenses", "listings", "store_metrics", "visibility",
+]
 Aggregate = Literal["list", "count", "sum", "avg", "min", "max"]
-GroupBy = Literal["none", "day", "week", "month", "product", "category", "marketplace"]
+GroupBy = Literal[
+    "none", "day", "week", "month", "weekday", "product", "category", "marketplace",
+    "district", "customer", "expense_type", "payment_status", "listing_status",
+]
 TIME_GROUPS = {"day", "week", "month"}
+# Groups keyed on one column of the row: group name -> attribute.
+FIELD_GROUPS = {"district": "delivery_district", "customer": "customer_reference", "expense_type": "expense_type", "payment_status": "payment_status", "listing_status": "listing_status"}
+BASE_GROUPS = frozenset({"none", "day", "week", "month", "weekday", "product", "category"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +78,9 @@ class EntitySpec:
     extra_filters: tuple[Any, ...] = ()
     assumptions: tuple[str, ...] = ()
     product_join_required: bool = True
-    groups: frozenset[str] = field(default_factory=lambda: frozenset({"none", "day", "week", "month", "product", "category"}))
+    groups: frozenset[str] = BASE_GROUPS
+    # False for seller-level tables with no product_id (expenses, store metrics).
+    has_product: bool = True
 
 
 def _dec(value: Any) -> Decimal | None:
@@ -92,6 +108,18 @@ def _net_units(row: SalesRecord) -> Decimal:
     return Decimal(max(0, row.quantity_sold - (row.returned_units or 0) - (row.refunded_restocked_units or 0)))
 
 
+def _returned_units(row: SalesRecord) -> Decimal:
+    return Decimal((row.returned_units or 0) + (row.refunded_restocked_units or 0))
+
+
+def _returned_value(row: SalesRecord) -> Decimal | None:
+    return None if row.unit_price is None else Decimal(str(row.unit_price)) * _returned_units(row)
+
+
+def _inventory_value_at_cost(row: Product) -> Decimal | None:
+    return None if row.cost_price is None else Decimal(str(row.cost_price)) * Decimal(row.stock_quantity)
+
+
 ENTITY_SPECS: dict[str, EntitySpec] = {
     "sales": EntitySpec(
         model=SalesRecord,
@@ -103,11 +131,19 @@ ENTITY_SPECS: dict[str, EntitySpec] = {
             "units": Measure(lambda row: Decimal(row.quantity_sold), "units"),
             "net_units": Measure(_net_units, "units"),
             "unit_price": Measure(_column("unit_price"), "money"),
+            "returned_units": Measure(_returned_units, "units"),
+            "returned_value": Measure(_returned_value, "money"),
         },
-        list_fields=("sold_at", "status", "quantity_sold", "returned_units", "unit_price", "line_total", "currency"),
+        list_fields=("sold_at", "status", "quantity_sold", "returned_units", "refunded_restocked_units", "unit_price", "line_total", "currency", "customer_reference", "delivery_district"),
         currency_attr="currency",
-        extra_filters=(SalesRecord.status.in_(VALID_SALES_STATUSES), SalesRecord.is_test_order.is_(False)),
-        assumptions=("Only COMPLETED and FULFILLED non-test orders count, as in get_revenue_summary.", "Revenue is the line total, else units x unit price; rows with neither are counted as missing revenue."),
+        # The status filter comes from sales_status (default: COMPLETED and FULFILLED, as in get_revenue_summary).
+        extra_filters=(SalesRecord.is_test_order.is_(False),),
+        groups=BASE_GROUPS | {"district", "customer"},
+        assumptions=(
+            "Test orders never count.",
+            "Revenue is the line total, else units x unit price; rows with neither are counted as missing revenue.",
+            "returned_units = returned + refunded-and-restocked units; returned_value = unit price x returned_units.",
+        ),
     ),
     "stock_ins": EntitySpec(
         model=InventoryStockIn,
@@ -191,12 +227,97 @@ ENTITY_SPECS: dict[str, EntitySpec] = {
         source_table="products",
         date_column=Product.created_at,
         seller_column=Product.seller_id,
-        measures={"selling_price": Measure(_column("selling_price"), "money"), "cost_price": Measure(_column("cost_price"), "money"), "stock_quantity": Measure(_column("stock_quantity"), "units")},
+        measures={
+            "selling_price": Measure(_column("selling_price"), "money"),
+            "cost_price": Measure(_column("cost_price"), "money"),
+            "stock_quantity": Measure(_column("stock_quantity"), "units"),
+            "inventory_value_at_cost": Measure(_inventory_value_at_cost, "money"),
+        },
         list_fields=("title", "sku", "category", "status", "selling_price", "cost_price", "stock_quantity"),
         product_join_required=False,
-        assumptions=("Date filters apply to the product's created_at.", "Products have no currency column; money is in the store currency (BDT)."),
+        assumptions=("Date filters apply to the product's created_at.", "Products have no currency column; money is in the store currency (BDT).", "inventory_value_at_cost = cost_price x stock_quantity."),
+    ),
+    "expenses": EntitySpec(
+        model=BusinessExpense,
+        source_table="business_expenses",
+        date_column=BusinessExpense.incurred_at,
+        seller_column=BusinessExpense.seller_id,
+        measures={"amount": Measure(_column("amount"), "money")},
+        list_fields=("incurred_at", "expense_type", "amount", "currency", "payment_status", "due_date", "counterparty", "notes"),
+        currency_attr="currency",
+        product_join_required=False,
+        has_product=False,
+        groups=frozenset({"none", "day", "week", "month", "weekday", "expense_type", "payment_status"}),
+        assumptions=("Business expenses recorded by the seller; DUE means not yet paid (payables).", "Date filters apply to incurred_at."),
+    ),
+    "listings": EntitySpec(
+        model=ProductMarketplaceListing,
+        source_table="product_marketplace_listings",
+        date_column=ProductMarketplaceListing.created_at,
+        seller_column=ProductMarketplaceListing.seller_id,
+        measures={"rating": Measure(_column("rating"), "rating"), "review_count": Measure(_column("review_count"), "count"), "selling_price": Measure(_column("selling_price"), "money")},
+        list_fields=("marketplace", "listing_status", "title_on_marketplace", "selling_price", "currency", "rating", "review_count", "last_synced_at"),
+        marketplace_column=ProductMarketplaceListing.marketplace,
+        currency_attr="currency",
+        extra_filters=(ProductMarketplaceListing.archived_at.is_(None),),
+        groups=BASE_GROUPS | {"marketplace", "listing_status"},
+        assumptions=("Archived listings are excluded.", "Date filters apply to the listing's created_at; rating and review_count are the latest synced values."),
+    ),
+    "store_metrics": EntitySpec(
+        model=MarketplaceStoreMetric,
+        source_table="marketplace_store_metrics",
+        date_column=MarketplaceStoreMetric.captured_at,
+        seller_column=MarketplaceStoreMetric.seller_id,
+        measures={
+            "seller_rating": Measure(_column("seller_rating"), "rating"),
+            "rating_count": Measure(_column("rating_count"), "count"),
+            "positive_rating_rate": Measure(_column("positive_rating_rate"), "rate"),
+            "ship_on_time_rate": Measure(_column("ship_on_time_rate"), "rate"),
+            "chat_response_rate": Measure(_column("chat_response_rate"), "rate"),
+        },
+        list_fields=("captured_at", "marketplace", "seller_rating", "rating_count", "positive_rating_rate", "ship_on_time_rate", "chat_response_rate", "source"),
+        marketplace_column=MarketplaceStoreMetric.marketplace,
+        product_join_required=False,
+        has_product=False,
+        groups=frozenset({"none", "day", "week", "month", "marketplace"}),
+        assumptions=("Store-level marketplace scores as captured; the newest row is the current value.",),
+    ),
+    "visibility": EntitySpec(
+        model=ProductVisibilityMetric,
+        source_table="product_visibility_metrics",
+        date_column=ProductVisibilityMetric.metric_date,
+        seller_column=ProductVisibilityMetric.seller_id,
+        measures={
+            "search_rank": Measure(_column("search_rank"), "count"),
+            "impressions": Measure(_column("impressions"), "count"),
+            "views": Measure(_column("views"), "count"),
+            "clicks": Measure(_column("clicks"), "count"),
+            "conversion_rate": Measure(_column("conversion_rate"), "rate"),
+        },
+        list_fields=("metric_date", "marketplace", "search_rank", "impressions", "views", "clicks", "conversion_rate", "listing_quality_score"),
+        marketplace_column=ProductVisibilityMetric.marketplace,
+        groups=BASE_GROUPS | {"marketplace"},
+        assumptions=("Daily marketplace visibility per product; a lower search_rank is better.",),
     ),
 }
+
+
+def records_tool_description() -> str:
+    """The model-facing description, built from ENTITY_SPECS so it never drifts from what the tool accepts."""
+    entities = "; ".join(
+        f"{name} (measures: {', '.join(spec.measures) or 'none'}; group_by: {', '.join(sorted(spec.groups - {'none'}))})"
+        for name, spec in ENTITY_SPECS.items()
+    )
+    return (
+        "Query the seller's own records with filters and list/count/sum/avg/min/max over an allowlisted measure. "
+        f"Entities: {entities}. "
+        "Use it for rankings, breakdowns, sorting and counts: order_by='measure' sorts a list by the measure (e.g. products by "
+        "selling_price desc for the most expensive) or time groups by value (e.g. group_by=day, sum revenue, desc for the best day). "
+        "group_by=weekday labels Monday-Sunday with is_weekend (Friday and Saturday). group_by=customer gives counts per customer "
+        "(repeat customers have count >= 2; group_count is the number of customers). sales_status: valid (default, COMPLETED and "
+        "FULFILLED), cancelled, or all. expenses accept expense_type and payment_status (DUE = payable) filters. "
+        "Dates are Asia/Dhaka calendar days. Deterministic, exact Decimal totals; raw SQL is never accepted."
+    )
 
 
 class RecordsQueryArgs(BaseModel):
@@ -211,8 +332,13 @@ class RecordsQueryArgs(BaseModel):
     aggregate: Aggregate = "list"
     measure: str | None = Field(default=None, max_length=60)
     group_by: GroupBy = "none"
+    # "measure": a list is sorted by the measure; time groups are sorted by value instead of by period.
+    order_by: Literal["date", "measure"] = "date"
     sort: Literal["desc", "asc"] = "desc"
     limit: int = Field(default=50, ge=1, le=200)
+    sales_status: Literal["valid", "cancelled", "all"] = "valid"
+    expense_type: BusinessExpenseType | None = None
+    payment_status: BusinessExpenseStatus | None = None
 
     @model_validator(mode="after")
     def validate_query(self) -> "RecordsQueryArgs":
@@ -233,6 +359,14 @@ class RecordsQueryArgs(BaseModel):
             raise ValueError("group_by needs an aggregate (count, sum, avg, min or max)")
         if self.marketplace and spec.marketplace_column is None:
             raise ValueError(f"{self.entity} has no marketplace field")
+        if self.order_by == "measure" and self.aggregate == "list" and not self.measure:
+            raise ValueError(f"order_by measure needs a measure; allowed for {self.entity}: {sorted(spec.measures) or 'none'}")
+        if not spec.has_product and (self.product_id or self.category):
+            raise ValueError(f"{self.entity} is seller-level and has no product or category")
+        if self.sales_status != "valid" and self.entity != "sales":
+            raise ValueError("sales_status applies to sales only")
+        if (self.expense_type or self.payment_status) and self.entity != "expenses":
+            raise ValueError("expense_type and payment_status apply to expenses only")
         return self
 
 
@@ -240,7 +374,7 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
     query = RecordsQueryArgs.model_validate(args)
     spec = ENTITY_SPECS[query.entity]
     model = spec.model
-    joins_product = model is not Product
+    joins_product = model is not Product and spec.has_product
     statement = select(model, Product) if joins_product else select(model)
     if joins_product:
         join_on = Product.id == model.product_id
@@ -250,6 +384,13 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
     if spec.seller_column is None or spec.product_join_required:
         seller_filters.append(Product.seller_id == seller_id)
     statement = statement.where(*seller_filters, *spec.extra_filters)
+    statuses = SALES_STATUS_FILTERS[query.sales_status] if query.entity == "sales" else None
+    if statuses is not None:
+        statement = statement.where(SalesRecord.status.in_(statuses))
+    if query.expense_type is not None:
+        statement = statement.where(BusinessExpense.expense_type == query.expense_type)
+    if query.payment_status is not None:
+        statement = statement.where(BusinessExpense.payment_status == query.payment_status)
     if query.product_id is not None:
         statement = statement.where((Product.id if model is Product else model.product_id) == query.product_id)
     if query.category:
@@ -257,14 +398,17 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         statement = statement.where(func.lower(category_column) == query.category.strip().lower())
     if query.marketplace:
         statement = statement.where(func.lower(spec.marketplace_column) == query.marketplace.strip().lower())
+    # Date columns (visibility.metric_date) are already seller calendar days; timestamps are bounded by Dhaka midnight.
+    is_date_column = spec.date_column.type.python_type is date
     if query.from_date:
-        statement = statement.where(spec.date_column >= _day_start(query.from_date))
+        statement = statement.where(spec.date_column >= (query.from_date if is_date_column else _day_start(query.from_date)))
     if query.to_date:
-        statement = statement.where(spec.date_column < _day_start(query.to_date + timedelta(days=1)))
+        statement = statement.where(spec.date_column <= query.to_date if is_date_column else spec.date_column < _day_start(query.to_date + timedelta(days=1)))
     order = spec.date_column.desc() if query.sort == "desc" else spec.date_column.asc()
     statement = statement.order_by(order, model.id).limit(MAX_SCAN_ROWS + 1)
 
-    pairs = [(row[0], row[1] if joins_product else row[0]) for row in db.execute(statement).all()]
+    # The second item is the row's product: the joined one, the row itself for products, none for seller-level tables.
+    pairs = [(row[0], row[1] if joins_product else (row[0] if model is Product else None)) for row in db.execute(statement).all()]
     missing_data: list[str] = []
     scan_truncated = len(pairs) > MAX_SCAN_ROWS
     if scan_truncated:
@@ -280,10 +424,13 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         missing_data.append(f"NO_MATCHING_RECORDS: no {query.entity} recorded for this scope (observed zero, not missing data).")
 
     if query.aggregate == "list":
+        if query.order_by == "measure" and measure is not None:
+            pairs = _sorted_by_measure(pairs, measure, descending=query.sort == "desc")
         rows = [_list_row(spec, row, product) for row, product in pairs[: query.limit]]
         truncated = len(pairs) > query.limit
+        group_count = None
     else:
-        rows, truncated, rows_without_measure = _aggregate_rows(query, spec, measure, pairs)
+        rows, truncated, rows_without_measure, group_count = _aggregate_rows(query, spec, measure, pairs)
         if mixed_money:
             # Money in different currencies cannot be added or compared; report it as unavailable, not a blended number.
             rows = [{**row, "value": None} for row in rows]
@@ -295,22 +442,51 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         "aggregate": query.aggregate,
         "measure": query.measure,
         "group_by": query.group_by,
-        "filters": {key: _jsonable(value) for key, value in query.model_dump().items() if key in {"product_id", "category", "marketplace", "from_date", "to_date"} and value is not None},
+        "order_by": query.order_by,
+        "filters": {key: _jsonable(value) for key, value in query.model_dump().items() if key in FILTER_KEYS and value is not None and (key != "sales_status" or query.entity == "sales")},
         "rows": rows,
         "row_count": len(pairs),
+        "group_count": group_count,
         "truncated": truncated or scan_truncated,
         "measure_unit": measure.unit if measure else ("count" if query.aggregate == "count" else None),
         "currency": _currency(query.entity, measure, currencies),
         "source": spec.source_table,
         "freshness": [_freshness(db, spec, seller_id)],
         "calculation_version": CALCULATION_VERSION,
-        "assumptions": list(spec.assumptions) + ["Dates are calendar days in Asia/Dhaka."],
+        "assumptions": list(spec.assumptions) + _status_assumption(query) + ["Dates are calendar days in Asia/Dhaka."],
         "missing_data": missing_data,
         "evidence": [row["evidence"] for row in rows if "evidence" in row][:50] if query.aggregate == "list" else [_aggregate_evidence(spec, query, len(pairs))],
     }
 
 
-def _aggregate_rows(query: RecordsQueryArgs, spec: EntitySpec, measure: Measure | None, pairs: list[tuple[Any, Any]]) -> tuple[list[dict[str, Any]], bool, int]:
+FILTER_KEYS = {"product_id", "category", "marketplace", "from_date", "to_date", "sales_status", "expense_type", "payment_status"}
+
+
+def _status_assumption(query: RecordsQueryArgs) -> list[str]:
+    if query.entity != "sales":
+        return []
+    return [{
+        "valid": "Only COMPLETED and FULFILLED orders count, as in get_revenue_summary.",
+        "cancelled": "Only CANCELLED orders are counted (sales_status=cancelled).",
+        "all": "Every order status counts, including PENDING, CANCELLED and FAILED_PAYMENT (sales_status=all).",
+    }[query.sales_status]]
+
+
+def _sorted_by_measure(pairs: list[tuple[Any, Any]], measure: Measure, *, descending: bool) -> list[tuple[Any, Any]]:
+    """Stable sort by the measure; rows without a value sort last either way."""
+    present: list[tuple[Decimal, tuple[Any, Any]]] = []
+    absent: list[tuple[Any, Any]] = []
+    for row, product in pairs:
+        value = measure.value(row)
+        if value is None:
+            absent.append((row, product))
+        else:
+            present.append((value, (row, product)))
+    present.sort(key=lambda item: item[0], reverse=descending)
+    return [pair for _, pair in present] + absent
+
+
+def _aggregate_rows(query: RecordsQueryArgs, spec: EntitySpec, measure: Measure | None, pairs: list[tuple[Any, Any]]) -> tuple[list[dict[str, Any]], bool, int, int]:
     buckets: dict[Any, list[Decimal]] = defaultdict(list)
     counts: dict[Any, int] = defaultdict(int)
     labels: dict[Any, dict[str, Any]] = {}
@@ -332,7 +508,7 @@ def _aggregate_rows(query: RecordsQueryArgs, spec: EntitySpec, measure: Measure 
     for key in counts:
         values = buckets.get(key, [])
         results.append({**labels[key], "value": _reduce(query.aggregate, values, counts[key]), "row_count": counts[key]})
-    if query.group_by in TIME_GROUPS:
+    if query.group_by in TIME_GROUPS and query.order_by == "date":
         results.sort(key=lambda item: item["period"], reverse=query.sort == "desc")
     else:
         # None (no observation) sorts last either way.
@@ -340,7 +516,7 @@ def _aggregate_rows(query: RecordsQueryArgs, spec: EntitySpec, measure: Measure 
         absent = [item for item in results if item["value"] is None]
         present.sort(key=lambda item: Decimal(str(item["value"])), reverse=query.sort == "desc")
         results = present + absent
-    return results[: query.limit], len(results) > query.limit, rows_without_measure
+    return results[: query.limit], len(results) > query.limit, rows_without_measure, len(results)
 
 
 def _reduce(aggregate: str, values: list[Decimal], count: int) -> Any:
@@ -370,6 +546,15 @@ def _group_key(group_by: str, spec: EntitySpec, row: Any, product: Any) -> tuple
             local = local.replace(day=1)
         period = local.isoformat()[:7] if group_by == "month" else local.isoformat()
         return period, {"period": period}
+    if group_by == "weekday":
+        local = _local_date(getattr(row, spec.date_column.key))
+        if local is None:
+            return "unknown", {"weekday": "unknown", "is_weekend": None}
+        name = local.strftime("%A")
+        return name, {"weekday": name, "is_weekend": name in WEEKEND_DAYS}
+    if group_by in FIELD_GROUPS:
+        value = _jsonable(getattr(row, FIELD_GROUPS[group_by], None)) or "unknown"
+        return value, {group_by: value}
     if group_by == "product":
         if product is None:
             return "no-product", {"product": None}

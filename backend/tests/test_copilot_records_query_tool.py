@@ -11,8 +11,9 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
+from app.models.business_finance import BusinessExpense, BusinessExpenseStatus, BusinessExpenseType
 from app.models.inventory_stock_in import InventoryStockIn
-from app.models.product import Product
+from app.models.product import Product, ProductMarketplaceListing, ProductMarketplaceListingStatus
 from app.models.sales_record import SalesRecord, SalesRecordPriceSource, SalesRecordStatus
 from app.models.seller import Seller
 from app.services.copilot.tool_registry import CopilotToolContext, CopilotToolRegistry, ToolExecutionStatus
@@ -78,7 +79,7 @@ class RecordsQueryToolTests(unittest.TestCase):
             [{"period": "2026-11-01", "value": "3995.10", "row_count": 2}, {"period": "2026-11-02", "value": "1874.00", "row_count": 1}],
             result.data["rows"],
         )
-        self.assertEqual(("money", "BDT", "sales_records", "records_query_v1"), (result.data["measure_unit"], result.data["currency"], result.data["source"], result.data["calculation_version"]))
+        self.assertEqual(("money", "BDT", "sales_records", "records_query_v2"), (result.data["measure_unit"], result.data["currency"], result.data["source"], result.data["calculation_version"]))
         self.assertEqual(3, result.data["row_count"])
 
     def test_category_filter_is_case_insensitive_and_group_by_product(self):
@@ -208,6 +209,118 @@ class RecordsQueryToolTests(unittest.TestCase):
             refunded_restocked_units=0,
             is_test_order=False,
         )
+
+
+BREAKDOWN_TABLES = [Seller.__table__, Product.__table__, SalesRecord.__table__, BusinessExpense.__table__, ProductMarketplaceListing.__table__]
+
+
+class RecordsQueryBreakdownTests(unittest.TestCase):
+    """Rankings and breakdowns the model needs: weekday, best day, sorted lists, returns, cancellations, expenses, listings."""
+
+    def setUp(self) -> None:
+        self.engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+        Base.metadata.create_all(self.engine, tables=BREAKDOWN_TABLES)
+        self.db = Session(self.engine)
+        self.seller = Seller(email="seller@example.com", password_hash="hash")
+        self.other = Seller(email="other@example.com", password_hash="hash")
+        self.db.add_all([self.seller, self.other])
+        self.db.flush()
+        self.power = _product_row("Power XORISE", self.seller, price="3374.00")
+        self.venus = _product_row("VENUS", self.seller, price="674.00")
+        self.foreign = _product_row("Foreign Max", self.other, price="99999.00")
+        self.db.add_all([self.power, self.venus, self.foreign])
+        self.db.flush()
+        self.db.add_all(
+            [
+                # 06:00 UTC is 12:00 in Dhaka, same calendar day. 2026-11-20 is a Friday, 11-21 Saturday, 11-16 Monday.
+                _sale_row(self.power, "2026-11-20T06:00:00", 2, customer="C1", district="Dhaka"),
+                _sale_row(self.venus, "2026-11-21T06:00:00", 1, customer="C1", district="Dhaka"),
+                _sale_row(self.venus, "2026-11-16T06:00:00", 3, customer="C2", district="Sylhet", returned=1, restocked=1),
+                _sale_row(self.venus, "2026-11-16T08:00:00", 1, customer="C3", district="Khulna", status=SalesRecordStatus.CANCELLED),
+                _sale_row(self.foreign, "2026-11-20T06:00:00", 5, customer="X1", district="Chittagong"),
+                _expense(self.seller, BusinessExpenseType.SUPPLIER_PURCHASE, "500.00", BusinessExpenseStatus.DUE, "Supplier A"),
+                _expense(self.seller, BusinessExpenseType.SUPPLIER_PURCHASE, "300.00", BusinessExpenseStatus.PAID, "Supplier A"),
+                _expense(self.seller, BusinessExpenseType.RENT, "1000.00", BusinessExpenseStatus.DUE, "Landlord"),
+                _expense(self.other, BusinessExpenseType.SUPPLIER_PURCHASE, "9999.00", BusinessExpenseStatus.DUE, "Supplier B"),
+                _listing(self.power, "4.60", 30),
+                _listing(self.venus, "3.90", 12),
+                _listing(self.foreign, "1.00", 2),
+            ]
+        )
+        self.db.commit()
+        self.registry = CopilotToolRegistry()
+        self.context = CopilotToolContext(seller_id=self.seller.id, db=self.db)
+
+    def tearDown(self) -> None:
+        self.db.close()
+        Base.metadata.drop_all(self.engine, tables=list(reversed(BREAKDOWN_TABLES)))
+        self.engine.dispose()
+
+    def _data(self, **arguments) -> dict:
+        result = self.registry.execute(name="query_business_records", context=self.context, arguments=arguments)
+        self.assertEqual(ToolExecutionStatus.SUCCEEDED, result.status, result.error)
+        return result.data
+
+    def test_products_list_sorted_by_selling_price_desc_returns_most_expensive_first(self):
+        rows = self._data(entity="products", measure="selling_price", order_by="measure", sort="desc")["rows"]
+        self.assertEqual(["Power XORISE", "VENUS"], [row["title"] for row in rows])
+
+    def test_products_inventory_value_at_cost(self):
+        # cost 60.00 x stock 5 for each of the seller's two products.
+        rows = self._data(entity="products", aggregate="sum", measure="inventory_value_at_cost")["rows"]
+        self.assertEqual("600.00", rows[0]["value"])
+
+    def test_sales_group_by_weekday_marks_friday_saturday_weekend(self):
+        rows = self._data(entity="sales", aggregate="sum", measure="revenue", group_by="weekday")["rows"]
+        by_day = {row["weekday"]: (row["value"], row["is_weekend"]) for row in rows}
+        self.assertEqual({"Friday": ("6748.00", True), "Saturday": ("674.00", True), "Monday": ("2022.00", False)}, by_day)
+
+    def test_sales_group_by_day_sum_revenue_order_by_measure_desc_gives_best_day(self):
+        rows = self._data(entity="sales", aggregate="sum", measure="revenue", group_by="day", order_by="measure", sort="desc")["rows"]
+        self.assertEqual(("2026-11-20", "6748.00"), (rows[0]["period"], rows[0]["value"]))
+
+    def test_cancelled_sales_status_counts_only_cancelled(self):
+        data = self._data(entity="sales", aggregate="count", sales_status="cancelled")
+        self.assertEqual(1, data["rows"][0]["value"])
+        self.assertEqual(4, self._data(entity="sales", aggregate="count", sales_status="all")["rows"][0]["value"])
+
+    def test_returned_units_sum_this_month(self):
+        units = self._data(entity="sales", aggregate="sum", measure="returned_units", from_date="2026-11-01", to_date="2026-11-22")["rows"][0]["value"]
+        value = self._data(entity="sales", aggregate="sum", measure="returned_value", from_date="2026-11-01", to_date="2026-11-22")["rows"][0]["value"]
+        self.assertEqual(("2", "1348.00"), (units, value))
+
+    def test_expenses_due_supplier_sum(self):
+        data = self._data(entity="expenses", aggregate="sum", measure="amount", expense_type="SUPPLIER_PURCHASE", payment_status="DUE")
+        self.assertEqual("500.00", data["rows"][0]["value"])
+        self.assertEqual("BDT", data["currency"])
+
+    def test_listings_min_rating(self):
+        data = self._data(entity="listings", aggregate="min", measure="rating")
+        self.assertEqual("3.90", data["rows"][0]["value"])
+
+    def test_list_order_by_measure_needs_a_measure(self):
+        result = self.registry.execute(name="query_business_records", context=self.context, arguments={"entity": "products", "order_by": "measure"})
+        self.assertNotEqual(ToolExecutionStatus.SUCCEEDED, result.status)
+
+
+def _product_row(title: str, seller: Seller, *, price: str) -> Product:
+    return Product(seller_id=seller.id, title=title, sku=f"sku-{uuid4().hex[:6]}", category="Shoes", cost_price=Decimal("60.00"), selling_price=Decimal(price), stock_quantity=5, supplier_lead_time=7, minimum_margin=Decimal("10.00"))
+
+
+def _sale_row(product: Product, sold_at: str, quantity: int, *, customer: str, district: str, returned: int = 0, restocked: int = 0, status=SalesRecordStatus.COMPLETED) -> SalesRecord:
+    return SalesRecord(
+        seller_id=product.seller_id, product_id=product.id, status=status, sold_at=_utc(sold_at), quantity_sold=quantity,
+        unit_price=product.selling_price, line_total=product.selling_price * quantity, currency="BDT", price_source=SalesRecordPriceSource.TRANSACTION,
+        returned_units=returned, refunded_restocked_units=restocked, is_test_order=False, customer_reference=customer, delivery_district=district,
+    )
+
+
+def _expense(seller: Seller, kind: BusinessExpenseType, amount: str, status: BusinessExpenseStatus, counterparty: str) -> BusinessExpense:
+    return BusinessExpense(seller_id=seller.id, expense_type=kind, amount=Decimal(amount), currency="BDT", incurred_at=_utc("2026-11-05T06:00:00"), payment_status=status, counterparty=counterparty)
+
+
+def _listing(product: Product, rating: str, reviews: int) -> ProductMarketplaceListing:
+    return ProductMarketplaceListing(seller_id=product.seller_id, product_id=product.id, marketplace="Daraz", listing_status=ProductMarketplaceListingStatus.ACTIVE, rating=Decimal(rating), review_count=reviews)
 
 
 def _utc(value: str) -> datetime:
