@@ -128,11 +128,7 @@ class CopilotContextBuilder:
         evidence = [item.to_dict() for item in evidence_items]
         structured_missing = [item.to_dict() for item in missing_items]
         freshness = [item.to_dict() for item in freshness_items]
-        facts = {
-            result.tool_name: _bounded_data(result.data)
-            for result in tool_results
-            if result.status == ToolExecutionStatus.SUCCEEDED
-        }
+        facts = _facts_by_tool(tool_results)
         tools_used = [
             item.to_dict() | {"name": item.tool_name, "status": item.status}
             for item in tool_usage_items(tool_results)
@@ -300,6 +296,20 @@ def _prompt_freshness(freshness: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Distinct domain/status pairs: per-table messages repeat and are never shown to the seller."""
     pairs = dict.fromkeys((str(item.get("domain")), str(item.get("status"))) for item in freshness if isinstance(item, dict))
     return [{"domain": domain, "status": status} for domain, status in pairs]
+
+
+def _facts_by_tool(tool_results: list[ToolExecutionResult]) -> dict[str, Any]:
+    """Successful tool facts in order; a repeated tool gets ``name#2`` so no call's facts are overwritten."""
+    facts: dict[str, Any] = {}
+    for result in tool_results:
+        if result.status != ToolExecutionStatus.SUCCEEDED:
+            continue
+        key, count = result.tool_name, 1
+        while key in facts:
+            count += 1
+            key = f"{result.tool_name}#{count}"
+        facts[key] = _bounded_data(result.data)
+    return facts
 
 
 def budget_facts(facts: dict[str, Any], *, tool_chars: int, total_chars: int) -> tuple[dict[str, Any], list[str]]:

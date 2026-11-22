@@ -752,7 +752,7 @@ class CopilotOrchestrator:
                 user_message_id=user_message_id, selected_tools=steps, emit=emit,
             )
 
-        return await run_agent_loop(
+        results = await run_agent_loop(
             question=request.question,
             seeded_results=tool_results,
             router=router,
@@ -765,6 +765,8 @@ class CopilotOrchestrator:
             reply_language=language_profile.reply_language.value if language_profile else None,
             request_id=request.request_id,
         )
+        # The model asked for these to answer the question; put them first so the prompt budget keeps them.
+        return [*results[len(tool_results):], *tool_results]
 
     def _agent_router(self) -> CopilotLLMRouter | None:
         # The loop needs a router even when the answer path still uses the legacy Groq call.

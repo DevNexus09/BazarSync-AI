@@ -266,3 +266,17 @@ class MissingFactsPromptTests(unittest.TestCase):
         self.assertIn("say exactly what is not recorded", system)
         self.assertIn("closest available data", system)
         self.assertIn("NO_MATCHING_RECORDS", system)
+
+
+class RepeatedToolFactsTests(unittest.TestCase):
+    def test_a_second_call_to_the_same_tool_keeps_its_own_facts(self):
+        from app.services.copilot.context_builder import _facts_by_tool
+
+        first = _tool("query_business_records", {"entity": "stock_ins", "rows": [{"quantity": 40}]})
+        second = _tool("query_business_records", {"entity": "sales", "rows": [{"value": 138}]})
+
+        facts = _facts_by_tool([first, second])
+
+        self.assertEqual(["query_business_records", "query_business_records#2"], list(facts))
+        self.assertEqual("stock_ins", facts["query_business_records"]["entity"])
+        self.assertEqual("sales", facts["query_business_records#2"]["entity"])

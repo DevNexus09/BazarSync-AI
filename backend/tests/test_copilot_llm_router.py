@@ -395,13 +395,26 @@ class OpenAICompatProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("https://api.example.test/v1/chat/completions", str(seen[0].url))
         self.assertEqual("Bearer test-key", seen[0].headers["authorization"])
         body = json.loads(seen[0].content)
-        self.assertEqual({"type": "json_object"}, body["response_format"])
+        # A strict schema is sent as json_schema so every required answer field comes back.
+        self.assertEqual({"type": "json_schema", "json_schema": {"name": "copilot_response", "schema": dict(REQUEST.json_schema), "strict": True}}, body["response_format"])
         self.assertEqual("gpt-4.1", body["model"])
         self.assertEqual(1000, body["max_tokens"])
         self.assertEqual(0.1, body["temperature"])
         # JSON mode needs the word "JSON" and the expected shape in the prompt.
         self.assertIn("JSON", body["messages"][0]["content"])
         self.assertIn('"answer"', body["messages"][0]["content"])
+
+    async def test_openai_compat_uses_json_object_without_a_schema(self):
+        seen = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(json.loads(request.content))
+            return httpx.Response(200, json={"choices": [{"message": {"content": '{"done": true}'}}]})
+
+        loose = JsonCompletionRequest(messages=REQUEST.messages, max_tokens=100, schema_hint={"done": True})
+        await _compat(handler).complete_json(loose, model="m", timeout_s=5)
+
+        self.assertEqual({"type": "json_object"}, seen[0]["response_format"])
 
     async def test_openai_compat_maps_429_to_rate_limited(self):
         provider = _compat(lambda request: httpx.Response(429, json={"error": {"message": "quota"}}))

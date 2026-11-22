@@ -303,7 +303,7 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         "calculation_version": CALCULATION_VERSION,
         "assumptions": list(spec.assumptions) + ["Dates are calendar days in Asia/Dhaka."],
         "missing_data": missing_data,
-        "evidence": [row["evidence"] for row in rows if "evidence" in row][:50],
+        "evidence": [row["evidence"] for row in rows if "evidence" in row][:50] if query.aggregate == "list" else [_aggregate_evidence(spec, query, len(pairs))],
     }
 
 
@@ -390,6 +390,12 @@ def _list_row(spec: EntitySpec, row: Any, product: Any) -> dict[str, Any]:
             item[name] = None if value is None else str(value)
     item["evidence"] = {"source_table": spec.source_table, "source_id": str(row.id), "payload": {}}
     return item
+
+
+def _aggregate_evidence(spec: EntitySpec, query: RecordsQueryArgs, row_count: int) -> dict[str, Any]:
+    """One citation for a computed figure: the table and exact scope it was calculated over."""
+    scope = ":".join(str(part) for part in (query.entity, query.aggregate, query.measure or "-", query.group_by, query.from_date or "*", query.to_date or "*", query.product_id or "*", query.category or "*", query.marketplace or "*"))
+    return {"source_table": spec.source_table, "source_id": f"{CALCULATION_VERSION}:{scope}", "payload": {"row_count": row_count}}
 
 
 def _currency(entity: str, measure: Measure | None, currencies: list[str]) -> str | list[str] | None:

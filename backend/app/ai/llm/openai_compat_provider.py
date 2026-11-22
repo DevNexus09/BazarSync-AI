@@ -33,7 +33,12 @@ class OpenAICompatProvider:
             "messages": messages,
             "max_tokens": request.max_tokens,
             "temperature": 0.1 if request.temperature is None else request.temperature,
-            "response_format": {"type": "json_object"},
+            # Strict schema when the caller has one (answers need every field); plain JSON mode otherwise.
+            "response_format": (
+                {"type": "json_schema", "json_schema": {"name": "copilot_response", "schema": dict(request.json_schema), "strict": True}}
+                if request.json_schema
+                else {"type": "json_object"}
+            ),
         }
         started = time.monotonic()
         try:

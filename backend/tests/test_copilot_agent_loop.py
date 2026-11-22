@@ -260,6 +260,24 @@ class OrchestratorAgentLoopTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(_time.monotonic() - started, 3.5)
         self.assertTrue(result.answer)
 
+    async def test_loop_results_lead_the_answer_facts(self):
+        # The answer prompt budget keeps earlier facts; the lookups the model asked for must not be cut.
+        from app.services.copilot import orchestrator as orchestrator_module
+
+        captured = {}
+        original = orchestrator_module.CopilotHybridAnswerEngine.answer
+
+        async def capture(engine, **kwargs):
+            captured["tools"] = [result.tool_name for result in kwargs["tool_results"]]
+            return await original(engine, **kwargs)
+
+        router = _LoopOnlyRouter([{"tool_calls": [{"name": "query_business_records", "arguments": {"entity": "stock_ins"}}]}, {"done": True}])
+        with patch.object(orchestrator_module.CopilotHybridAnswerEngine, "answer", capture):
+            await self._ask("What should I restock?", router=router, agent_loop_enabled=True)
+
+        self.assertEqual("query_business_records", captured["tools"][0])
+        self.assertGreater(len(captured["tools"]), 1)
+
     async def test_blocked_question_never_reaches_the_loop(self):
         router = _LoopOnlyRouter([{"tool_calls": [{"name": "get_inventory_summary", "arguments": {}}]}])
 

@@ -152,6 +152,17 @@ class RecordsQueryToolTests(unittest.TestCase):
         # Grouping by product keeps each product's single currency usable only when the whole result is one currency.
         self.assertIsNone(self._run(entity="stock_ins", aggregate="sum", measure="total_cost", group_by="product").data["rows"][0]["value"])
 
+    def test_aggregates_cite_their_source_so_the_answer_model_may_use_them(self):
+        total = self._run(entity="sales", aggregate="count", from_date="2026-11-01", to_date="2026-11-02")
+        empty = self._run(entity="sales", aggregate="count", from_date="2026-01-01", to_date="2026-01-31")
+
+        self.assertEqual(1, len(total.evidence))
+        self.assertEqual("sales_records", total.evidence[0]["source_table"])
+        self.assertIn("2026-11-01", total.evidence[0]["source_id"])
+        self.assertEqual(3, total.evidence[0]["payload"]["row_count"])
+        # An observed zero is a fact ("no sales recorded"), so it is citable too.
+        self.assertEqual(0, empty.evidence[0]["payload"]["row_count"])
+
     def test_limit_truncation_flagged(self):
         listed = self._run(entity="sales", aggregate="list", limit=2)
         grouped = self._run(entity="sales", aggregate="count", group_by="day", limit=1)
