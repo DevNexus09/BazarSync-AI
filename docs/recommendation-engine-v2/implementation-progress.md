@@ -239,6 +239,8 @@ Plan: [copilot plan](../superpowers/plans/copilot%20plan.md). Golden set: `backe
 | Run | Code | Score | Tool match | Notes |
 | --- | --- | --- | --- | --- |
 | Baseline, 2026-11-22 | `develop` + Copilot WIP (before Task 1) | 4/40 (10%) | 62% | Groq free quota was exhausted (HTTP 429 on every call), so nearly every reply was the deterministic fallback. Results: `backend/artifacts/copilot_eval/20261121T193710Z.json`. |
+| Baseline, paced, 2026-11-22 | Same code, 35 s between questions, pre-change RAG settings | 9/40 (22%) | 62% | Fair baseline; 7 Groq 429s remained. `baseline-paced-20261121T201849Z.json`. |
+| After, 2026-11-22 | Branch `feature/copilot-robustness`, all rollout flags on, chain `gemini:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b` | 27/40 (68%) | 90% | 19 gained, 1 regression (`stock_black_casual`). `20261122T034957Z.json`. Target of ≥90% not met. |
 
 Baseline failure patterns:
 
@@ -247,3 +249,14 @@ Baseline failure patterns:
 - Product-name questions ("Lex Loafer…", SKU lookups, "BUBBLE GUMMERS…") were sent to competitor clarification ("Which competitor do you mean").
 - Stock-in questions had no tool to route to.
 - Count questions (products, alerts) gave "I could not find a clear answer".
+
+After the 27/40 run, three more fixes went in (stock snapshots cannot be summed, record types are never relabelled, zero revenue reads as "no sales recorded"). A re-run of the 13 failing questions confirmed `inventory_units` and `banglish_stock` now answer 726 units, and the invoices question no longer claims "138 invoices". The full 40 were not re-run after these fixes.
+
+Remaining failures, all model-side on the free flash-lite model:
+
+- It says data is "not recorded" when the right tool was not in the planner's seed and the loop did not fetch it (single-product stock, SKU stock, recent price changes, completed promotions).
+- It restates long decimals (7.0296…%) or answers partially (top 3, previous-period revenue).
+- Profit differs from the golden value (147972.03 vs 144764.68); not yet investigated.
+- A Bangla product-count question gets the no-answer template.
+
+`gemini-3.8-flash` returned 503 or timed out on the free tier during the run, so it is not in the chain.
