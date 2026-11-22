@@ -31,6 +31,7 @@ from app.models.product_visibility_metric import ProductVisibilityMetric
 from app.models.promotion import PromotionPlan
 from app.models.recommendation import Recommendation
 from app.models.sales_record import SalesRecord, SalesRecordStatus
+from app.services.copilot.sales_revenue_analytics_service import latest_recorded_sale_date
 
 CALCULATION_VERSION = "records_query_v2"
 SELLER_TIMEZONE = ZoneInfo("Asia/Dhaka")
@@ -437,7 +438,7 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         if rows_without_measure:
             missing_data.append(f"MEASURE_UNAVAILABLE: {rows_without_measure} matching row(s) have no {query.measure} value and are excluded from it.")
 
-    return {
+    payload: dict[str, Any] = {
         "entity": query.entity,
         "aggregate": query.aggregate,
         "measure": query.measure,
@@ -457,6 +458,10 @@ def query_business_records(db: Session, *, seller_id: UUID, args: dict[str, Any]
         "missing_data": missing_data,
         "evidence": [row["evidence"] for row in rows if "evidence" in row][:50] if query.aggregate == "list" else [_aggregate_evidence(spec, query, len(pairs))],
     }
+    if query.entity == "sales":
+        # Lets an empty period be read as "no sales" rather than missing history.
+        payload["latest_recorded_sale_date"] = latest_recorded_sale_date(db, seller_id=seller_id, product_id=query.product_id)
+    return payload
 
 
 FILTER_KEYS = {"product_id", "category", "marketplace", "from_date", "to_date", "sales_status", "expense_type", "payment_status"}

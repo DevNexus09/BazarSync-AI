@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
@@ -23,6 +23,25 @@ DEFAULT_SELLER_TIMEZONE = "Asia/Dhaka"
 
 def is_valid_sales_record(sale: SalesRecord) -> bool:
     return sale.status in VALID_SALES_STATUSES and not bool(getattr(sale, "is_test_order", False))
+
+
+def latest_recorded_sale_date(db: Session, *, seller_id: UUID, product_id: UUID | None = None, seller_timezone: str = DEFAULT_SELLER_TIMEZONE) -> str | None:
+    """The seller's most recent valid (completed/fulfilled, non-test) sale day in the seller calendar, or None.
+
+    An empty period is only proof of "no sales" next to this date: it shows the sales history exists.
+    """
+    statement = select(func.max(SalesRecord.sold_at)).where(
+        SalesRecord.seller_id == seller_id,
+        SalesRecord.status.in_(VALID_SALES_STATUSES),
+        SalesRecord.is_test_order.is_(False),
+    )
+    if product_id is not None:
+        statement = statement.where(SalesRecord.product_id == product_id)
+    latest = db.execute(statement).scalar_one_or_none()
+    if latest is None:
+        return None
+    aware = latest if latest.tzinfo else latest.replace(tzinfo=timezone.utc)
+    return aware.astimezone(ZoneInfo(seller_timezone)).date().isoformat()
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +163,7 @@ class SalesRevenueAnalyticsService:
             "products_with_revenue_decline": decline,
             "data_completeness": self._data_completeness(lines),
             "sales_coverage": coverage,
+            "latest_recorded_sale_date": self._latest_sale_date(seller_id=seller_id, product_id=product_id),
             "filters_used": _filters(from_date=from_date, to_date=to_date, product_id=product_id, category=category, marketplace=marketplace),
             "evidence": self._evidence(lines, default_source="sales_records"),
         }, missing
@@ -176,6 +196,7 @@ class SalesRevenueAnalyticsService:
             "trend_direction": direction,
             "top_increases": sorted(product_totals, key=lambda item: item["delta"], reverse=True)[:5],
             "top_decreases": sorted(product_totals, key=lambda item: item["delta"])[:5],
+            "latest_recorded_sale_date": self._latest_sale_date(seller_id=seller_id, product_id=product_id),
             "filters_used": _filters(from_date=from_date, to_date=to_date, product_id=product_id, category=category, marketplace=marketplace),
             "sales_coverage": coverage,
             "evidence": self._evidence(lines, default_source="sales_records"),
@@ -373,6 +394,11 @@ class SalesRevenueAnalyticsService:
             "valid_statuses": [status.value for status in VALID_SALES_STATUSES],
             "excluded_statuses": ["PENDING", "CANCELLED", "FAILED_PAYMENT", "test_orders"],
         }
+
+    def _latest_sale_date(self, *, seller_id: UUID, product_id: UUID | None) -> str | None:
+        if not hasattr(self, "_db"):
+            return None
+        return latest_recorded_sale_date(self._db, seller_id=seller_id, product_id=product_id, seller_timezone=self._seller_timezone.key)
 
     def _sales_coverage(
         self,

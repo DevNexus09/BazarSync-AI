@@ -161,11 +161,55 @@ class CopilotContextBuilder:
             has_direct_evidence=any(evidence_item.get("domain") != "RAG_MEMORY" for evidence_item in evidence),
             has_memory_evidence=has_memory,
             has_visibility_evidence=bool(tool_names & {"get_seo_opportunities", "get_visibility_summary", "get_visibility_history", "get_listing_quality_issues"}),
-            has_reliable_no_sales_evidence="get_products_with_no_sales" in tool_names,
-            has_financial_evidence=bool(tool_names & {"get_revenue_summary", "get_sales_trends", "explain_revenue_change_deterministic", "explain_revenue_drop"}),
+            has_reliable_no_sales_evidence="get_products_with_no_sales" in tool_names or _has_zero_sales_lookup(tool_results, resolved_period),
+            has_financial_evidence=bool(tool_names & FINANCIAL_TOOLS) or any(_is_sales_result(result) for result in tool_results),
             has_profit_margin_evidence=bool(tool_names & {"get_profit_summary", "get_margin_safety", "get_pricing_recommendations", "simulate_price_change"}),
             confidence_result=confidence_result.to_dict(),
         )
+
+
+FINANCIAL_TOOLS = frozenset({
+    "get_revenue_summary", "get_sales_trends", "explain_revenue_change_deterministic", "explain_revenue_drop",
+    "get_business_overview", "get_top_products_by_revenue", "get_profit_summary",
+})
+SALES_METRIC_TERMS = ("revenue", "order", "unit", "sales")
+
+
+def _is_sales_result(result: ToolExecutionResult) -> bool:
+    """A succeeded sales-volume lookup from the generic tools: records on sales, or a revenue/order/unit metric."""
+    if result.status != ToolExecutionStatus.SUCCEEDED:
+        return False
+    data = result.data or {}
+    if result.tool_name == "query_business_records":
+        return data.get("entity") == "sales"
+    if result.tool_name == "run_seller_metric_query":
+        return any(term in str(data.get("metric_key") or "") for term in SALES_METRIC_TERMS)
+    return False
+
+
+def _has_zero_sales_lookup(tool_results: list[ToolExecutionResult], period: dict[str, Any] | None) -> bool:
+    """A sales lookup for the resolved period found nothing, and states the latest recorded sale date.
+
+    Without that date an empty result cannot be told apart from missing history, so it proves nothing.
+    """
+    for result in tool_results:
+        if result.status != ToolExecutionStatus.SUCCEEDED:
+            continue
+        data = result.data or {}
+        if not data.get("latest_recorded_sale_date"):
+            continue
+        if result.tool_name in {"get_revenue_summary", "get_sales_trends"}:
+            series = data.get("time_series")
+            zero = data.get("order_count") == 0 if "order_count" in data else isinstance(series, list) and all(item.get("order_count") == 0 for item in series)
+        elif result.tool_name == "query_business_records" and data.get("entity") == "sales":
+            zero = data.get("row_count") == 0
+        else:
+            continue
+        filters = data.get("filters_used") or data.get("filters") or {}
+        same_period = period is None or (filters.get("from_date") == period["from_date"] and filters.get("to_date") == period["to_date"])
+        if zero and same_period:
+            return True
+    return False
 
 
 def _collect_context_evidence(tool_results: list[ToolExecutionResult]) -> list[dict[str, Any]]:

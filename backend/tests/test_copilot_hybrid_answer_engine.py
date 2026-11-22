@@ -85,6 +85,42 @@ class CopilotHybridAnswerEngineTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("250.00", result.payload["answer"])
 
+    async def test_no_sales_claim_accepted_when_revenue_summary_for_period_is_zero(self):
+        zero_day = {
+            "gross_revenue": "0", "order_count": 0, "units_sold": 0,
+            "filters_used": {"from_date": "2026-07-04", "to_date": "2026-07-04"},
+            "latest_recorded_sale_date": "2026-07-02",
+        }
+        result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "get_revenue_summary:1"), [_tool("get_revenue_summary", zero_day)])
+
+        self.assertTrue(result.context.has_reliable_no_sales_evidence)
+        self.assertEqual("No sales were recorded yesterday.", result.payload["answer"])
+
+        without_date = {key: value for key, value in zero_day.items() if key != "latest_recorded_sale_date"}
+        other_period = {**zero_day, "filters_used": {"from_date": "2026-06-01", "to_date": "2026-06-30"}}
+        for data in (without_date, other_period):
+            result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "get_revenue_summary:1"), [_tool("get_revenue_summary", data)])
+            self.assertFalse(result.context.has_reliable_no_sales_evidence)
+
+    async def test_no_sales_claim_still_rejected_without_any_sales_lookup(self):
+        result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "count_products:1"), [_tool("count_products", {"count": 12})])
+
+        self.assertFalse(result.context.has_reliable_no_sales_evidence)
+        self.assertNotEqual("No sales were recorded yesterday.", result.payload["answer"])
+
+    async def test_overview_revenue_claim_accepted(self):
+        result = await self._answer("Give me my business overview", _payload("Revenue is 250.00.", "get_business_overview:1"), [_tool("get_business_overview", {"gross_revenue": "250.00"})])
+
+        self.assertTrue(result.context.has_financial_evidence)
+        self.assertEqual("Revenue is 250.00.", result.payload["answer"])
+
+    async def test_records_sales_zero_rows_backs_no_sales_and_financial_claims(self):
+        records = {"entity": "sales", "aggregate": "count", "rows": [], "row_count": 0, "filters": {"from_date": "2026-07-04", "to_date": "2026-07-04"}, "latest_recorded_sale_date": "2026-07-02"}
+        result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "query_business_records:1"), [_tool("query_business_records", records)])
+
+        self.assertTrue(result.context.has_reliable_no_sales_evidence)
+        self.assertTrue(result.context.has_financial_evidence)
+
     async def test_historical_question_uses_rag(self):
         result = await self._answer(
             "What happened last time?",

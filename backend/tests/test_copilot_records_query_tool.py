@@ -298,6 +298,13 @@ class RecordsQueryBreakdownTests(unittest.TestCase):
         data = self._data(entity="listings", aggregate="min", measure="rating")
         self.assertEqual("3.90", data["rows"][0]["value"])
 
+    def test_sales_facts_state_latest_valid_sale_date_for_the_seller(self):
+        # Latest own valid sale is 2026-11-21 (the cancelled one and the other seller's are ignored).
+        data = self._data(entity="sales", aggregate="count", from_date="2026-11-22", to_date="2026-11-22")
+        self.assertEqual(0, data["row_count"])
+        self.assertEqual("2026-11-21", data["latest_recorded_sale_date"])
+        self.assertNotIn("latest_recorded_sale_date", self._data(entity="products", aggregate="count"))
+
     def test_list_order_by_measure_needs_a_measure(self):
         result = self.registry.execute(name="query_business_records", context=self.context, arguments={"entity": "products", "order_by": "measure"})
         self.assertNotEqual(ToolExecutionStatus.SUCCEEDED, result.status)
