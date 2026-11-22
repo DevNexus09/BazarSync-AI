@@ -764,6 +764,7 @@ class CopilotOrchestrator:
             today=_today_seller(),
             reply_language=language_profile.reply_language.value if language_profile else None,
             request_id=request.request_id,
+            entities=plan.entities.to_dict() if getattr(plan, "entities", None) is not None else None,
         )
         # The model asked for these to answer the question; put them first so the prompt budget keeps them.
         return [*results[len(tool_results):], *tool_results]

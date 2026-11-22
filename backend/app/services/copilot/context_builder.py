@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 import json
 from typing import Any
@@ -275,6 +275,10 @@ def _numbers_from_payload(value: Any) -> set[str]:
         if len(normalized.replace(".", "").replace("-", "")) <= 1:
             continue
         values.add(normalized)
+        if "." in normalized and len(normalized.split(".", 1)[1]) > 2:
+            # The same fact stated rounded (7.0296... as 7.03 or 7.0); never to a whole number.
+            for places in ("0.01", "0.1"):
+                values.add(str(Decimal(normalized).quantize(Decimal(places), rounding=ROUND_HALF_UP)))
     return values
 
 

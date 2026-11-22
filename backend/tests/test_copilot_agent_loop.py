@@ -77,6 +77,17 @@ class AgentLoopTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("query_business_records", catalogue)
         self.assertIn("entity", catalogue["query_business_records"]["parameters"]["properties"])
 
+    async def test_loop_sees_resolved_entities_so_it_can_use_product_ids(self):
+        router = _ScriptedRouter([{"done": True}])
+        entities = {"products": [{"product_id": "p-1", "title": "Black Casual Shoes For Men", "text": "ignored"}], "categories": ["Men's Footwear"], "date_range": {"from_date": "2026-11-01", "to_date": "2026-11-15"}}
+
+        await self._loop(router, entities=entities)
+
+        payload = json.loads(router.requests[0][0].messages[-1]["content"])
+        self.assertEqual([{"product_id": "p-1", "title": "Black Casual Shoes For Men"}], payload["resolved"]["products"])
+        self.assertEqual(["Men's Footwear"], payload["resolved"]["categories"])
+        self.assertEqual({"from_date": "2026-11-01", "to_date": "2026-11-15"}, payload["resolved"]["date_range"])
+
     async def test_loop_ignores_unknown_tool(self):
         router = _ScriptedRouter([
             {"tool_calls": [{"name": "drop_tables", "arguments": {}}, {"name": "update_price", "arguments": {"price": 1}}, "not-a-call", {"name": "get_inventory_summary", "arguments": {"bogus": 1}}]},

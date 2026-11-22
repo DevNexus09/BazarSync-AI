@@ -283,3 +283,14 @@ class RepeatedToolFactsTests(unittest.TestCase):
         self.assertEqual(["query_business_records", "query_business_records#2"], list(facts))
         self.assertEqual("stock_ins", facts["query_business_records"]["entity"])
         self.assertEqual("sales", facts["query_business_records#2"]["entity"])
+
+
+class RoundedFactNumberTests(unittest.TestCase):
+    def test_long_decimal_facts_may_be_stated_rounded(self):
+        from app.services.copilot.context_builder import _numbers_from_payload
+
+        allowed = _numbers_from_payload({"percentage_change": "7.029649509550046737014016080", "estimated_profit": "144764.67800000", "price": "1874.00"})
+
+        self.assertTrue({"7.03", "7.0", "144764.68", "144764.7", "1874.00"} <= allowed)
+        self.assertNotIn("7", allowed)
+        self.assertNotIn("144765", allowed)
