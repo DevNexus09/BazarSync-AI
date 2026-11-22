@@ -260,3 +260,9 @@ Remaining failures, all model-side on the free flash-lite model:
 - A Bangla product-count question gets the no-answer template.
 
 `gemini-3.8-flash` returned 503 or timed out on the free tier during the run, so it is not in the chain.
+
+| Run | Code | Score | Tool match | Notes |
+| --- | --- | --- | --- | --- |
+| After improvements, 2026-11-22 | Loop gets resolved entities; named products get their profile; facts may be stated rounded; prompt budget 4000/20000 | 36/40 (90%) | 100% | Meets the plan's ≥90% target. `20261122T051916Z.json`. |
+
+Of the 4 failures, 3 happened when both providers were unavailable at once (Gemini 503 and Groq 429, `ALL_ROUTES_FAILED`), so the deterministic fallback answered. These are `stock_black_casual`, `stock_in_week` and `bangla_products`. `stock_black_casual` and `stock_in_week` passed in the targeted re-runs. The fourth is `unanswerable_invoices`: the validator rejected the model's answer, so the reply is a safe "no clear answer" with no invented number. Against the paced baseline, the only miss is `stock_black_casual`, which was a provider outage, not a logic regression.
