@@ -137,6 +137,7 @@ class CopilotHybridAnswerEngine:
         request_id: str | None = None,
         reply_language: str | None = None,
         conversation: list[dict[str, str]] | None = None,
+        primary_tools: set[str] | frozenset[str] = frozenset(),
     ) -> HybridAnswerResult:
         context = self._context_builder.build(
             question=question,

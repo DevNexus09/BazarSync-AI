@@ -399,18 +399,23 @@ class CopilotOrchestrator:
                 reply_script=_reply_fields(response_payload, language_profile)[1],
             )
 
-        selected_tools = self._select_tools(
-            request=request,
-            classification=classification,
-            plan=plan,
-            include_memory=request.include_memory,
-            include_current_data=request.include_current_data,
-        )
         tool_started_ms = now_ms()
-        if not selected_tools and self._llm_planner_fallback_enabled:
-            selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
-        if self._agent_loop_enabled and request.include_current_data:
-            selected_tools = self._with_named_product_profile(selected_tools, plan=plan)
+        # With the loop on, the model picks the tools; the seed is only the named product's profile.
+        model_selects = self._agent_loop_enabled and request.include_current_data and (self._llm_router or self._agent_router()) is not None
+        if model_selects:
+            selected_tools = self._with_named_product_profile([], plan=plan)
+        else:
+            selected_tools = self._select_tools(
+                request=request,
+                classification=classification,
+                plan=plan,
+                include_memory=request.include_memory,
+                include_current_data=request.include_current_data,
+            )
+            if not selected_tools and self._llm_planner_fallback_enabled:
+                selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
+            if self._agent_loop_enabled and request.include_current_data:
+                selected_tools = self._with_named_product_profile(selected_tools, plan=plan)
         if (
             self._always_retrieve_memory
             and request.include_memory
@@ -446,8 +451,9 @@ class CopilotOrchestrator:
             )
             for result in tool_results:
                 await emit(_tool_event(result))
+        primary_tools: set[str] = set()
         if self._agent_loop_enabled:
-            tool_results = await self._run_agent_loop(
+            tool_results, primary_tools = await self._run_agent_loop(
                 request=request,
                 classification=classification,
                 plan=plan,
@@ -457,6 +463,7 @@ class CopilotOrchestrator:
                 language_profile=language_profile,
                 started_ms=total_started_ms,
                 emit=emit,
+                planner_fallback=model_selects,
             )
         tool_duration_ms = elapsed_ms(tool_started_ms)
         await emit({"stage": "writing"})
@@ -472,6 +479,7 @@ class CopilotOrchestrator:
             request_id=request.request_id,
             reply_language=language_profile.reply_language.value if language_profile else None,
             conversation=_conversation_turns(recent_messages, settings.copilot_conversation_memory_turns) if self._conversation_memory_enabled else None,
+            primary_tools=primary_tools,
         )
         groq_duration_ms = elapsed_ms(groq_started_ms)
         response_payload = hybrid_answer.payload
@@ -756,12 +764,22 @@ class CopilotOrchestrator:
         language_profile: LanguageProfile | None,
         started_ms: float,
         emit: Callable[[dict[str, Any]], Awaitable[None]],
-    ) -> list[ToolExecutionResult]:
+        planner_fallback: bool = False,
+    ) -> tuple[list[ToolExecutionResult], set[str]]:
+        """Run the loop; return (results, primary tool names: the ones that answer the question).
+
+        With ``planner_fallback`` (the loop chose from an empty seed) and no usable model choice,
+        the planner's first ``copilot_fallback_max_tools`` tools run instead, in planner order.
+        """
         router = self._llm_router or self._agent_router()
-        # Leave the answer call its own budget inside the overall deadline.
-        deadline_s = self._overall_timeout_seconds - elapsed_ms(started_ms) / 1000 - self._groq_timeout_seconds
+
+        def budget_s() -> float:
+            # Leave the answer call its own budget inside the overall deadline.
+            return self._overall_timeout_seconds - elapsed_ms(started_ms) / 1000 - self._groq_timeout_seconds
+
+        deadline_s = budget_s()
         if router is None or deadline_s <= 0:
-            return tool_results
+            return tool_results, set()
 
         async def execute(steps: list[PlannedToolCall]) -> list[ToolExecutionResult]:
             # Worker threads with their own sessions, so the loop deadline can stop waiting on a slow query
@@ -771,6 +789,7 @@ class CopilotOrchestrator:
                 user_message_id=user_message_id, selected_tools=steps, emit=emit,
             )
 
+        status: dict[str, Any] = {}
         results = await run_agent_loop(
             question=request.question,
             seeded_results=tool_results,
@@ -784,9 +803,33 @@ class CopilotOrchestrator:
             reply_language=language_profile.reply_language.value if language_profile else None,
             request_id=request.request_id,
             entities=plan.entities.to_dict() if getattr(plan, "entities", None) is not None else None,
+            status=status,
         )
         # The model asked for these to answer the question; put them first so the prompt budget keeps them.
-        return [*results[len(tool_results):], *tool_results]
+        chosen = results[len(tool_results):]
+        primary = {result.tool_name for result in chosen if result.status == ToolExecutionStatus.SUCCEEDED}
+        seeded = {result.tool_name for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED and result.tool_name != "retrieve_business_memory"}
+        if primary or not planner_fallback:
+            return [*chosen, *tool_results], primary
+        if status.get("done") and seeded:
+            return [*chosen, *tool_results], seeded  # the model judged the named product's own facts enough
+        ran = {result.tool_name for result in results if result.status == ToolExecutionStatus.SUCCEEDED}
+        steps = [
+            step
+            for step in self._select_tools(request=request, classification=classification, plan=plan, include_memory=request.include_memory, include_current_data=request.include_current_data)
+            if step.tool_name not in ran
+        ][: max(1, settings.copilot_fallback_max_tools)]
+        remaining = budget_s()
+        if not steps or remaining <= 0:
+            return [*chosen, *tool_results], seeded
+        logger.info("copilot_planner_fallback tools=%s request_id=%s", ",".join(step.tool_name for step in steps), request.request_id)
+        fallback = await self._run_tools_concurrently(
+            request=request, classification=classification, plan=plan, conversation_id=conversation_id,
+            user_message_id=user_message_id, selected_tools=steps, emit=emit, deadline_s=remaining,
+        )
+        # The planner lists the question's most specific tool first; that one (and a named product's profile) answers.
+        first = next((result.tool_name for result in fallback if result.status == ToolExecutionStatus.SUCCEEDED and result.tool_name != "retrieve_business_memory"), None)
+        return [*chosen, *fallback, *tool_results], seeded | ({first} if first else set())
 
     def _agent_router(self) -> CopilotLLMRouter | None:
         # The loop needs a router even when the answer path still uses the legacy Groq call.
@@ -884,6 +927,7 @@ class CopilotOrchestrator:
         user_message_id: UUID,
         selected_tools: list[PlannedToolCall],
         emit: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+        deadline_s: float | None = None,
     ) -> list[ToolExecutionResult]:
         """Run read-only tools in worker threads, each with its own DB session.
 
@@ -893,7 +937,7 @@ class CopilotOrchestrator:
         request's own session, so persistence is identical to the sequential path.
         """
         steps = selected_tools[: self._max_tool_calls]
-        deadline = time.monotonic() + self._overall_timeout_seconds
+        deadline = time.monotonic() + (self._overall_timeout_seconds if deadline_s is None else deadline_s)
         semaphore = asyncio.Semaphore(max(1, settings.copilot_tool_concurrency))
 
         async def run_one(step: PlannedToolCall) -> tuple[PlannedToolCall, dict[str, Any], datetime, datetime, ToolExecutionResult]:

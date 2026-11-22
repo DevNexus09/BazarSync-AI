@@ -259,6 +259,7 @@ class Settings(BaseModel):
     copilot_llm_planner_fallback_enabled: bool = False
     copilot_streaming_enabled: bool = False
     copilot_agent_loop_enabled: bool = False
+    copilot_fallback_max_tools: int = 4
     copilot_always_retrieve_memory: bool = False
     copilot_strict_safety_planning_enabled: bool = False
     rag_query_embedding_cache_size: int = 0
@@ -585,6 +586,7 @@ class Settings(BaseModel):
             "copilot_llm_planner_fallback_enabled": _parse_bool(os.getenv("COPILOT_LLM_PLANNER_FALLBACK_ENABLED"), default=False),
             "copilot_streaming_enabled": _parse_bool(os.getenv("COPILOT_STREAMING_ENABLED"), default=False),
             "copilot_agent_loop_enabled": _parse_bool(os.getenv("COPILOT_AGENT_LOOP_ENABLED"), default=False),
+            "copilot_fallback_max_tools": int(os.getenv("COPILOT_FALLBACK_MAX_TOOLS", "4")),
             "copilot_always_retrieve_memory": _parse_bool(os.getenv("COPILOT_ALWAYS_RETRIEVE_MEMORY"), default=False),
             "copilot_strict_safety_planning_enabled": _parse_bool(os.getenv("COPILOT_STRICT_SAFETY_PLANNING_ENABLED"), default=False),
             "rag_query_embedding_cache_size": int(os.getenv("RAG_QUERY_EMBEDDING_CACHE_SIZE", "0")),

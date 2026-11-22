@@ -284,10 +284,45 @@ class OrchestratorAgentLoopTests(unittest.IsolatedAsyncioTestCase):
 
         router = _LoopOnlyRouter([{"tool_calls": [{"name": "query_business_records", "arguments": {"entity": "stock_ins"}}]}, {"done": True}])
         with patch.object(orchestrator_module.CopilotHybridAnswerEngine, "answer", capture):
-            await self._ask("What should I restock?", router=router, agent_loop_enabled=True)
+            await self._ask("What should I restock?", router=router, agent_loop_enabled=True, always_retrieve_memory=True)
 
-        self.assertEqual("query_business_records", captured["tools"][0])
-        self.assertGreater(len(captured["tools"]), 1)
+        self.assertEqual(["query_business_records", "retrieve_business_memory"], captured["tools"])
+
+    async def test_loop_choices_run_without_planner_seed(self):
+        router = _LoopOnlyRouter([{"tool_calls": [{"name": "query_business_records", "arguments": {"entity": "sales", "aggregate": "count"}}]}, {"done": True}])
+
+        _, registry, _ = await self._ask("What should I restock?", router=router, agent_loop_enabled=True, always_retrieve_memory=True)
+
+        self.assertEqual(["retrieve_business_memory", "query_business_records"], [call["name"] for call in registry.calls])
+
+    async def test_planner_fallback_when_loop_model_unavailable_is_capped_at_four(self):
+        class _DownRouter:
+            async def complete_json(self, request, *, reply_language=None, timeout_seconds=None):
+                raise LLMRouterError("all routes down", attempts=[])
+
+        _, registry, _ = await self._ask("Last 7 din e amar revenue koto?", router=_DownRouter(), agent_loop_enabled=True, include_memory=False)
+
+        # Planner order, first four: two metric queries, then the revenue summary and the sales trend.
+        self.assertEqual(
+            ["run_seller_metric_query", "run_seller_metric_query", "get_revenue_summary", "get_sales_trends"],
+            sorted([call["name"] for call in registry.calls], key=["run_seller_metric_query", "get_revenue_summary", "get_sales_trends"].index),
+        )
+
+    async def test_primary_tools_are_the_loop_choices(self):
+        from app.services.copilot import orchestrator as orchestrator_module
+
+        captured = {}
+        original = orchestrator_module.CopilotHybridAnswerEngine.answer
+
+        async def capture(engine, **kwargs):
+            captured["primary"] = kwargs.get("primary_tools")
+            return await original(engine, **kwargs)
+
+        router = _LoopOnlyRouter([{"tool_calls": [{"name": "query_business_records", "arguments": {"entity": "sales", "aggregate": "count"}}]}, {"done": True}])
+        with patch.object(orchestrator_module.CopilotHybridAnswerEngine, "answer", capture):
+            await self._ask("What should I restock?", router=router, agent_loop_enabled=True, always_retrieve_memory=True)
+
+        self.assertEqual({"query_business_records"}, captured["primary"])
 
     async def test_named_product_gets_its_profile_seeded(self):
         from tests.test_copilot_orchestrator import PRODUCT_ID
