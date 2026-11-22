@@ -84,7 +84,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
     from app.services.rag_memory_backfill_service import EVAL_CONVERSATION_SOURCE
 
-    cases = json.loads(FIXTURE.read_text(encoding="utf-8"))["questions"]
+    cases = json.loads(Path(args.fixture).read_text(encoding="utf-8"))["questions"]
     if args.only:
         wanted = set(args.only.split(","))
         cases = [case for case in cases if case["id"] in wanted]
@@ -145,6 +145,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     cli = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     cli.add_argument("--seller-id", required=True)
+    cli.add_argument("--fixture", default=str(FIXTURE), help="Questions JSON (default: the golden set).")
     cli.add_argument("--only", help="Comma-separated question ids.")
     cli.add_argument("--verbose", action="store_true", help="Print failing answers.")
     cli.add_argument("--pause", type=float, default=0.0, help="Seconds to wait between questions (provider rate limits).")

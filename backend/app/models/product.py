@@ -295,6 +295,9 @@ class ProductMarketplaceListing(Base):
     category_on_marketplace: Mapped[str | None] = mapped_column(String(160), nullable=True)
     title_on_marketplace: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Marketplace-reported customer rating for this listing; NULL means not synced, not zero.
+    rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
+    review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

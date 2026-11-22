@@ -49,6 +49,7 @@ from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
 from app.services.copilot.records_query import RecordsQueryArgs, query_business_records
 from app.services.copilot.business_change_analytics_service import BusinessChangeAnalyticsService
 from app.services.copilot.business_data_catalog import BusinessDataCatalogService
+from app.services.copilot.snapshots import UNHEALTHY_STOCK_CLASSES, latest_per_product
 from app.services.copilot.metric_catalog import MetricCatalogService
 from app.services.copilot.metric_execution_service import MetricExecutionService
 from app.services.copilot.profit_margin_analytics_service import ProfitMarginAnalyticsService
@@ -1815,16 +1816,23 @@ class SqlAlchemyCopilotToolDataAccess:
         if product_id:
             stmt = stmt.where(DeadStockAssessment.product_id == product_id)
         stmt = _date_filter(stmt, DeadStockAssessment.assessed_at, from_date, to_date)
-        rows = self._db.execute(stmt).scalars().all()
-        estimates = self._db.execute(select(DeadStockCapitalRecoveryEstimate).where(DeadStockCapitalRecoveryEstimate.seller_id == seller_id)).scalars().all()
+        # Assessments and estimates are re-run over time; only each product's latest run describes today.
+        rows = latest_per_product(self._db.execute(stmt).scalars().all(), "assessed_at")
+        unhealthy = {row.product_id for row in rows if _enum_value(row.classification) in UNHEALTHY_STOCK_CLASSES}
+        estimate_stmt = select(DeadStockCapitalRecoveryEstimate).where(DeadStockCapitalRecoveryEstimate.seller_id == seller_id)
+        if product_id:
+            estimate_stmt = estimate_stmt.where(DeadStockCapitalRecoveryEstimate.product_id == product_id)
+        estimates = [item for item in latest_per_product(self._db.execute(estimate_stmt).scalars().all(), "calculated_at") if item.product_id in unhealthy]
         locked_values = [Decimal(item.locked_capital) for item in estimates if item.locked_capital is not None]
         recovery_values = [Decimal(item.gross_recovered_cash) for item in estimates if item.gross_recovered_cash is not None]
         missing = []
-        if not locked_values and rows:
+        if not locked_values and unhealthy:
             missing.append("MISSING_LOCKED_CAPITAL")
         summary = {
             "dead_stock_product_count": sum(1 for row in rows if _enum_value(row.classification) == "DEAD_STOCK"),
             "at_risk_product_count": sum(1 for row in rows if _enum_value(row.classification) == "AT_RISK"),
+            "slow_moving_product_count": sum(1 for row in rows if _enum_value(row.classification) == "SLOW_MOVING"),
+            "locked_capital_scope": "latest assessment per product classified DEAD_STOCK, AT_RISK or SLOW_MOVING",
             "locked_capital": sum(locked_values, Decimal("0")) if locked_values else None,
             "capital_recovery_estimate": sum(recovery_values, Decimal("0")) if recovery_values else None,
             "missing_cost_or_fee_warnings": missing,
@@ -2376,12 +2384,30 @@ class SqlAlchemyCopilotToolDataAccess:
         minimum_safe = getattr(analytics, "minimum_safe_price", product.cost_price)
         allowed = price is not None and price >= minimum_safe
         daily_units = getattr(analytics, "daily_sales_rate", None) or Decimal("0")
-        expected_units = Decimal(forecast_horizon_days) * Decimal(daily_units)
+        estimate = self._db.execute(
+            select(DemandElasticityEstimate)
+            .where(DemandElasticityEstimate.seller_id == seller_id, DemandElasticityEstimate.product_id == product_id, DemandElasticityEstimate.elasticity.is_not(None))
+            .order_by(DemandElasticityEstimate.calculated_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        elasticity = Decimal(estimate.elasticity) if estimate is not None else None
+        current_price = Decimal(product.selling_price) if product.selling_price else None
+        units_factor = Decimal("1")
+        if elasticity is not None and current_price and price:
+            # Constant-elasticity demand: units scale by (new price / current price) ** elasticity.
+            units_factor = Decimal(str(float(Decimal(price) / current_price) ** float(elasticity)))
+        expected_units = Decimal(forecast_horizon_days) * Decimal(daily_units) * units_factor
+        fee_rate = Decimal(getattr(analytics, "percentage_fee_rate", None) or 0)
+        fixed_fee = Decimal(getattr(analytics, "fixed_fee_amount", None) or 0)
         expected_revenue = price * expected_units if price is not None else None
-        expected_profit = (price - product.cost_price) * expected_units if price is not None else None
+        # Profit is after marketplace fees on the candidate price, matching MarginGuard's unit economics.
+        expected_profit = (price - product.cost_price - price * fee_rate - fixed_fee) * expected_units if price is not None else None
         return {
             "allowed": bool(allowed),
             "candidate_price": price,
+            "expected_units": expected_units.quantize(Decimal("0.01")),
+            "elasticity_used": elasticity,
+            "demand_model": "constant_elasticity" if elasticity is not None else "flat_units_no_elasticity_estimate",
             "margin_guard": {"minimum_safe_price": minimum_safe, "current_cost": product.cost_price, "safe": bool(allowed)},
             "expected_revenue": expected_revenue if allowed else None,
             "expected_profit": expected_profit if allowed else None,
@@ -3235,13 +3261,15 @@ def _source_date_bound(column: Any, value: date, *, end: bool) -> date | datetim
 def _source_row_payload(row: Any, *, spec: SourceToolSpec) -> dict[str, Any]:
     allowed = set(spec.safe_fields)
     payload: dict[str, Any] = {}
-    for column in row.__table__.columns:
-        name = column.name
+    # Read through the mapped attribute: a column named "metadata" is mapped as event_metadata,
+    # and getattr(row, "metadata") would return the SQLAlchemy MetaData object.
+    for attr in inspect(row).mapper.column_attrs:
+        name = attr.columns[0].name
         if allowed and name not in allowed:
             continue
         if _field_is_restricted(name):
             continue
-        payload[name] = _json_safe(getattr(row, name, None))
+        payload[name] = _json_safe(getattr(row, attr.key, None))
     product = getattr(row, "product", None)
     competitor = getattr(row, "competitor", None)
     if product is not None:
@@ -3650,6 +3678,7 @@ def _missing_if_empty(rows: list[Any], message: str) -> list[str]:
 
 def _enum_value(value: Any) -> Any:
     return value.value if hasattr(value, "value") else value
+
 
 
 def _decimal(value: Any) -> Decimal:

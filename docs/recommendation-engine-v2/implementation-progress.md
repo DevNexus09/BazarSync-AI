@@ -266,3 +266,28 @@ Remaining failures, all model-side on the free flash-lite model:
 | After improvements, 2026-11-22 | Loop gets resolved entities; named products get their profile; facts may be stated rounded; prompt budget 4000/20000 | 36/40 (90%) | 100% | Meets the plan's ≥90% target. `20261122T051916Z.json`. |
 
 Of the 4 failures, 3 happened when both providers were unavailable at once (Gemini 503 and Groq 429, `ALL_ROUTES_FAILED`), so the deterministic fallback answered. These are `stock_black_casual`, `stock_in_week` and `bangla_products`. `stock_black_casual` and `stock_in_week` passed in the targeted re-runs. The fourth is `unanswerable_invoices`: the validator rejected the model's answer, so the reply is a safe "no clear answer" with no invented number. Against the paced baseline, the only miss is `stock_black_casual`, which was a provider outage, not a logic regression.
+
+### Copilot direct answers and Banglish 100-question eval (2026-11-22)
+
+Changes:
+
+- New flag `COPILOT_DIRECT_ANSWERS_ENABLED` (default off). `app/services/copilot/direct_answers.py` answers recognised English and Banglish question shapes from exact, seller-scoped data using templates. It runs after the strict-safety refusal and before clarification. Explicit API filters (`product_id`, dates, domain filters), Bangla-script replies and unrecognised questions take the existing pipeline. Any exception falls back to that pipeline. Nothing here writes business data or changes live price or stock. Version tag: `direct-answers-v1`.
+- Bug fixes in existing tools:
+  - `get_dead_stock_summary` and the `locked_capital` / `dead_stock_count` metrics now read only the latest assessment and estimate per product. Locked capital now counts only DEAD_STOCK, AT_RISK and SLOW_MOVING products. The demo seller's figure drops from ৳2,724,631.81 to ৳474,912.89, and the dead-stock product count from 2 to 1. Golden expected values were updated to match.
+  - Source tools no longer crash on `competitor_events.metadata`.
+  - `simulate_price_change` now applies the latest elasticity estimate (constant-elasticity demand) and marketplace fees to profit.
+- Additive migration `o9c0d1e2f3a4`:
+  - `sales_records.customer_reference` and `sales_records.delivery_district`
+  - `product_marketplace_listings.rating` and `product_marketplace_listings.review_count`
+  - new tables `business_expenses` and `marketplace_store_metrics`
+- `scripts/seed_copilot_demo_extras.py` fills these for demo1@gmail.com only. It is idempotent and tracked in `demo_seed_records` under seed `demo-copilot-extras-v1`.
+
+| Run | Code | Score | Notes |
+| --- | --- | --- | --- |
+| Banglish 100, before | agent loop + router | 37/100 hand-graded | `20261122T145455Z.json`; 18 answers came from `ALL_ROUTES_FAILED` fallbacks |
+| Banglish 100, after | direct answers on | 100/100 auto-graded | `20261122T154420Z.json`; expected facts checked with independent SQL |
+| Golden 40, after | direct answers on | 39/40 | `20261122T154656Z.json`; `bangla_products` failed with a script mismatch on the LLM path; tool match reads 10% because direct answers report `direct_answer` instead of the old tool names |
+
+Tests: `tests/test_copilot_direct_answers.py` (14 tests: seller isolation, missing data, fallthrough, flag gate, dead-stock latest run, simulation, metadata serialisation). The full backend suite passes: 1203 passed, 85 skipped.
+
+**Removed (2026-11-22, plan `docs/superpowers/plans/2026-11-22-copilot-llm-accuracy.md` Task 1):** the template layer matched keywords and broke on new wording, so `direct_answers.py`, its flag `COPILOT_DIRECT_ANSWERS_ENABLED` and its 11 tests are gone. The 100/100 and 39/40 rows above measured that layer and no longer describe the shipped code. The tool bug fixes, migration and seed script stay; their 3 tests moved to `tests/test_copilot_previous_fixes.py`. Suite after removal: 1192 passed, 85 skipped.

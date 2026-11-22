@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.alert import Alert, AlertDeliveryStatus
 from app.models.competitor_snapshot import CompetitorSnapshot
-from app.models.dead_stock_assessment import DeadStockAssessment, DeadStockClassification
+from app.models.dead_stock_assessment import DeadStockAssessment
 from app.models.dead_stock_capital_recovery import DeadStockCapitalRecoveryEstimate
 from app.models.inventory_risk import InventoryRiskAssessment, InventoryRiskLevel
 from app.models.marketplace_fee_policy import MarketplaceFeePolicy
@@ -22,6 +22,7 @@ from app.models.sales_data_coverage import SalesDataCompletenessStatus, SalesDat
 from app.models.sales_record import SalesRecord, SalesRecordStatus
 from app.services.copilot.metric_catalog import MetricCatalogService, MetricDefinition, MetricImplementationStatus
 from app.services.copilot.query_constraints import CatalogValidationError
+from app.services.copilot.snapshots import UNHEALTHY_STOCK_CLASSES, latest_per_product
 
 
 VALID_SALES_STATUSES = (SalesRecordStatus.COMPLETED, SalesRecordStatus.FULFILLED)
@@ -407,10 +408,12 @@ class MetricExecutionService:
         return self._rows_or_count(metric, rows, group_by, filters, limit, offset, row_factory=lambda row: {"product_id": str(row.product_id), "risk_level": _enum(row.risk_level), "risk_score": row.risk_score}, evidence_table="inventory_risk_assessments")
 
     def _dead_stock_count(self, *, metric: MetricDefinition, seller_id: UUID, filters: dict[str, Any], group_by: tuple[str, ...], limit: int, offset: int) -> dict[str, Any]:
-        stmt = select(DeadStockAssessment).join(Product, Product.id == DeadStockAssessment.product_id).where(DeadStockAssessment.seller_id == seller_id, Product.seller_id == seller_id, DeadStockAssessment.classification.in_((DeadStockClassification.AT_RISK, DeadStockClassification.DEAD_STOCK)))
+        stmt = select(DeadStockAssessment).join(Product, Product.id == DeadStockAssessment.product_id).where(DeadStockAssessment.seller_id == seller_id, Product.seller_id == seller_id)
         stmt = self._apply_product_filters(stmt, filters)
         stmt = self._apply_date_range(stmt, DeadStockAssessment.assessed_at, filters)
-        rows = self._db.execute(stmt.options(joinedload(DeadStockAssessment.product))).scalars().all()
+        # Classify by each product's latest assessment only; older runs would count one product many times.
+        latest = latest_per_product(self._db.execute(stmt.options(joinedload(DeadStockAssessment.product))).scalars().all(), "assessed_at")
+        rows = [row for row in latest if _enum(row.classification) in {"AT_RISK", "DEAD_STOCK"}]
         return self._rows_or_count(metric, rows, group_by, filters, limit, offset, row_factory=lambda row: {"product_id": str(row.product_id), "classification": _enum(row.classification), "eligible_quantity": row.eligible_quantity}, evidence_table="dead_stock_assessments")
 
     def _locked_capital(self, *, metric: MetricDefinition, seller_id: UUID, filters: dict[str, Any], group_by: tuple[str, ...], limit: int, offset: int) -> dict[str, Any]:
@@ -418,7 +421,12 @@ class MetricExecutionService:
         stmt = self._apply_date_range(stmt, DeadStockCapitalRecoveryEstimate.calculated_at, filters)
         if filters.get("product_id"):
             stmt = stmt.where(DeadStockCapitalRecoveryEstimate.product_id == filters["product_id"])
-        rows = self._db.execute(stmt).scalars().all()
+        unhealthy = {
+            row.product_id
+            for row in latest_per_product(self._db.execute(select(DeadStockAssessment).where(DeadStockAssessment.seller_id == seller_id)).scalars().all(), "assessed_at")
+            if _enum(row.classification) in UNHEALTHY_STOCK_CLASSES
+        }
+        rows = [row for row in latest_per_product(self._db.execute(stmt).scalars().all(), "calculated_at") if row.product_id in unhealthy]
         value = sum((Decimal(str(row.locked_capital)) for row in rows if row.locked_capital is not None), Decimal("0"))
         missing = [] if all(row.locked_capital is not None for row in rows) else ["MISSING_LOCKED_CAPITAL"]
         return self._result(metric, value=value, rows=[{"product_id": str(row.product_id), "locked_capital": row.locked_capital} for row in rows][offset : offset + limit], filters_used=filters, status="PARTIAL" if missing else "CALCULATED", missing_data=missing, unit="money", currency="BDT", evidence=[_evidence("dead_stock_capital_recovery_estimates", "seller_scope")])
