@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 OPENAI_COMPAT_PROVIDERS = {
     "openai": ("OPENAI_API_KEY", "openai_base_url"),
     "gemini": ("GEMINI_API_KEY", "gemini_base_url"),
+    "openrouter": ("OPENROUTER_API_KEY", "openrouter_base_url"),
 }
 
 # Below this, a fallback attempt cannot finish inside the deadline.
@@ -118,7 +119,7 @@ def parse_route(value: str, *, default_groq_model: str | None) -> LLMRoute | Non
     if provider in OPENAI_COMPAT_PROVIDERS:
         # Free-tier model ids change often, so these routes must name their model.
         return LLMRoute(provider, model) if model else None
-    raise ValueError(f"Unknown Copilot LLM provider in route {value!r}; expected one of anthropic, gemini, groq, openai.")
+    raise ValueError(f"Unknown Copilot LLM provider in route {value!r}; expected one of anthropic, gemini, groq, openai, openrouter.")
 
 
 def parse_routes(value: str, *, default_groq_model: str | None) -> list[LLMRoute]:

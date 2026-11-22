@@ -366,6 +366,25 @@ class OpenAICompatRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(["gemini:gemini-2.5-flash", "groq:llama-default"], [route.label for route in router.routes_for("en")])
         self.assertEqual("https://generativelanguage.googleapis.com/v1beta/openai", router.providers["gemini"].base_url)
 
+    def test_openrouter_route_keeps_free_suffix_in_model(self):
+        settings = SimpleNamespace(
+            copilot_groq_model=None,
+            copilot_llm_answer_routes="openrouter:google/gemma-4-31b-it:free",
+            copilot_llm_answer_routes_en="",
+            copilot_llm_answer_routes_bn="",
+            copilot_llm_answer_routes_banglish="",
+            copilot_anthropic_effort="low",
+            copilot_anthropic_max_tokens=16000,
+            openai_base_url="https://api.openai.com/v1",
+            gemini_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+            openrouter_base_url="https://openrouter.ai/api/v1",
+        )
+        with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"}):
+            router = build_router_from_settings(settings, timeout_seconds=15)
+
+        self.assertEqual(["openrouter:google/gemma-4-31b-it:free"], [route.label for route in router.routes_for("en")])
+        self.assertEqual("https://openrouter.ai/api/v1", router.providers["openrouter"].base_url)
+
 
 def _compat(handler) -> OpenAICompatProvider:
     return OpenAICompatProvider(
