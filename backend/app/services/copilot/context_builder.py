@@ -47,6 +47,8 @@ class CopilotAnswerContext:
     conversation: list[dict[str, str]] = field(default_factory=list)
     # Tools whose facts were shortened or omitted to fit the prompt budget.
     truncated_facts: list[str] = field(default_factory=list)
+    # The period every dated tool used: from_date, to_date, label, defaulted.
+    resolved_period: dict[str, Any] | None = None
 
     def to_prompt_payload(self) -> dict[str, Any]:
         payload = self._base_prompt_payload()
@@ -60,6 +62,8 @@ class CopilotAnswerContext:
             }
         if self.truncated_facts:
             payload["facts_truncated_for_length"] = self.truncated_facts
+        if self.resolved_period:
+            payload["period"] = self.resolved_period
         return payload
 
     def _base_prompt_payload(self) -> dict[str, Any]:
@@ -134,7 +138,8 @@ class CopilotContextBuilder:
             for item in tool_usage_items(tool_results)
         ]
         allowed_ids = {item["evidence_id"] for item in evidence}
-        allowed_numbers = _numbers_from_payload({"facts": facts, "evidence": evidence, "question": question})
+        resolved_period = _resolved_period(plan)
+        allowed_numbers = _numbers_from_payload({"facts": facts, "evidence": evidence, "question": question, "period": resolved_period})
         facts, truncated_facts = budget_facts(facts, tool_chars=self._tool_chars_budget, total_chars=self._total_chars_budget)
         tool_names = {result.tool_name for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED}
         has_memory = any(item.get("domain") == "RAG_MEMORY" or str(item.get("evidence_id", "")).startswith("rag:") for item in evidence)
@@ -151,6 +156,7 @@ class CopilotContextBuilder:
             allowed_evidence_ids=allowed_ids,
             allowed_numbers=allowed_numbers,
             truncated_facts=truncated_facts,
+            resolved_period=resolved_period,
             has_direct_evidence=any(evidence_item.get("domain") != "RAG_MEMORY" for evidence_item in evidence),
             has_memory_evidence=has_memory,
             has_visibility_evidence=bool(tool_names & {"get_seo_opportunities", "get_visibility_summary", "get_visibility_history", "get_listing_quality_issues"}),
@@ -382,3 +388,15 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, list):
         return [_json_safe(item) for item in value]
     return value
+
+
+def _resolved_period(plan: CopilotQuestionPlan) -> dict[str, Any] | None:
+    value = plan.entities.date_range
+    if not isinstance(value, dict) or not value.get("from_date"):
+        return None
+    return {
+        "from_date": value["from_date"],
+        "to_date": value["to_date"],
+        "label": value.get("source_text"),
+        "defaulted": bool(value.get("defaulted")),
+    }
