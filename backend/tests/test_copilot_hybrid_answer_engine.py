@@ -121,6 +121,23 @@ class CopilotHybridAnswerEngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.context.has_reliable_no_sales_evidence)
         self.assertTrue(result.context.has_financial_evidence)
 
+    async def test_fallback_answers_only_from_primary_tools(self):
+        async def down(messages, **kwargs):
+            raise RuntimeError("model down")
+
+        question = "Last 7 din e amar revenue koto?"
+        classification, plan = self._classification_plan(question)
+        tools = [_tool("get_inventory_risks", {"risks": [{"product": {"title": "Unrelated Risky Shoe"}, "risk_level": "HIGH"}]}), _tool("get_revenue_summary", {"gross_revenue": "250.00", "order_count": 3, "units_sold": 4})]
+
+        result = await CopilotHybridAnswerEngine(groq_json=down, model="test-model", timeout_seconds=1).answer(
+            question=question, classification=classification, plan=plan, tool_results=tools, missing_data=[], request_id="req-test", primary_tools={"get_revenue_summary"},
+        )
+
+        self.assertEqual(frozenset({"get_revenue_summary"}), result.context.primary_tools)
+        self.assertIn("250.00", result.payload["answer"])
+        self.assertNotIn("Unrelated Risky Shoe", result.payload["answer"])
+        self.assertIn(result.context.resolved_period["from_date"], result.payload["answer"])
+
     async def test_historical_question_uses_rag(self):
         result = await self._answer(
             "What happened last time?",

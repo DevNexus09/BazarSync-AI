@@ -38,6 +38,15 @@ def _result(tool_name: str, rows_key: str, rows: list[dict], *, missing: list[st
     )
 
 
+WEEK = {"from_date": "2026-11-16", "to_date": "2026-11-22", "label": "last 7 din", "defaulted": False}
+WEEK_FILTERS = {"from_date": "2026-11-16", "to_date": "2026-11-22"}
+
+
+def _data_result(tool_name: str, data: dict) -> ToolExecutionResult:
+    evidence = [{"source_table": tool_name, "source_id": "1"}]
+    return ToolExecutionResult(tool_name=tool_name, tool_version="v1", status=ToolExecutionStatus.SUCCEEDED, data={**data, "missing_data": []}, evidence=evidence, missing_data=[], error=None, runtime_ms=1)
+
+
 JUNK = ("**", "Confidence", "Evidence", "Missing data", "Next steps", "Safety", "Risk level", "SUCCEEDED", "FAILED", "execute automatically")
 
 
@@ -151,14 +160,73 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
 
         answer = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[empty], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[])
 
-        self.assertIn("No sales recorded for this period", answer.answer)
+        self.assertIn("No sales found for this period", answer.answer)
         self.assertNotIn("gross revenue: 0", answer.answer)
         self.assertNotIn("order count: 0", answer.answer)
 
         profit = ToolExecutionResult(tool_name="get_profit_summary", tool_version="v1", status=ToolExecutionStatus.SUCCEEDED, data={"gross_revenue": "0", "estimated_profit": "0", "missing_data": []}, evidence=[], missing_data=[], error=None, runtime_ms=1)
         both = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[empty, profit], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[])
-        self.assertEqual(1, both.answer.count("No sales recorded for this period"))
+        self.assertEqual(1, both.answer.count("No sales found for this period"))
         self.assertNotIn(": 0", both.answer)
+
+    def test_banglish_fallback_uses_latin_header_and_only_primary_tool_rows(self):
+        revenue = _data_result("get_revenue_summary", {"gross_revenue": "93503.00", "order_count": 40, "units_sold": 61, "filters_used": WEEK_FILTERS})
+        risks = _result("get_inventory_risks", "risks", [{"product": {"title": "Unrelated Risky Shoe"}, "risk_level": "HIGH"}])
+
+        answer = self.builder.build(
+            classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS, language="bn"),
+            tool_results=[revenue, risks], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[],
+            reply_language="banglish", primary_tools={"get_revenue_summary"}, period=WEEK,
+        )
+
+        self.assertTrue(answer.answer.startswith("Apnar data theke (2026-11-16 theke 2026-11-22):"), answer.answer)
+        self.assertIn("93503.00", answer.answer)
+        self.assertNotIn("Unrelated Risky Shoe", answer.answer)
+        self.assertFalse(any("\u0980" <= char <= "\u09ff" for char in answer.answer), answer.answer)
+
+    def test_fallback_no_sales_line_names_last_recorded_sale_date(self):
+        yesterday = {"from_date": "2026-11-21", "to_date": "2026-11-21", "label": "gotokal", "defaulted": False}
+        zero = {"gross_revenue": "0", "order_count": 0, "units_sold": 0, "filters_used": {"from_date": "2026-11-21", "to_date": "2026-11-21"}}
+
+        proven = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[_data_result("get_revenue_summary", zero | {"latest_recorded_sale_date": "2026-11-19"})], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], primary_tools={"get_revenue_summary"}, period=yesterday)
+        unproven = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[_data_result("get_revenue_summary", zero)], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], primary_tools={"get_revenue_summary"}, period=yesterday)
+
+        self.assertIn("No sales recorded for this period; last recorded sale: 2026-11-19", proven.answer)
+        self.assertNotIn("No sales recorded", unproven.answer)
+        self.assertIn("could not be confirmed", unproven.answer)
+        self.assertNotIn(": 0", proven.answer + unproven.answer)
+
+    def test_fallback_omits_inventory_risk_rows_for_a_sales_question(self):
+        revenue = _data_result("get_revenue_summary", {"gross_revenue": "93503.00", "order_count": 40, "units_sold": 61, "filters_used": WEEK_FILTERS})
+        risks = _result("get_inventory_risks", "risks", [{"product": {"title": "Unrelated Risky Shoe"}, "risk_level": "HIGH"}])
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.RESTOCK_ADVICE), tool_results=[risks, revenue], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], primary_tools={"get_revenue_summary"}, period=WEEK)
+
+        self.assertTrue(answer.answer.startswith("From your data (2026-11-16 to 2026-11-22):"), answer.answer)
+        self.assertIn("gross revenue: 93503.00", answer.answer)
+        self.assertNotIn("Unrelated Risky Shoe", answer.answer)
+        self.assertNotIn("restock", answer.answer.lower())
+
+    def test_fallback_answers_from_records_and_product_profile_facts(self):
+        records = _data_result("query_business_records", {"entity": "sales", "aggregate": "sum", "measure": "revenue", "group_by": "weekday", "rows": [{"weekday": "Friday", "is_weekend": True, "value": "33676.00", "row_count": 12}], "row_count": 12})
+        profile = _data_result("get_product_profile", {"product": {"name": "Power XORISE", "current_stock": 14, "selling_price": "3374.00"}})
+        default = {"from_date": "2016-11-24", "to_date": "2026-11-22", "label": "all recorded history (no period given)", "defaulted": True}
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.UNKNOWN), tool_results=[records, profile], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], primary_tools={"query_business_records", "get_product_profile"}, period=default)
+
+        self.assertTrue(answer.answer.startswith("From your data (all recorded history):"), answer.answer)
+        self.assertIn("Friday: 33676.00", answer.answer)
+        self.assertIn("Power XORISE: stock 14, price 3374.00", answer.answer)
+
+    def test_fallback_shows_memory_only_for_memory_questions(self):
+        memory = _result("retrieve_business_memory", "memory_chunks", [{"title": "Supplier delay note", "summary": "late in March"}])
+        revenue = _data_result("get_revenue_summary", {"gross_revenue": "250.00", "order_count": 3, "units_sold": 4})
+
+        sales = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[revenue, memory], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], period=WEEK)
+        history = self.builder.build(classification=_classification(CopilotIntent.BUSINESS_MEMORY_SEARCH), tool_results=[memory], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], period=WEEK)
+
+        self.assertNotIn("Supplier delay note", sales.answer)
+        self.assertIn("Supplier delay note", history.answer)
 
     def test_rows_without_usable_facts_say_so_plainly(self):
         answer = self.builder.build(

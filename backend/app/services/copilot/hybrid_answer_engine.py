@@ -296,6 +296,8 @@ class CopilotHybridAnswerEngine:
             evidence=context.evidence,
             missing_data=_missing_messages(context.missing_data) + ([f"Model answer rejected: {validation_error}"] if validation_error else []),
             reply_language=context.reply_language,
+            primary_tools=context.primary_tools,
+            period=context.resolved_period,
         ).to_payload()
         return self._with_context_defaults(
             {

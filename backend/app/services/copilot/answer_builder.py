@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 import re
 from typing import Any, Iterable
 
+from app.services.copilot.context_builder import is_zero_sales, zero_sales_proven
 from app.services.copilot.intent_classifier import CopilotIntent, CopilotIntentResult
 from app.services.copilot.tool_registry import ToolExecutionResult, ToolExecutionStatus
 
@@ -100,8 +101,16 @@ class CopilotAnswerBuilder:
         missing_data: list[str],
         action_proposal: dict[str, Any] | None = None,
         reply_language: str | None = None,
+        primary_tools: set[str] | frozenset[str] = frozenset(),
+        period: dict[str, Any] | None = None,
     ) -> CopilotBuiltAnswer:
+        """Deterministic answer from tool facts, used when no model answer is available or valid.
+
+        With ``primary_tools`` or ``period`` (the hybrid engine passes both), lines come only from the
+        tools that answer the question, under a header in the reply language that names the period.
+        """
         language = classification.language
+        lang = reply_language if reply_language in {"en", "bn", "banglish"} else language
         rows_by_tool = _rows_by_tool(tool_results)
         evidence = evidence or _collect_evidence(tool_results)
         missing_data = _dedupe(missing_data + _collect_missing(tool_results))
@@ -130,9 +139,18 @@ class CopilotAnswerBuilder:
                 action_proposal=action_proposal,
             )
 
-        lines = _answer_lines(classification.intent, rows_by_tool)
-        next_step = _next_step(classification.intent, language) if lines else None
-        lead = _text(*(LEAD_BY_INTENT.get(classification.intent, DEFAULT_LEAD) if lines else NOTHING_FOUND), language)
+        if primary_tools or period is not None:
+            answering = [result for result in tool_results if not primary_tools or result.tool_name in primary_tools]
+            with_memory = classification.intent == CopilotIntent.BUSINESS_MEMORY_SEARCH or bool(set(primary_tools) & set(MEMORY_TOOLS))
+            lines = _dedupe(_fact_lines(answering, period=period, lang=lang, with_memory=with_memory))[:MAX_LIST_LINES]
+            # The intent's next step only fits when its own tool answered; Banglish has no Latin-script step text.
+            own_tool = PRIMARY_TOOL_BY_INTENT.get(classification.intent)
+            next_step = _next_step(classification.intent, language) if lines and lang != "banglish" and own_tool in {result.tool_name for result in answering} else None
+            lead = _header(lang, period) if lines else _by_lang(NOTHING_FOUND_BY_LANG, lang)
+        else:
+            lines = _answer_lines(classification.intent, rows_by_tool, lang=lang)
+            next_step = _next_step(classification.intent, language) if lines and lang != "banglish" else None
+            lead = HEADER["banglish"] + ":" if lang == "banglish" and lines else _text(*(LEAD_BY_INTENT.get(classification.intent, DEFAULT_LEAD) if lines else NOTHING_FOUND), language)
         answer = "\n".join([lead, *(f"- {line}" for line in lines)])
         if next_step:
             answer = f"{answer}\n\n{next_step}"
@@ -164,7 +182,82 @@ PRIMARY_TOOL_BY_INTENT: dict[CopilotIntent, str] = {
 }
 
 
-def _answer_lines(intent: CopilotIntent, rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
+HEADER = {"en": "From your data", "bn": "আপনার ডেটা থেকে", "banglish": "Apnar data theke"}
+PERIOD_JOIN = {"en": "to", "bn": "থেকে", "banglish": "theke"}
+ALL_HISTORY = {"en": "all recorded history", "bn": "সব রেকর্ড করা ইতিহাস", "banglish": "shob recorded history"}
+NOTHING_FOUND_BY_LANG = {"en": NOTHING_FOUND[0], "bn": NOTHING_FOUND[1], "banglish": "Apnar data te ekhono porishkar uttor pai ni."}
+NO_SALES_PROVEN = {
+    "en": "No sales recorded for this period; last recorded sale: {date}",
+    "bn": "এই সময়ে কোনো বিক্রি রেকর্ড হয়নি; সর্বশেষ বিক্রি: {date}",
+    "banglish": "Ei somoye kono sale record hoy nai; shesh recorded sale: {date}",
+}
+NO_SALES_UNCONFIRMED = {
+    "en": "No sales found for this period, but the sales history could not be confirmed",
+    "bn": "এই সময়ে কোনো বিক্রি পাওয়া যায়নি, তবে বিক্রির ইতিহাস নিশ্চিত করা যায়নি",
+    "banglish": "Ei somoye kono sale pawa jay nai, kintu sales history confirm kora jay nai",
+}
+# Group and list rows carry these alongside their label; they are not part of it.
+RECORD_META = {"value", "row_count", "evidence", "id", "is_weekend"}
+
+
+def _by_lang(texts: dict[str, str], lang: str) -> str:
+    return texts.get(lang, texts["en"])
+
+
+def _header(lang: str, period: dict[str, Any] | None) -> str:
+    header = _by_lang(HEADER, lang)
+    if not period:
+        return f"{header}:"
+    if period.get("defaulted"):
+        return f"{header} ({_by_lang(ALL_HISTORY, lang)}):"
+    return f"{header} ({period['from_date']} {_by_lang(PERIOD_JOIN, lang)} {period['to_date']}):"
+
+
+def _fact_lines(results: list[ToolExecutionResult], *, period: dict[str, Any] | None, lang: str, with_memory: bool) -> list[str]:
+    """Lines from every kind of answering tool; memory snippets only when memory answers the question."""
+    rows_by_tool = _rows_by_tool(results)
+    lines = [*_financial_lines(rows_by_tool, period=period, lang=lang), *_overview_lines(rows_by_tool)]
+    for result in results:
+        data = result.data if isinstance(result.data, dict) else {}
+        if result.tool_name == "query_business_records":
+            lines.extend(_records_lines(data, period=period, lang=lang))
+        elif result.tool_name == "get_product_profile" and isinstance(data.get("product"), dict):
+            lines.append(_profile_line(data["product"]))
+    others = {name: rows for name, rows in rows_by_tool.items() if name not in {"query_business_records", "get_product_profile"}}
+    return [*lines, *_product_lines(others), *(_memory_lines(rows_by_tool) if with_memory else [])]
+
+
+def _no_sales_line(tool_name: str, data: dict[str, Any], *, period: dict[str, Any] | None, lang: str) -> str:
+    if zero_sales_proven(tool_name, data, period):
+        return _by_lang(NO_SALES_PROVEN, lang).format(date=data["latest_recorded_sale_date"])
+    return _by_lang(NO_SALES_UNCONFIRMED, lang)
+
+
+def _records_lines(data: dict[str, Any], *, period: dict[str, Any] | None, lang: str) -> list[str]:
+    if is_zero_sales("query_business_records", data):
+        return [_no_sales_line("query_business_records", data, period=period, lang=lang)]
+    measure = data.get("measure")
+    lines: list[str] = []
+    for row in (data.get("rows") or [])[:MAX_LIST_LINES]:
+        if not isinstance(row, dict):
+            continue
+        if data.get("aggregate") == "list":
+            title = _product_title(row) or row.get("title") or row.get("id")
+            value = row.get(measure) if measure else None
+            lines.append(f"{title}: {_safe_value(value)}" if value is not None else str(title))
+            continue
+        label = ", ".join(_product_title({"product": value}) or _safe_value(value) for key, value in row.items() if key not in RECORD_META and value not in (None, ""))
+        lines.append(f"{label or _label(str(measure or data.get('aggregate') or 'value'))}: {_safe_value(row.get('value'))}")
+    return lines
+
+
+def _profile_line(product: dict[str, Any]) -> str:
+    parts = [f"{label} {_safe_value(product[key])}" for key, label in (("current_stock", "stock"), ("selling_price", "price")) if product.get(key) is not None]
+    name = str(product.get("name") or product.get("title") or "Product")
+    return f"{name}: {', '.join(parts)}" if parts else name
+
+
+def _answer_lines(intent: CopilotIntent, rows_by_tool: dict[str, list[dict[str, Any]]], *, lang: str = "en") -> list[str]:
     if intent == CopilotIntent.BUSINESS_MEMORY_SEARCH:
         lines = _memory_lines(rows_by_tool)
     else:
@@ -172,7 +265,7 @@ def _answer_lines(intent: CopilotIntent, rows_by_tool: dict[str, list[dict[str, 
         product_rows = {primary: rows_by_tool[primary]} if primary and rows_by_tool.get(primary) else rows_by_tool
         lines = _product_lines(product_rows)
         if intent in SUMMARY_INTENTS:
-            lines = [*_financial_lines(rows_by_tool), *_overview_lines(rows_by_tool), *lines]
+            lines = [*_financial_lines(rows_by_tool, period=None, lang=lang), *_overview_lines(rows_by_tool), *lines]
     limit = 3 if intent == CopilotIntent.TODAY_ACTIONS else MAX_LIST_LINES
     return _dedupe(lines)[:limit]
 
@@ -233,7 +326,7 @@ def _overview_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
     return lines
 
 
-def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
+def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]], *, period: dict[str, Any] | None, lang: str) -> list[str]:
     keys = (
         "gross_revenue",
         "net_revenue",
@@ -252,8 +345,8 @@ def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]
     for tool_name in FINANCIAL_TOOLS:
         for row in (rows_by_tool.get(tool_name) or [])[:1]:
             if row.get("order_count") == 0 and not row.get("units_sold") or _is_zero(row.get("gross_revenue")) and not row.get("units_sold"):
-                # Observed zero: say nothing was recorded instead of listing zero figures.
-                lines.append("No sales recorded for this period")
+                # Observed zero: no zero figures; "no sales recorded" only when the history is shown to exist.
+                lines.append(_no_sales_line(tool_name, row, period=period, lang=lang))
                 continue
             repeats_gross = row.get("net_revenue") == row.get("gross_revenue")
             lines.extend(

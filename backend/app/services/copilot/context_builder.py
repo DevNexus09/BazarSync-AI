@@ -49,6 +49,8 @@ class CopilotAnswerContext:
     truncated_facts: list[str] = field(default_factory=list)
     # The period every dated tool used: from_date, to_date, label, defaulted.
     resolved_period: dict[str, Any] | None = None
+    # Tools whose facts answer the question (chosen by the model, or the planner fallback's first).
+    primary_tools: frozenset[str] = frozenset()
 
     def to_prompt_payload(self) -> dict[str, Any]:
         payload = self._base_prompt_payload()
@@ -158,6 +160,7 @@ class CopilotContextBuilder:
             allowed_numbers=allowed_numbers,
             truncated_facts=truncated_facts,
             resolved_period=resolved_period,
+            primary_tools=frozenset(primary_tools),
             has_direct_evidence=any(evidence_item.get("domain") != "RAG_MEMORY" for evidence_item in evidence),
             has_memory_evidence=has_memory,
             has_visibility_evidence=bool(tool_names & {"get_seo_opportunities", "get_visibility_summary", "get_visibility_history", "get_listing_quality_issues"}),
@@ -188,28 +191,28 @@ def _is_sales_result(result: ToolExecutionResult) -> bool:
 
 
 def _has_zero_sales_lookup(tool_results: list[ToolExecutionResult], period: dict[str, Any] | None) -> bool:
-    """A sales lookup for the resolved period found nothing, and states the latest recorded sale date.
+    return any(result.status == ToolExecutionStatus.SUCCEEDED and zero_sales_proven(result.tool_name, result.data or {}, period) for result in tool_results)
+
+
+def is_zero_sales(tool_name: str, data: dict[str, Any]) -> bool:
+    """A sales lookup that found no sales (an observed zero, whether or not history is confirmed)."""
+    if tool_name in {"get_revenue_summary", "get_sales_trends"}:
+        if "order_count" in data:
+            return data.get("order_count") == 0
+        series = data.get("time_series")
+        return isinstance(series, list) and all(isinstance(item, dict) and item.get("order_count") == 0 for item in series)
+    return tool_name == "query_business_records" and data.get("entity") == "sales" and data.get("row_count") == 0
+
+
+def zero_sales_proven(tool_name: str, data: dict[str, Any], period: dict[str, Any] | None) -> bool:
+    """A zero sales lookup for the resolved period that states the latest recorded sale date.
 
     Without that date an empty result cannot be told apart from missing history, so it proves nothing.
     """
-    for result in tool_results:
-        if result.status != ToolExecutionStatus.SUCCEEDED:
-            continue
-        data = result.data or {}
-        if not data.get("latest_recorded_sale_date"):
-            continue
-        if result.tool_name in {"get_revenue_summary", "get_sales_trends"}:
-            series = data.get("time_series")
-            zero = data.get("order_count") == 0 if "order_count" in data else isinstance(series, list) and all(item.get("order_count") == 0 for item in series)
-        elif result.tool_name == "query_business_records" and data.get("entity") == "sales":
-            zero = data.get("row_count") == 0
-        else:
-            continue
-        filters = data.get("filters_used") or data.get("filters") or {}
-        same_period = period is None or (filters.get("from_date") == period["from_date"] and filters.get("to_date") == period["to_date"])
-        if zero and same_period:
-            return True
-    return False
+    if not data.get("latest_recorded_sale_date") or not is_zero_sales(tool_name, data):
+        return False
+    filters = data.get("filters_used") or data.get("filters") or {}
+    return period is None or (filters.get("from_date") == period["from_date"] and filters.get("to_date") == period["to_date"])
 
 
 def _collect_context_evidence(tool_results: list[ToolExecutionResult]) -> list[dict[str, Any]]:
