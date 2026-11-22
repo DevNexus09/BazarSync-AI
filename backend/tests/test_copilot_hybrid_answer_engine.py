@@ -249,6 +249,24 @@ class PromptSizeTests(unittest.TestCase):
 
         self.assertEqual([{"domain": "SALES_REVENUE", "status": "MISSING"}], _prompt_freshness(freshness))
 
+    def test_primary_tool_never_omitted_when_secondary_tools_fill_budget(self):
+        from app.services.copilot.context_builder import _json_size, budget_facts
+
+        def fact(chars: int) -> dict:
+            rows = [{"value": "x" * 80} for _ in range(chars // 94)]
+            return {"rows": rows}
+
+        primary = fact(9000)
+        facts = {"get_sales_trends": fact(8000), "get_inventory_risks": fact(8000), "get_competitor_threats": fact(8000), "query_business_records": primary}
+        self.assertGreater(_json_size(primary), 8500)
+
+        fitted, truncated = budget_facts(facts, tool_chars=4000, total_chars=20000, primary={"query_business_records"})
+
+        self.assertEqual(primary, fitted["query_business_records"])
+        self.assertNotIn("query_business_records", truncated)
+        self.assertTrue(set(truncated) & {"get_sales_trends", "get_inventory_risks", "get_competitor_threats"})
+        self.assertEqual(list(facts), list(fitted))  # key order unchanged
+
 
 if __name__ == "__main__":
     unittest.main()

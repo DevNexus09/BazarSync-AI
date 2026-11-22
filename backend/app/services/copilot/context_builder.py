@@ -119,6 +119,7 @@ class CopilotContextBuilder:
         plan: CopilotQuestionPlan,
         tool_results: list[ToolExecutionResult],
         missing_data: list[str],
+        primary_tools: set[str] | frozenset[str] = frozenset(),
     ) -> CopilotAnswerContext:
         evidence_items = self._evidence_builder.build(tool_results)
         missing_items = self._missing_aggregator.aggregate(tool_results, extra_missing=missing_data)
@@ -140,7 +141,7 @@ class CopilotContextBuilder:
         allowed_ids = {item["evidence_id"] for item in evidence}
         resolved_period = _resolved_period(plan)
         allowed_numbers = _numbers_from_payload({"facts": facts, "evidence": evidence, "question": question, "period": resolved_period})
-        facts, truncated_facts = budget_facts(facts, tool_chars=self._tool_chars_budget, total_chars=self._total_chars_budget)
+        facts, truncated_facts = budget_facts(facts, tool_chars=self._tool_chars_budget, total_chars=self._total_chars_budget, primary=primary_tools)
         tool_names = {result.tool_name for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED}
         has_memory = any(item.get("domain") == "RAG_MEMORY" or str(item.get("evidence_id", "")).startswith("rag:") for item in evidence)
         return CopilotAnswerContext(
@@ -290,6 +291,7 @@ def _numbers_from_payload(value: Any) -> set[str]:
 
 LIST_CAPS = (50, 20, 10, 5, 3, 1)
 MEMORY_TOOL = "retrieve_business_memory"
+PRIMARY_MIN_CHARS = 1000
 
 
 # Evidence is one item per source row (a week of sales is hundreds) and is not budgeted with facts.
@@ -322,17 +324,33 @@ def _facts_by_tool(tool_results: list[ToolExecutionResult]) -> dict[str, Any]:
     return facts
 
 
-def budget_facts(facts: dict[str, Any], *, tool_chars: int, total_chars: int) -> tuple[dict[str, Any], list[str]]:
+def budget_facts(
+    facts: dict[str, Any], *, tool_chars: int, total_chars: int, primary: set[str] | frozenset[str] = frozenset()
+) -> tuple[dict[str, Any], list[str]]:
     """Keep the prompt inside a character budget without breaking its JSON shape.
 
-    Each tool's facts are shortened by trimming long lists first; direct tools are kept
-    ahead of RAG memory (the lowest ``context_priority``) when the total budget runs out.
+    Each tool's facts are shortened by trimming long lists first. Primary tools (the ones that
+    answer the question) go first with up to ``max(tool_chars, total_chars // 2)`` each and are
+    never omitted; other direct tools fill what is left, and RAG memory comes last.
     """
-    order = sorted(facts, key=lambda name: name == MEMORY_TOOL)
+
+    def is_primary(name: str) -> bool:
+        return name.split("#", 1)[0] in primary  # a repeated call is keyed name#2
+
+    order = sorted(facts, key=lambda name: (not is_primary(name), name == MEMORY_TOOL))
+    primary_chars = max(tool_chars, total_chars // 2)
     fitted: dict[str, Any] = {}
     truncated: list[str] = []
     used = 0
     for name in order:
+        if is_primary(name):
+            # Shrunk to what is left rather than dropped; the floor keeps a readable preview.
+            value, shortened = _fit_to_budget(facts[name], max(min(primary_chars, total_chars - used), PRIMARY_MIN_CHARS))
+            fitted[name] = value
+            used += _json_size(value)
+            if shortened:
+                truncated.append(name)
+            continue
         value, shortened = _fit_to_budget(facts[name], tool_chars)
         size = _json_size(value)
         if used + size > total_chars:

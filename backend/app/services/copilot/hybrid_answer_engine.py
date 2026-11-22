@@ -144,6 +144,7 @@ class CopilotHybridAnswerEngine:
             plan=plan,
             tool_results=tool_results,
             missing_data=missing_data,
+            primary_tools=primary_tools,
         )
         if reply_language:
             context = replace(context, reply_language=reply_language)
