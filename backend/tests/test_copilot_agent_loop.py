@@ -289,6 +289,33 @@ class OrchestratorAgentLoopTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("query_business_records", captured["tools"][0])
         self.assertGreater(len(captured["tools"]), 1)
 
+    async def test_named_product_gets_its_profile_seeded(self):
+        from tests.test_copilot_orchestrator import PRODUCT_ID
+
+        _, registry, _ = await self._ask("How much stock is left for King Size Premium Bed Sheet?", router=_LoopOnlyRouter([]), agent_loop_enabled=True)
+        _, flag_off, _ = await self._ask("How much stock is left for King Size Premium Bed Sheet?", router=_LoopOnlyRouter([]), agent_loop_enabled=False)
+
+        profiles = [call for call in registry.calls if call["name"] == "get_product_profile"]
+        self.assertEqual(1, len(profiles))
+        self.assertEqual(str(PRODUCT_ID), str(profiles[0]["arguments"]["product_id"]))
+        self.assertNotIn("get_product_profile", [call["name"] for call in flag_off.calls])
+
+    async def test_profile_replaces_the_last_optional_step_else_the_last_step(self):
+        from app.services.copilot.orchestrator import CopilotOrchestrator
+        from app.services.copilot.question_planner import PlannedToolCall
+        from tests.test_copilot_orchestrator import _FakeRepository
+
+        orchestrator = CopilotOrchestrator(repository=_FakeRepository(), max_tool_calls=2, agent_loop_enabled=True)
+        plan = type("Plan", (), {"entities": type("E", (), {"products": [{"product_id": "p-1"}]})()})()
+        required = [PlannedToolCall("a", {}, "r", required=True), PlannedToolCall("b", {}, "r", required=True)]
+        mixed = [PlannedToolCall("a", {}, "r", required=True), PlannedToolCall("b", {}, "r", required=False)]
+
+        mixed = [PlannedToolCall("x", {}, "r", required=False), PlannedToolCall("a", {}, "r", required=True)]
+
+        self.assertEqual(["get_product_profile", "a"], [step.tool_name for step in orchestrator._with_named_product_profile(required, plan=plan)])
+        self.assertEqual(["get_product_profile", "a"], [step.tool_name for step in orchestrator._with_named_product_profile(mixed, plan=plan)])
+        self.assertEqual(2, len(orchestrator._with_named_product_profile(required, plan=plan)))
+
     async def test_blocked_question_never_reaches_the_loop(self):
         router = _LoopOnlyRouter([{"tool_calls": [{"name": "get_inventory_summary", "arguments": {}}]}])
 

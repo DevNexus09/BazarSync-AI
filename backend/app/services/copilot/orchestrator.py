@@ -409,6 +409,8 @@ class CopilotOrchestrator:
         tool_started_ms = now_ms()
         if not selected_tools and self._llm_planner_fallback_enabled:
             selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
+        if self._agent_loop_enabled and request.include_current_data:
+            selected_tools = self._with_named_product_profile(selected_tools, plan=plan)
         if (
             self._always_retrieve_memory
             and request.include_memory
@@ -724,6 +726,23 @@ class CopilotOrchestrator:
             if tool_name not in selected_names and include_current_data:
                 selected_names.append(tool_name)
         return [PlannedToolCall(tool_name=name, args={}, reason="legacy routing") for name in selected_names[: self._max_tool_calls]]
+
+    def _with_named_product_profile(self, selected_tools: list[PlannedToolCall], *, plan: CopilotQuestionPlan) -> list[PlannedToolCall]:
+        """A question naming one owned product gets that product's profile (stock, price, setup).
+
+        When the plan is full, the last optional step makes room, else the last step: the planner marks
+        every step required and orders broad domain tools last, while this profile answers the question directly.
+        """
+        products = [item for item in (plan.entities.products if getattr(plan, "entities", None) else []) if isinstance(item, dict) and item.get("product_id")]
+        if len(products) != 1 or any(step.tool_name == "get_product_profile" for step in selected_tools):
+            return selected_tools
+        tools = list(selected_tools)
+        if len(tools) >= self._max_tool_calls:
+            optional = [index for index, step in enumerate(tools) if not step.required]
+            del tools[optional[-1] if optional else -1]
+        step = PlannedToolCall(tool_name="get_product_profile", args={"product_id": str(products[0]["product_id"])}, reason="named product profile", required=False)
+        # First, so the answer prompt budget keeps the product's own facts.
+        return [step, *tools]
 
     async def _run_agent_loop(
         self,
