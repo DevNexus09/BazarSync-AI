@@ -271,5 +271,6 @@ def _script_matches(text: str, reply_language: str) -> bool:
         return False
     if reply_language == "banglish":
         _, _, signals = detect_input_language(normalized)
-        return signals["banglish_score"] >= 2 and signals["banglish_score"] >= signals["english_score"] * 0.5
+        # One strong marker is enough: short correct replies ("Apnar 15 ti product ache.") carry few markers.
+        return signals["banglish_score"] >= 1 and signals["banglish_score"] >= signals["english_score"] * 0.5
     return True

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import math
@@ -14,6 +15,7 @@ from app.core.config import settings
 from app.models.rag_memory import RagMemoryChunk, RagMemoryDocument, RagMemorySourceType
 from app.repositories.rag_memory_repository import RagMemoryRepository
 from app.services.rag_embedding_service import RagEmbeddingService
+from app.services.rag_reranker_service import RagRerankerService
 from app.services.rag_memory_source_registry import get_rag_source_definition, implemented_source_types
 from app.services.rag_observability import elapsed_ms, increment_metric, log_event, now_ms, record_rag_retrieval_quality
 
@@ -72,6 +74,7 @@ class _RankedChunk:
     product_match_boost: float = 0.0
     business_importance_boost: float = 0.0
     final_score: float = 0.0
+    rerank_score: float | None = None
 
 
 DEFAULT_SOURCE_TYPE_WEIGHTS: dict[RagMemorySourceType, float] = {
@@ -103,6 +106,7 @@ class RagRetrievalService:
         embedding_service: RagEmbeddingService | None = None,
         source_type_weights: dict[RagMemorySourceType, float] | None = None,
         now: datetime | None = None,
+        reranker: RagRerankerService | None = None,
     ) -> None:
         if repository is None and db is None:
             raise ValueError("RagRetrievalService requires a repository or database session")
@@ -110,6 +114,7 @@ class RagRetrievalService:
         self._embedding_service = embedding_service or RagEmbeddingService()
         self._source_type_weights = source_type_weights or DEFAULT_SOURCE_TYPE_WEIGHTS
         self._now = now
+        self._reranker = reranker
 
     def retrieve_context(
         self,
@@ -126,9 +131,13 @@ class RagRetrievalService:
         use_keyword_search: bool = True,
         use_recency_boost: bool = True,
         use_source_type_weights: bool = True,
+        keyword_terms: Sequence[str] | None = None,
     ) -> RagRetrievalResult:
+        """``keyword_terms``: extra English words for keyword matching (a Bangla/Banglish question's
+        translation, supplied by the Copilot); the question itself still drives the vector search."""
         start_ms = now_ms()
         normalized_question = (question or "").strip()
+        extra_terms = tuple(keyword_terms or ())
         if not normalized_question:
             return self._no_context(["Question is empty."], seller_id=seller_id, start_ms=start_ms)
         top_k = max(1, min(int(top_k or settings.rag_retrieval_top_k), MAX_RETRIEVAL_TOP_K))
@@ -146,7 +155,9 @@ class RagRetrievalService:
         )
         # Question terms boost likely source types; only an explicit caller filter narrows the search.
         boosted_source_types = (
-            set(_source_types_for_question(normalized_question) or []) if settings.rag_rrf_enabled and not requested_source_types else set()
+            set(_source_types_for_question(" ".join([normalized_question, *extra_terms])) or [])
+            if settings.rag_rrf_enabled and not requested_source_types
+            else set()
         )
         if requested_source_types and not inferred_source_types:
             return self._no_context(
@@ -178,6 +189,7 @@ class RagRetrievalService:
             include_stale=include_stale,
             limit=max(top_k * 4, top_k),
             enabled=use_keyword_search,
+            keyword_terms=extra_terms,
         )
         keyword_result_count = len(keyword_rows)
         keyword_rows = self._filter_chunks_for_seller(seller_id=seller_id, chunks=keyword_rows)
@@ -189,13 +201,18 @@ class RagRetrievalService:
             use_recency_boost=use_recency_boost,
             use_source_type_weights=use_source_type_weights,
             boosted_source_types=boosted_source_types,
+            keyword_terms=extra_terms,
         )
+        if settings.rag_reranker_enabled and ranked:
+            ranked = self._rerank(normalized_question, ranked)
         # With RRF, exact keyword hits (SKUs, product names) survive; the floor applies to vector-only matches.
         filtered = [
             item
             for item in ranked
             if item.similarity_score >= min_similarity or (settings.rag_rrf_enabled and item.keyword_specific)
         ]
+        if settings.rag_max_chunks_per_group > 0:
+            filtered = _cap_per_group(filtered, settings.rag_max_chunks_per_group)
         selected = filtered[:top_k]
         if not selected:
             record_rag_retrieval_quality(
@@ -268,6 +285,24 @@ class RagRetrievalService:
             explanation=self.explain_retrieval(selected, top_k=top_k, min_similarity=min_similarity),
         )
 
+    def _rerank(self, question: str, ranked: list[_RankedChunk]) -> list[_RankedChunk]:
+        """Reorder the top candidates by cross-encoder score; keep the order when scores are unavailable.
+
+        Only the order changes: the similarity floor applied afterwards still decides what is admitted.
+        """
+        if self._reranker is None:
+            self._reranker = RagRerankerService()
+        head = ranked[: max(1, settings.rag_reranker_candidates)]
+        start_ms = now_ms()
+        scores = self._reranker.score(question, [item.chunk.chunk_text for item in head], budget_ms=settings.rag_reranker_budget_ms)
+        log_event(logger, logging.INFO, "rag_rerank", applied=scores is not None, candidates=len(head), duration_ms=elapsed_ms(start_ms))
+        if scores is None:
+            return ranked
+        for item, score in zip(head, scores):
+            item.rerank_score = score
+        reordered = sorted(head, key=lambda item: -(item.rerank_score or 0.0))  # stable: ties keep hybrid order
+        return reordered + ranked[len(head) :]
+
     def vector_search(
         self,
         *,
@@ -303,10 +338,11 @@ class RagRetrievalService:
         include_stale: bool = False,
         limit: int = 50,
         enabled: bool = True,
+        keyword_terms: Sequence[str] = (),
     ) -> list[RagMemoryChunk]:
         if not enabled:
             return []
-        keywords = _keywords(question)
+        keywords = _keywords(question, keyword_terms)
         return self._repository.keyword_search(
             seller_id=seller_id,
             keywords=keywords,
@@ -316,6 +352,7 @@ class RagRetrievalService:
             to_event_time=to_event_time,
             include_stale=include_stale,
             limit=limit,
+            ranked=settings.rag_fulltext_keyword_enabled,
         )
 
     def hybrid_rank(
@@ -328,6 +365,7 @@ class RagRetrievalService:
         use_recency_boost: bool = True,
         use_source_type_weights: bool = True,
         boosted_source_types: set[RagMemorySourceType] | frozenset[RagMemorySourceType] = frozenset(),
+        keyword_terms: Sequence[str] = (),
     ) -> list[_RankedChunk]:
         ranked_by_id: dict[UUID, _RankedChunk] = {}
         for index, (chunk, distance) in enumerate(vector_rows):
@@ -336,7 +374,7 @@ class RagRetrievalService:
                 similarity_score=_similarity_from_distance(distance),
                 vector_rank=index,
             )
-        keywords = _keywords(question)
+        keywords = _keywords(question, keyword_terms)
         use_rrf = settings.rag_rrf_enabled
         for chunk in keyword_rows:
             item = ranked_by_id.get(chunk.id)
@@ -599,7 +637,28 @@ BENGALI_WORD_RE = re.compile(r"[\u0980-\u09FF]{2,}")
 BENGALI_STOPWORDS = frozenset({"আমার", "আমি", "আমাদের", "কেন", "কি", "কী", "এই", "সেই", "গত", "করে", "হয়েছে", "কত", "কোন", "এবং", "বা"})
 
 
-def _keywords(question: str) -> list[str]:
+def _cap_per_group(items: list[_RankedChunk], max_per_group: int) -> list[_RankedChunk]:
+    """Keep the first ``max_per_group`` items of each (source type, product) group in order, then the rest.
+
+    Skipped items are appended rather than dropped, so they still fill top_k when nothing else qualifies.
+    """
+    if max_per_group <= 0:
+        return items
+    counts: dict[tuple[object, object], int] = {}
+    kept: list[_RankedChunk] = []
+    deferred: list[_RankedChunk] = []
+    for item in items:
+        key = (item.chunk.source_type, item.chunk.product_id)
+        counts[key] = counts.get(key, 0) + 1
+        (kept if counts[key] <= max_per_group else deferred).append(item)
+    return kept + deferred
+
+
+MAX_EXTRA_KEYWORDS = 4
+
+
+def _keywords(question: str, extra_terms: Sequence[str] = ()) -> list[str]:
+    """Question keywords (alphabetical, at most 8), then up to 4 new ``extra_terms`` appended after them."""
     words = re.findall(r"[A-Za-z0-9][A-Za-z0-9_-]{2,}", question.lower())
     stopwords = {
         "the",
@@ -619,7 +678,10 @@ def _keywords(question: str) -> list[str]:
     if settings.copilot_multilingual_enabled:
         # Bengali-script keywords (ASCII-only extraction gave Bangla questions no keyword boost).
         words += [word for word in BENGALI_WORD_RE.findall(question) if word not in BENGALI_STOPWORDS]
-    return sorted({word for word in words if word not in stopwords})[:8]
+    keywords = sorted({word for word in words if word not in stopwords})[:8]
+    extras = (term.strip().lower() for term in extra_terms)
+    fresh = [term for term in dict.fromkeys(extras) if len(term) >= 3 and term not in stopwords and term not in keywords]
+    return keywords + fresh[:MAX_EXTRA_KEYWORDS]
 
 
 def _source_types_for_question(question: str) -> list[RagMemorySourceType] | None:

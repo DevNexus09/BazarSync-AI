@@ -1,0 +1,1911 @@
+{
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "fixture": "/Users/cipherpirate/Projects/BazarSync-AI/backend/tests/fixtures/rag_retrieval_golden.json",
+  "top_k": 12,
+  "configs": {
+    "translation+fulltext": {
+      "overall": {
+        "cases": 53,
+        "recall_at_5": 0.82,
+        "recall_at_12": 0.9,
+        "mrr": 0.8313,
+        "no_context_rate_unanswerable": 0.0,
+        "top_group_share_at_12": 0.6013,
+        "latency_p50_ms": 141.6,
+        "latency_p95_ms": 214.2
+      },
+      "by_language": {
+        "banglish": {
+          "cases": 10,
+          "recall_at_5": 0.6,
+          "recall_at_12": 0.7,
+          "mrr": 0.6111,
+          "no_context_rate_unanswerable": null,
+          "top_group_share_at_12": 0.6583,
+          "latency_p50_ms": 101.1,
+          "latency_p95_ms": 147.1
+        },
+        "bn": {
+          "cases": 10,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "mrr": 1.0,
+          "no_context_rate_unanswerable": null,
+          "top_group_share_at_12": 0.4583,
+          "latency_p50_ms": 99.3,
+          "latency_p95_ms": 167.8
+        },
+        "en": {
+          "cases": 33,
+          "recall_at_5": 0.8333,
+          "recall_at_12": 0.9333,
+          "mrr": 0.8484,
+          "no_context_rate_unanswerable": 0.0,
+          "top_group_share_at_12": 0.6273,
+          "latency_p50_ms": 152.7,
+          "latency_p95_ms": 243.1
+        }
+      },
+      "misses": [
+        {
+          "id": "en_06",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 188.6,
+          "top3": [
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event",
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event",
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event"
+          ]
+        },
+        {
+          "id": "en_25",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 171.3,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-22. Summary: এই পণ্যগুলো রিস্টক করা দরকার: "
+          ]
+        },
+        {
+          "id": "banglish_02",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 1.0,
+          "latency_ms": 147.1,
+          "top3": [
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "banglish_03",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.9166666666666666,
+          "latency_ms": 112.8,
+          "top3": [
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li",
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li",
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li"
+          ]
+        },
+        {
+          "id": "banglish_04",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 4,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 1.0,
+          "latency_ms": 143.6,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: amar gotokal er sales koto?. Confid",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho"
+          ]
+        }
+      ],
+      "rows": [
+        {
+          "id": "en_01",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 30632.7,
+          "top3": [
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, compet",
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-07, compet",
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-14, compet"
+          ]
+        },
+        {
+          "id": "en_02",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 243.1,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co"
+          ]
+        },
+        {
+          "id": "en_03",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5,
+          "latency_ms": 214.2,
+          "top3": [
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "en_04",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5,
+          "latency_ms": 152.7,
+          "top3": [
+            "PRICE_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "PRICE_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "PRICE_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11"
+          ]
+        },
+        {
+          "id": "en_05",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 147.9,
+          "top3": [
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1"
+          ]
+        },
+        {
+          "id": "en_06",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 188.6,
+          "top3": [
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event",
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event",
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event"
+          ]
+        },
+        {
+          "id": "en_07",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 194.7,
+          "top3": [
+            "INVENTORY_LIFECYCLE: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "INVENTORY_LIFECYCLE: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "INVENTORY_LIFECYCLE: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO"
+          ]
+        },
+        {
+          "id": "en_08",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 140.5,
+          "top3": [
+            "INVENTORY_LIFECYCLE: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). Inventory ",
+            "INVENTORY_LIFECYCLE: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). Inventory ",
+            "INVENTORY_LIFECYCLE: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). Inventory "
+          ]
+        },
+        {
+          "id": "en_09",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 173.0,
+          "top3": [
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-10-30, sale",
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-10-27, sale",
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-10-29, sale"
+          ]
+        },
+        {
+          "id": "en_10",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 144.1,
+          "top3": [
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-29, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-23, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-15, sales "
+          ]
+        },
+        {
+          "id": "en_11",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.6666666666666666,
+          "latency_ms": 184.2,
+          "top3": [
+            "SALES_REVENUE_SUMMARY: Sales revenue summary for unknown date to unknown date: revenue BDT 2392878.44, ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross "
+          ]
+        },
+        {
+          "id": "en_12",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 176.7,
+          "top3": [
+            "RECOMMENDATION: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1",
+            "RECOMMENDATION: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1",
+            "RECOMMENDATION: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1"
+          ]
+        },
+        {
+          "id": "en_13",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 176.1,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de"
+          ]
+        },
+        {
+          "id": "en_14",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 204.8,
+          "top3": [
+            "ALERT: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21, Te",
+            "ALERT: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21, Te",
+            "RECOMMENDATION: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21, in"
+          ]
+        },
+        {
+          "id": "en_15",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 334.7,
+          "top3": [
+            "ALERT: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). On 2026-11-21, Telegram in",
+            "ALERT: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, Telegr",
+            "ALERT: NORTH STAR FLORA Kids' Sneakers (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21,"
+          ]
+        },
+        {
+          "id": "en_16",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 131.8,
+          "top3": [
+            "PROMOTION_PLAN: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion plan demo-comprehensive-"
+          ]
+        },
+        {
+          "id": "en_17",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 7,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.2857142857142857,
+          "latency_ms": 148.9,
+          "top3": [
+            "PROMOTION_PLAN: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion plan demo-comprehensive-"
+          ]
+        },
+        {
+          "id": "en_18",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 137.8,
+          "top3": [
+            "PROMOTION_RESULT: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion promotion 65f62469-76d4-",
+            "PROMOTION_RESULT: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion promotion 09883d24-55d2-",
+            "PROMOTION_RESULT: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion promotion acd7c2bc-109b-"
+          ]
+        },
+        {
+          "id": "en_19",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.3333333333333333,
+          "latency_ms": 141.6,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7"
+          ]
+        },
+        {
+          "id": "en_20",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 118.5,
+          "top3": [
+            "DEAD_STOCK_HISTORY: Sandak NIPUN Rubber Sandal for Women by Bata (SKU DEMO-BATA-299085285). Dead-sto",
+            "DEAD_STOCK_HISTORY: Sandak NIPUN Rubber Sandal for Women by Bata (SKU DEMO-BATA-299085285). Dead-sto",
+            "DEAD_STOCK_HISTORY: Sandak NIPUN Rubber Sandal for Women by Bata (SKU DEMO-BATA-299085285). Dead-sto"
+          ]
+        },
+        {
+          "id": "en_21",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 213.9,
+          "top3": [
+            "DEAD_STOCK_HISTORY: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "DEAD_STOCK_HISTORY: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "DEAD_STOCK_HISTORY: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO"
+          ]
+        },
+        {
+          "id": "en_22",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 149.0,
+          "top3": [
+            "PRICING_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, pr",
+            "PRICING_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, pr",
+            "PRICING_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, pr"
+          ]
+        },
+        {
+          "id": "en_23",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.75,
+          "latency_ms": 147.8,
+          "top3": [
+            "PRICING_HISTORY: On 2026-11-21, pricing history for BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Cur",
+            "PRICING_HISTORY: On 2026-11-21, pricing history for BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Cur",
+            "PRICING_HISTORY: On 2026-11-21, pricing history for BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Cur"
+          ]
+        },
+        {
+          "id": "en_24",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 114.1,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: কী রিস্টক করা উচিত?. Confidence: . ",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: কী রিস্টক করা উচিত?. Confidence: . ",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-22. Summary: Ki restock kora uchit?. Confidence:"
+          ]
+        },
+        {
+          "id": "en_25",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 171.3,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-22. Summary: এই পণ্যগুলো রিস্টক করা দরকার: "
+          ]
+        },
+        {
+          "id": "en_26",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.14285714285714285,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 169.2,
+          "top3": [
+            "INVENTORY_LIFECYCLE: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Inventory lifecyc",
+            "INVENTORY_LIFECYCLE: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Inventory lifecyc",
+            "INVENTORY_LIFECYCLE: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). Inventory lifecyc"
+          ]
+        },
+        {
+          "id": "en_27",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.6666666666666666,
+          "latency_ms": 133.9,
+          "top3": [
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, sale",
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-19, sale",
+            "SALES_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-12, sa"
+          ]
+        },
+        {
+          "id": "en_28",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.16666666666666666,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 84.6,
+          "top3": [
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-14, compet",
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, compet",
+            "ALERT: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, Telegr"
+          ]
+        },
+        {
+          "id": "en_29",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 162.0,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co"
+          ]
+        },
+        {
+          "id": "en_30",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.14285714285714285,
+          "top_group_share": 0.5,
+          "latency_ms": 157.4,
+          "top3": [
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "bn_01",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 138.1,
+          "top3": [
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-29, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-22, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-31, sales "
+          ]
+        },
+        {
+          "id": "bn_02",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5,
+          "latency_ms": 167.8,
+          "top3": [
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "bn_03",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.75,
+          "latency_ms": 99.1,
+          "top3": [
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1"
+          ]
+        },
+        {
+          "id": "bn_04",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 167.7,
+          "top3": [
+            "SALES_REVENUE_SUMMARY: Sales revenue summary for unknown date to unknown date: revenue BDT 2392878.44, ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross "
+          ]
+        },
+        {
+          "id": "bn_05",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.75,
+          "latency_ms": 78.2,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co"
+          ]
+        },
+        {
+          "id": "bn_06",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 99.3,
+          "top3": [
+            "DEAD_STOCK_HISTORY: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Dead-stock history for Bla",
+            "DEAD_STOCK_HISTORY: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Dead-stock history for Bla",
+            "DEAD_STOCK_HISTORY: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Dead-stock history for Bla"
+          ]
+        },
+        {
+          "id": "bn_07",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 66.2,
+          "top3": [
+            "ALERT: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1",
+            "ALERT: NORTH STAR FLORA Kids' Sneakers (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21,",
+            "ALERT: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1"
+          ]
+        },
+        {
+          "id": "bn_08",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 100.8,
+          "top3": [
+            "PROMOTION_RESULT: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion promotion 65f62469-76d4-",
+            "PROMOTION_RESULT: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion promotion acd7c2bc-109b-",
+            "PROMOTION_RESULT: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion promotion 09883d24-55d2-"
+          ]
+        },
+        {
+          "id": "bn_09",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5,
+          "latency_ms": 81.3,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de"
+          ]
+        },
+        {
+          "id": "bn_10",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.08333333333333333,
+          "latency_ms": 126.9,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Seller price record for product 0b",
+            "SELLER_PRICE_HISTORY: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Seller price record for product 3f",
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc"
+          ]
+        },
+        {
+          "id": "banglish_01",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 136.8,
+          "top3": [
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-15, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-09, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-11, sales "
+          ]
+        },
+        {
+          "id": "banglish_02",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 1.0,
+          "latency_ms": 147.1,
+          "top3": [
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "banglish_03",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.9166666666666666,
+          "latency_ms": 112.8,
+          "top3": [
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li",
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li",
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li"
+          ]
+        },
+        {
+          "id": "banglish_04",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 4,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 1.0,
+          "latency_ms": 143.6,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: amar gotokal er sales koto?. Confid",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho"
+          ]
+        },
+        {
+          "id": "banglish_05",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.8333333333333334,
+          "latency_ms": 86.0,
+          "top3": [
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11"
+          ]
+        },
+        {
+          "id": "banglish_06",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.75,
+          "latency_ms": 94.5,
+          "top3": [
+            "DEAD_STOCK_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Dead-stock histor",
+            "DEAD_STOCK_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Dead-stock histor",
+            "DEAD_STOCK_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Dead-stock histor"
+          ]
+        },
+        {
+          "id": "banglish_07",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 71.4,
+          "top3": [
+            "ALERT: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (SKU DEMO-BATA-541167043). ",
+            "ALERT: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). On 2026-11-21, Telegram in",
+            "ALERT: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). On 2026-11-21, Telegram in"
+          ]
+        },
+        {
+          "id": "banglish_08",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 3,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.3333333333333333,
+          "latency_ms": 100.2,
+          "top3": [
+            "PROMOTION_RESULT: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion promotion 65f62469-76d4-",
+            "PROMOTION_RESULT: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion promotion acd7c2bc-109b-",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: kemon cholche bebsa. Confidence: . "
+          ]
+        },
+        {
+          "id": "banglish_09",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.1111111111111111,
+          "top_group_share": 0.4166666666666667,
+          "latency_ms": 101.1,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-07, co",
+            "COMPETITOR_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, co",
+            "COMPETITOR_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-14, co"
+          ]
+        },
+        {
+          "id": "banglish_10",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 124.0,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc",
+            "SELLER_PRICE_HISTORY: product e405d2f2-605e-486b-8a82-15ad6c352e7f. Seller price record for product e4",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7"
+          ]
+        },
+        {
+          "id": "none_01",
+          "language": "en",
+          "expected_count": 0,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 69.4,
+          "top3": [
+            "INVENTORY_LIFECYCLE: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Stock-in (purchase receipt",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross ",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: How many products do I have listed?"
+          ]
+        },
+        {
+          "id": "none_02",
+          "language": "en",
+          "expected_count": 0,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.5,
+          "latency_ms": 67.8,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7",
+            "SELLER_PRICE_HISTORY: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Seller price record for product 3f"
+          ]
+        },
+        {
+          "id": "none_03",
+          "language": "en",
+          "expected_count": 0,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 86.4,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: What is my revenue this week?. Conf",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: এই পণ্যগুলো রিস্টক করা দরকার: ",
+            "INVENTORY_LIFECYCLE: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Stock-in (purchase receipt"
+          ]
+        }
+      ]
+    },
+    "translation+fulltext+groupcap": {
+      "overall": {
+        "cases": 53,
+        "recall_at_5": 0.86,
+        "recall_at_12": 0.96,
+        "mrr": 0.8426,
+        "no_context_rate_unanswerable": 0.0,
+        "top_group_share_at_12": 0.3104,
+        "latency_p50_ms": 128.1,
+        "latency_p95_ms": 234.4
+      },
+      "by_language": {
+        "banglish": {
+          "cases": 10,
+          "recall_at_5": 0.7,
+          "recall_at_12": 0.9,
+          "mrr": 0.6426,
+          "no_context_rate_unanswerable": null,
+          "top_group_share_at_12": 0.3167,
+          "latency_p50_ms": 102.3,
+          "latency_p95_ms": 146.3
+        },
+        "bn": {
+          "cases": 10,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "mrr": 1.0,
+          "no_context_rate_unanswerable": null,
+          "top_group_share_at_12": 0.3167,
+          "latency_p50_ms": 105.4,
+          "latency_p95_ms": 195.7
+        },
+        "en": {
+          "cases": 33,
+          "recall_at_5": 0.8667,
+          "recall_at_12": 0.9667,
+          "mrr": 0.8567,
+          "no_context_rate_unanswerable": 0.0,
+          "top_group_share_at_12": 0.3066,
+          "latency_p50_ms": 144.1,
+          "latency_p95_ms": 236.6
+        }
+      },
+      "misses": [
+        {
+          "id": "en_25",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.25,
+          "latency_ms": 161.4,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-22. Summary: এই পণ্যগুলো রিস্টক করা দরকার: "
+          ]
+        },
+        {
+          "id": "banglish_04",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 4,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 1.0,
+          "latency_ms": 137.0,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: amar gotokal er sales koto?. Confid",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho"
+          ]
+        }
+      ],
+      "rows": [
+        {
+          "id": "en_01",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 105.0,
+          "top3": [
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, compet",
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-07, compet",
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-14, compet"
+          ]
+        },
+        {
+          "id": "en_02",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 177.1,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co"
+          ]
+        },
+        {
+          "id": "en_03",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 170.5,
+          "top3": [
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "en_04",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 114.7,
+          "top3": [
+            "PRICE_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "PRICE_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "PRICE_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11"
+          ]
+        },
+        {
+          "id": "en_05",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 120.6,
+          "top3": [
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1"
+          ]
+        },
+        {
+          "id": "en_06",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.14285714285714285,
+          "top_group_share": 0.25,
+          "latency_ms": 158.4,
+          "top3": [
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event",
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event",
+            "INVENTORY_LIFECYCLE: B. FIRST LEGO SCHOOL SPORTS (SKU DEMO-BATA-524128487). Inventory lifecycle event"
+          ]
+        },
+        {
+          "id": "en_07",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 169.3,
+          "top3": [
+            "INVENTORY_LIFECYCLE: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "INVENTORY_LIFECYCLE: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "INVENTORY_LIFECYCLE: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO"
+          ]
+        },
+        {
+          "id": "en_08",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 101.0,
+          "top3": [
+            "INVENTORY_LIFECYCLE: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). Inventory ",
+            "INVENTORY_LIFECYCLE: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). Inventory ",
+            "INVENTORY_LIFECYCLE: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). Inventory "
+          ]
+        },
+        {
+          "id": "en_09",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 159.2,
+          "top3": [
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-10-30, sale",
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-10-27, sale",
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-10-29, sale"
+          ]
+        },
+        {
+          "id": "en_10",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 137.8,
+          "top3": [
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-29, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-23, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-15, sales "
+          ]
+        },
+        {
+          "id": "en_11",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 145.7,
+          "top3": [
+            "SALES_REVENUE_SUMMARY: Sales revenue summary for unknown date to unknown date: revenue BDT 2392878.44, ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross "
+          ]
+        },
+        {
+          "id": "en_12",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 181.0,
+          "top3": [
+            "RECOMMENDATION: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1",
+            "RECOMMENDATION: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1",
+            "RECOMMENDATION: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1"
+          ]
+        },
+        {
+          "id": "en_13",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 168.2,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de"
+          ]
+        },
+        {
+          "id": "en_14",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 200.1,
+          "top3": [
+            "ALERT: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21, Te",
+            "ALERT: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21, Te",
+            "RECOMMENDATION: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21, in"
+          ]
+        },
+        {
+          "id": "en_15",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 144.1,
+          "top3": [
+            "ALERT: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). On 2026-11-21, Telegram in",
+            "ALERT: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, Telegr",
+            "ALERT: NORTH STAR FLORA Kids' Sneakers (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21,"
+          ]
+        },
+        {
+          "id": "en_16",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 75.4,
+          "top3": [
+            "PROMOTION_PLAN: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion plan demo-comprehensive-"
+          ]
+        },
+        {
+          "id": "en_17",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 7,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.2857142857142857,
+          "latency_ms": 98.9,
+          "top3": [
+            "PROMOTION_PLAN: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion plan demo-comprehensive-",
+            "PROMOTION_PLAN: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion plan demo-comprehensive-"
+          ]
+        },
+        {
+          "id": "en_18",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 121.7,
+          "top3": [
+            "PROMOTION_RESULT: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion promotion 65f62469-76d4-",
+            "PROMOTION_RESULT: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion promotion 09883d24-55d2-",
+            "PROMOTION_RESULT: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion promotion acd7c2bc-109b-"
+          ]
+        },
+        {
+          "id": "en_19",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 134.6,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7"
+          ]
+        },
+        {
+          "id": "en_20",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 110.9,
+          "top3": [
+            "DEAD_STOCK_HISTORY: Sandak NIPUN Rubber Sandal for Women by Bata (SKU DEMO-BATA-299085285). Dead-sto",
+            "DEAD_STOCK_HISTORY: Sandak NIPUN Rubber Sandal for Women by Bata (SKU DEMO-BATA-299085285). Dead-sto",
+            "DEAD_STOCK_HISTORY: Sandak NIPUN Rubber Sandal for Women by Bata (SKU DEMO-BATA-299085285). Dead-sto"
+          ]
+        },
+        {
+          "id": "en_21",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 234.4,
+          "top3": [
+            "DEAD_STOCK_HISTORY: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "DEAD_STOCK_HISTORY: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO",
+            "DEAD_STOCK_HISTORY: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (SKU DEMO"
+          ]
+        },
+        {
+          "id": "en_22",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 241.0,
+          "top3": [
+            "PRICING_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, pr",
+            "PRICING_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, pr",
+            "PRICING_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, pr"
+          ]
+        },
+        {
+          "id": "en_23",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 122.4,
+          "top3": [
+            "PRICING_HISTORY: On 2026-11-21, pricing history for BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Cur",
+            "PRICING_HISTORY: On 2026-11-21, pricing history for BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Cur",
+            "PRICING_HISTORY: On 2026-11-21, pricing history for BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Cur"
+          ]
+        },
+        {
+          "id": "en_24",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 1.0,
+          "latency_ms": 113.8,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: কী রিস্টক করা উচিত?. Confidence: . ",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: কী রিস্টক করা উচিত?. Confidence: . ",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-22. Summary: Ki restock kora uchit?. Confidence:"
+          ]
+        },
+        {
+          "id": "en_25",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.25,
+          "latency_ms": 161.4,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, in",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-22. Summary: এই পণ্যগুলো রিস্টক করা দরকার: "
+          ]
+        },
+        {
+          "id": "en_26",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.14285714285714285,
+          "top_group_share": 0.25,
+          "latency_ms": 298.0,
+          "top3": [
+            "INVENTORY_LIFECYCLE: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Inventory lifecyc",
+            "INVENTORY_LIFECYCLE: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Inventory lifecyc",
+            "INVENTORY_LIFECYCLE: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). Inventory lifecyc"
+          ]
+        },
+        {
+          "id": "en_27",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.5,
+          "latency_ms": 236.6,
+          "top3": [
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, sale",
+            "SALES_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-19, sale",
+            "SALES_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-12, sa"
+          ]
+        },
+        {
+          "id": "en_28",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.16666666666666666,
+          "top_group_share": 0.25,
+          "latency_ms": 120.8,
+          "top3": [
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-14, compet",
+            "COMPETITOR_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, compet",
+            "ALERT: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-11-21, Telegr"
+          ]
+        },
+        {
+          "id": "en_29",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 177.7,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co"
+          ]
+        },
+        {
+          "id": "en_30",
+          "language": "en",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.25,
+          "top_group_share": 0.25,
+          "latency_ms": 178.8,
+          "top3": [
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "bn_01",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.8333333333333334,
+          "latency_ms": 145.8,
+          "top3": [
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-29, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-22, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-31, sales "
+          ]
+        },
+        {
+          "id": "bn_02",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 191.0,
+          "top3": [
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric",
+            "PRICE_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "bn_03",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.6666666666666666,
+          "latency_ms": 117.9,
+          "top3": [
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1",
+            "INVENTORY_HISTORY: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). On 2026-11-1"
+          ]
+        },
+        {
+          "id": "bn_04",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 195.7,
+          "top3": [
+            "SALES_REVENUE_SUMMARY: Sales revenue summary for unknown date to unknown date: revenue BDT 2392878.44, ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross ",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross "
+          ]
+        },
+        {
+          "id": "bn_05",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 95.4,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co",
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "COMPETITOR_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-20, co"
+          ]
+        },
+        {
+          "id": "bn_06",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 105.4,
+          "top3": [
+            "DEAD_STOCK_HISTORY: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Dead-stock history for Bla",
+            "DEAD_STOCK_HISTORY: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Dead-stock history for Bla",
+            "DEAD_STOCK_HISTORY: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Dead-stock history for Bla"
+          ]
+        },
+        {
+          "id": "bn_07",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 69.1,
+          "top3": [
+            "ALERT: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1",
+            "ALERT: NORTH STAR FLORA Kids' Sneakers (SKU DEMO-BATA-[REDACTED_PHONE]). On 2026-11-21,",
+            "ALERT: Bata Comfit AURORA Slip-On Sandal for Women (SKU DEMO-BATA-351440540). On 2026-1"
+          ]
+        },
+        {
+          "id": "bn_08",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 88.4,
+          "top3": [
+            "PROMOTION_RESULT: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion promotion 65f62469-76d4-",
+            "PROMOTION_RESULT: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion promotion acd7c2bc-109b-",
+            "PROMOTION_RESULT: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Promotion promotion 09883d24-55d2-"
+          ]
+        },
+        {
+          "id": "bn_09",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 86.0,
+          "top3": [
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de",
+            "RECOMMENDATION: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, de"
+          ]
+        },
+        {
+          "id": "bn_10",
+          "language": "bn",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.08333333333333333,
+          "latency_ms": 128.9,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product 0bea9d33-3968-48f8-b4c3-61490a7f2064. Seller price record for product 0b",
+            "SELLER_PRICE_HISTORY: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Seller price record for product 3f",
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc"
+          ]
+        },
+        {
+          "id": "banglish_01",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 137.2,
+          "top3": [
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-15, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-09, sales ",
+            "SALES_HISTORY: COMFIT MOTION V-2 LADIES COMFIT (SKU DEMO-BATA-542403292). On 2026-10-11, sales "
+          ]
+        },
+        {
+          "id": "banglish_02",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.2,
+          "top_group_share": 0.25,
+          "latency_ms": 146.3,
+          "top3": [
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-20, pric",
+            "PRICING_HISTORY: Black Casual Slip-On Shoe For Men (SKU DEMO-BATA-122185090). On 2026-11-21, pric"
+          ]
+        },
+        {
+          "id": "banglish_03",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.08333333333333333,
+          "top_group_share": 0.25,
+          "latency_ms": 112.8,
+          "top3": [
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li",
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li",
+            "INVENTORY_LIFECYCLE: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (SKU DEMO-BATA-557618536). Inventory li"
+          ]
+        },
+        {
+          "id": "banglish_04",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 4,
+          "recall_at_5": 0.0,
+          "recall_at_12": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 1.0,
+          "latency_ms": 137.0,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: amar gotokal er sales koto?. Confid",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: Kon product sobcheye beshi bikri ho"
+          ]
+        },
+        {
+          "id": "banglish_05",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 80.3,
+          "top3": [
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11",
+            "COMPETITOR_HISTORY: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (SKU DEMO-BATA-541141957). On 2026-11"
+          ]
+        },
+        {
+          "id": "banglish_06",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.25,
+          "latency_ms": 102.3,
+          "top3": [
+            "DEAD_STOCK_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Dead-stock histor",
+            "DEAD_STOCK_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Dead-stock histor",
+            "DEAD_STOCK_HISTORY: BATA (MEN) SOFT MENS SANDALS (SKU DEMO-BATA-[REDACTED_PHONE]). Dead-stock histor"
+          ]
+        },
+        {
+          "id": "banglish_07",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 75.9,
+          "top3": [
+            "ALERT: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (SKU DEMO-BATA-541167043). ",
+            "ALERT: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). On 2026-11-21, Telegram in",
+            "ALERT: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). On 2026-11-21, Telegram in"
+          ]
+        },
+        {
+          "id": "banglish_08",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 3,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.3333333333333333,
+          "latency_ms": 100.0,
+          "top3": [
+            "PROMOTION_RESULT: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Promotion promotion 65f62469-76d4-",
+            "PROMOTION_RESULT: product f18efcd7-f211-4c57-8d4a-086a691d91fb. Promotion promotion acd7c2bc-109b-",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: kemon cholche bebsa. Confidence: . "
+          ]
+        },
+        {
+          "id": "banglish_09",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 0.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.14285714285714285,
+          "top_group_share": 0.25,
+          "latency_ms": 101.0,
+          "top3": [
+            "COMPETITOR_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-07, co",
+            "COMPETITOR_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-21, co",
+            "COMPETITOR_HISTORY: BATA (MEN) MERRELS 2.0 MENS SANDALS (SKU DEMO-BATA-524131366). On 2026-11-14, co"
+          ]
+        },
+        {
+          "id": "banglish_10",
+          "language": "banglish",
+          "expected_count": 1,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_group_share": 0.16666666666666666,
+          "latency_ms": 128.1,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc",
+            "SELLER_PRICE_HISTORY: product e405d2f2-605e-486b-8a82-15ad6c352e7f. Seller price record for product e4",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7"
+          ]
+        },
+        {
+          "id": "none_01",
+          "language": "en",
+          "expected_count": 0,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.5833333333333334,
+          "latency_ms": 74.1,
+          "top3": [
+            "INVENTORY_LIFECYCLE: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Stock-in (purchase receipt",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: **Financial summary** - gross ",
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: How many products do I have listed?"
+          ]
+        },
+        {
+          "id": "none_02",
+          "language": "en",
+          "expected_count": 0,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.25,
+          "latency_ms": 68.8,
+          "top3": [
+            "SELLER_PRICE_HISTORY: product ea9b2d4c-9a[REDACTED_PHONE]-a709f8a3ff75. Seller price record for produc",
+            "SELLER_PRICE_HISTORY: product e7be2888-dc95-4e71-8a2d-e9c7d5a06644. Seller price record for product e7",
+            "SELLER_PRICE_HISTORY: product 3f7f0c41-f6c0-41e3-99c0-3fc7fb4aed72. Seller price record for product 3f"
+          ]
+        },
+        {
+          "id": "none_03",
+          "language": "en",
+          "expected_count": 0,
+          "returned": 12,
+          "recall_at_5": 1.0,
+          "recall_at_12": 1.0,
+          "reciprocal_rank": 0.0,
+          "top_group_share": 0.25,
+          "latency_ms": 86.4,
+          "top3": [
+            "COPILOT_HISTORY: Copilot user message on 2026-11-21. Summary: What is my revenue this week?. Conf",
+            "COPILOT_HISTORY: Copilot assistant message on 2026-11-21. Summary: এই পণ্যগুলো রিস্টক করা দরকার: ",
+            "INVENTORY_LIFECYCLE: Black Casual Shoes For Men (SKU DEMO-BATA-320140080). Stock-in (purchase receipt"
+          ]
+        }
+      ]
+    }
+  }
+}

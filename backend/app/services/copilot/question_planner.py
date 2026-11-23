@@ -711,9 +711,12 @@ class CopilotQuestionPlanner:
 
         if question_type == CopilotQuestionType.LOOKUP:
             if _contains_any(normalized, ("how many products", "count products", "number of products", "কয়টি পণ্য", "কত পণ্য")):
-                metric_key = "listed_product_count" if "listed" in normalized else "product_count"
-                add("run_seller_metric_query", "allowlisted product count metric requested", _metric_args(metric_key, product_id, date_range, category, marketplace))
-                add("count_products", "product count lookup", _product_filter_args(normalized, category, marketplace))
+                count_filters = _product_filter_args(normalized, category, marketplace)
+                if "has_stock" not in count_filters and "status" not in count_filters:
+                    # Stock and "listed" counts go to count_products alone: the metric cannot filter stock, and
+                    # count_products reports the account total next to the listed subset.
+                    add("run_seller_metric_query", "allowlisted product count metric requested", _metric_args("product_count", product_id, date_range, category, marketplace))
+                add("count_products", "product count lookup", count_filters)
             if _contains_any(normalized, ("missing cost", "without cost", "cost missing", "খরচ নেই", "কস্ট নেই")):
                 add("run_seller_metric_query", "allowlisted missing cost metric requested", _metric_args("products_missing_cost_count", product_id, date_range, category, marketplace))
                 add("list_products", "products missing cost lookup", _product_filter_args(normalized, category, marketplace) | {"missing_cost": True, "limit": 10, "offset": 0, "sort_by": "created_at_desc"})
@@ -1343,6 +1346,10 @@ def _product_filter_args(normalized: str, category: str | None, marketplace: str
     payload = _category_marketplace(category, marketplace)
     if _contains_any(normalized, ("listed", "active")):
         payload["status"] = "listed"
+    if _contains_any(normalized, ("unavailable", "out of stock", "stockout", "no stock")):
+        payload["has_stock"] = False
+    elif _contains_any(normalized, ("available", "in stock", "স্টকে আছে")):
+        payload["has_stock"] = True
     if _contains_any(normalized, ("missing cost", "without cost", "cost missing")):
         payload["missing_cost"] = True
     return payload

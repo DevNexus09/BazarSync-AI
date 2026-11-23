@@ -4,7 +4,15 @@ from dataclasses import dataclass
 import re
 import unicodedata
 
-from app.services.copilot.language.lexicon import BANGLA_PHRASES, BANGLA_TERMS, BANGLISH_PHRASES, BANGLISH_TERMS
+from app.services.copilot.language.lexicon import (
+    BANGLA_PHRASES,
+    BANGLA_TERMS,
+    BANGLISH_FUNCTION_WORDS,
+    BANGLISH_PARTICLES,
+    BANGLISH_PHRASES,
+    BANGLISH_TERMS,
+    COUNTABLE_NOUNS,
+)
 
 BANGLA_DIGIT_TRANSLATION = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
 TOKEN_RE = re.compile(r"[a-z0-9ঀ-৿]+", re.IGNORECASE)
@@ -24,6 +32,9 @@ class NormalizedQuery:
     original: str
     normalized: str
     canonical_terms: tuple[str, ...]
+    # Word-by-word English rendering in the question's own order ("koyta ponno" -> "how many products"),
+    # so multi-word English planner phrases match; empty when nothing was translated.
+    translated: str = ""
 
     @property
     def planning_text(self) -> str:
@@ -32,9 +43,10 @@ class NormalizedQuery:
         It is never stored or shown to the seller; the original question is kept for
         persistence, prompts and evidence matching.
         """
-        if not self.canonical_terms:
-            return self.normalized
-        return f"{self.normalized} {' '.join(self.canonical_terms)}"
+        parts = [self.normalized, *self.canonical_terms]
+        if self.translated:
+            parts.append(f"| {self.translated}")
+        return " ".join(parts)
 
 
 def _normalized_keys(table: dict[str, tuple[str, ...]]) -> dict[str, tuple[str, ...]]:
@@ -44,6 +56,8 @@ def _normalized_keys(table: dict[str, tuple[str, ...]]) -> dict[str, tuple[str, 
 _BANGLISH_TERMS = _normalized_keys(BANGLISH_TERMS)
 _BANGLA_TERMS = _normalized_keys(BANGLA_TERMS)
 _PHRASES = tuple(_normalized_keys({**BANGLISH_PHRASES, **BANGLA_PHRASES}).items())
+_FUNCTION_WORDS = _normalized_keys(BANGLISH_FUNCTION_WORDS)
+_DROPPED_PARTICLES = frozenset(BANGLISH_PARTICLES)
 
 
 def normalize_query(question: str) -> NormalizedQuery:
@@ -66,7 +80,43 @@ def normalize_query(question: str) -> NormalizedQuery:
             terms.extend(token_terms)
 
     canonical = tuple(dict.fromkeys(term for term in terms if term not in lowered))
-    return NormalizedQuery(original=question, normalized=normalized, canonical_terms=canonical)
+    return NormalizedQuery(original=question, normalized=normalized, canonical_terms=canonical, translated=_translate(tokens))
+
+
+# English question words add no retrieval signal; memory chunks are statements, not questions.
+_SEARCH_SKIP_TERMS = frozenset({"why", "how", "what", "which", "when", "where", "who", "show"})
+
+
+def english_search_terms(question: str) -> tuple[str, ...]:
+    """English words for a Bangla/Banglish question's keyword search; () when nothing was translated.
+
+    RAG memory chunks are written in English, so Bangla and romanised words never match them by keyword.
+    """
+    normalized = normalize_query(question)
+    lowered = question.casefold()
+    candidates = [*normalized.canonical_terms, *normalized.translated.split()]
+    terms = (term.casefold().strip() for term in candidates)
+    return tuple(dict.fromkeys(term for term in terms if len(term) >= 3 and term not in _SEARCH_SKIP_TERMS and term not in lowered))
+
+
+def _translate(tokens: list[str]) -> str:
+    """English rendering of a Banglish/Bangla question in word order; "" when no word was translated."""
+    words: list[str] = []
+    translated_any = False
+    for token in tokens:
+        if token in _DROPPED_PARTICLES:
+            translated_any = True
+            continue
+        mapped = _FUNCTION_WORDS.get(token) or _BANGLISH_TERMS.get(token) or _BANGLA_TERMS.get(token) or _bangla_stem(token) or _fuzzy_banglish(token)
+        if mapped:
+            translated_any = True
+            word = mapped[0]
+        else:
+            word = token
+        if words and words[-1].endswith("how many") and word in COUNTABLE_NOUNS:
+            word += "s"  # "koyta product" -> "how many products", the form the planner's phrases use
+        words.append(word)
+    return " ".join(words) if translated_any else ""
 
 
 def _phrase_in_tokens(words: list[str], tokens: list[str]) -> bool:

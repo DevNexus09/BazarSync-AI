@@ -663,3 +663,40 @@ class CopilotToolRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RetrieveBusinessMemoryKeywordTermsTests(unittest.TestCase):
+    """The memory tool passes English keyword terms only when RAG_KEYWORD_TRANSLATION_ENABLED is on."""
+
+    def _captured_kwargs(self, *, enabled: bool, question: str) -> tuple[dict, UUID]:
+        from unittest.mock import patch
+
+        from app.core.config import settings
+        from app.services.copilot import tool_registry as module
+
+        captured: dict = {}
+
+        class FakeRetrieval:
+            def __init__(self, db):
+                del db
+
+            def retrieve_context(self, **kwargs):
+                captured.update(kwargs)
+                return type("R", (), {"retrieved_chunks": [], "evidence_ids": [], "retrieval_confidence": "NO_CONTEXT", "missing_data_notes": [], "message": None, "source_documents": []})()
+
+        seller_id = uuid4()
+        with patch.object(module, "RagRetrievalService", FakeRetrieval), patch.object(settings, "rag_keyword_translation_enabled", enabled):
+            module.SqlAlchemyCopilotToolDataAccess(db=None).retrieve_business_memory(
+                seller_id=seller_id, question=question, product_id=None, source_types=None, from_date=None, to_date=None, top_k=5
+            )
+        return captured, seller_id
+
+    def test_flag_off_sends_no_keyword_terms(self):
+        captured, seller_id = self._captured_kwargs(enabled=False, question="last week bikri keno komlo")
+        self.assertIsNone(captured.get("keyword_terms"))
+        self.assertEqual(seller_id, captured["seller_id"])
+
+    def test_flag_on_sends_english_terms(self):
+        captured, seller_id = self._captured_kwargs(enabled=True, question="last week bikri keno komlo")
+        self.assertIn("sales", captured["keyword_terms"])
+        self.assertEqual(seller_id, captured["seller_id"])

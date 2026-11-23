@@ -225,6 +225,18 @@ class MultilingualAnswerEngineTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("not written in banglish", result.validation_error or "")
 
+    async def test_short_banglish_answer_is_accepted(self):
+        result, _ = await self._answer(
+            "amar sales koto?",
+            # One strong marker across answer and summary together; the old rule needed two.
+            _ml_payload("Apnar total revenue 1250.00.", "banglish") | {"summary": "Revenue 1250.00."},
+            self._revenue_tools(),
+            reply_language="banglish",
+        )
+
+        self.assertIsNone(result.validation_error)
+        self.assertEqual("Apnar total revenue 1250.00.", result.payload["answer"])  # the model's reply, not the fallback
+
     async def test_bengali_script_answer_to_banglish_request_is_rejected(self):
         result, _ = await self._answer(
             "amar sales koto?",
@@ -441,3 +453,26 @@ async def _english_revenue_groq(messages, **kwargs):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_english_search_terms_translates_banglish():
+    from app.services.copilot.language import english_search_terms
+
+    terms = english_search_terms("last week bikri keno komlo")
+    assert "sales" in terms and "drop" in terms
+    assert all(term == term.lower() and len(term) >= 3 for term in terms)
+    assert "why" not in terms  # question words carry no retrieval signal
+
+
+def test_english_search_terms_skips_words_already_in_question():
+    from app.services.copilot.language import english_search_terms
+
+    assert english_search_terms("why did sales drop") == ()
+    assert "sales" not in english_search_terms("comfit sales bikri")
+
+
+def test_untranslatable_bangla_question_adds_no_terms():
+    from app.services.copilot.language import english_search_terms
+
+    assert english_search_terms("ঝিলমিল") == ()
+    assert english_search_terms("   ") == ()

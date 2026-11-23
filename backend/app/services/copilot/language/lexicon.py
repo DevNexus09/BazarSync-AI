@@ -19,7 +19,7 @@ STRONG_BANGLISH_MARKERS: frozenset[str] = frozenset(
     {
         "ami", "amar", "amake", "amra", "amader", "apni", "apnar", "apnake", "tumi", "tomar",
         "ki", "kii", "keno", "kno", "kn", "kemon", "kmn", "koto", "kotto", "koyta", "koita", "kon", "konta", "konti",
-        "kothay", "kobe", "kivabe", "kibhabe", "kemne", "keu", "kichu", "kisu",
+        "koyti", "koiti", "kotogulo", "kotogula", "kothay", "kobe", "kivabe", "kibhabe", "kemne", "keu", "kichu", "kisu",
         "ase", "achhe", "nai", "nei", "hoy", "hoyeche", "hoise", "hoyse", "hoyni", "hoini", "hobe", "hbe",
         "korbo", "korte", "koro", "korun", "kore", "korse", "korche", "korchi", "korsi", "korechi", "korben",
         "dekhao", "dekhan", "dekhaw", "dekhte", "bolo", "bolun", "bujhte", "bujhi", "janao", "janan", "jante",
@@ -43,7 +43,7 @@ STRONG_BANGLISH_MARKERS: frozenset[str] = frozenset(
 # Short or ambiguous tokens that are also English words or very common
 # romanisations. They only count for half a marker.
 WEAK_BANGLISH_MARKERS: frozenset[str] = frozenset(
-    {"ache", "dam", "mal", "din", "rat", "sob", "ta", "er", "kal", "na", "je", "kom", "aj", "mas", "ar", "pore", "tai"}
+    {"ache", "dam", "mal", "din", "rat", "sob", "ta", "ti", "er", "kal", "na", "je", "kom", "aj", "mas", "ar", "pore", "tai"}
 )
 
 ENGLISH_STOPWORDS: frozenset[str] = frozenset(
@@ -86,12 +86,32 @@ BANGLISH_TERMS: dict[str, tuple[str, ...]] = {
     "kharap": ("bad",), "valo": ("good",), "bhalo": ("good",),
     # question words
     "keno": ("why",), "kno": ("why",), "kn": ("why",), "koto": ("how much",), "kotto": ("how much",),
-    "koyta": ("how many",), "koita": ("how many",), "kon": ("which",), "konta": ("which",), "konti": ("which",),
+    "koyta": ("how many",), "koita": ("how many",), "koyti": ("how many",), "koiti": ("how many",),
+    "kotogulo": ("how many",), "kotogula": ("how many",), "kon": ("which",), "konta": ("which",), "konti": ("which",),
     "kivabe": ("how",), "kibhabe": ("how",), "kemne": ("how",), "kemon": ("how",),
     # time
     "ajke": ("today",), "ajker": ("today",), "aaj": ("today",), "aj": ("today",),
     "gotokal": ("yesterday",), "gotkal": ("yesterday",), "gotobar": ("last time",),
 }
+
+# Translation-only Banglish words: they shape the in-order English rendering
+# ("amar mot koyta product ache" -> "my total how many products have") but are
+# not planning terms on their own.
+BANGLISH_FUNCTION_WORDS: dict[str, tuple[str, ...]] = {
+    "ami": ("i",), "amar": ("my",), "amader": ("our",), "apni": ("you",), "apnar": ("your",),
+    "ache": ("have",), "ase": ("have",), "achhe": ("have",), "nai": ("no",), "nei": ("no",),
+    "mot": ("total",), "sob": ("all",), "shob": ("all",), "ki": ("what",), "chilo": ("was",),
+    "dao": ("show",), "dekhao": ("show",), "dekhan": ("show",), "dekhaw": ("show",), "bolo": ("tell",), "bolun": ("tell",),
+    "korbo": ("should i",), "korbe": ("should i",), "abar": ("again",),
+}
+
+# Banglish case/classifier particles ("October e", "product er", "15 ti", "product gulo"); dropped from the rendering.
+BANGLISH_PARTICLES: frozenset[str] = frozenset({"e", "er", "ta", "ti", "te", "ke", "gula", "gulo", "guli"})
+
+# Nouns pluralised after "how many" so the rendering matches plural planner phrases.
+COUNTABLE_NOUNS: frozenset[str] = frozenset(
+    {"product", "order", "customer", "competitor", "alert", "promotion", "unit", "category", "recommendation", "sale", "listing", "item"}
+)
 
 # Multi-word Banglish phrases, matched before single tokens.
 BANGLISH_PHRASES: dict[str, tuple[str, ...]] = {
@@ -104,6 +124,7 @@ BANGLISH_PHRASES: dict[str, tuple[str, ...]] = {
     "goto bochor": ("last year",), "goto bosor": ("last year",), "ei bochor": ("this year",),
     "bikri hoy na": ("no sales", "dead stock"), "bikri hoyni": ("no sales",), "bikri hoini": ("no sales",),
     "stock shesh": ("stockout",), "stok shesh": ("stockout",), "mal shesh": ("stockout",),
+    "stock e ache": ("in stock",), "stok e ache": ("in stock",), "stock a ache": ("in stock",), "stock ase": ("in stock",),
     "ki korbo": ("what should i do",), "ki kora uchit": ("what should i do",), "ki korte hobe": ("what should i do",),
     "abar order": ("restock", "reorder"), "dam komabo": ("lower price",), "dam barabo": ("raise price",),
     "ager bar": ("last time",), "business er summary": ("business health",), "business er obostha": ("how is my business",),
@@ -118,6 +139,7 @@ BANGLA_TERMS: dict[str, tuple[str, ...]] = {
     "লাভ": ("profit",), "মুনাফা": ("profit",), "খরচ": ("cost",),
     "স্টক": ("stock",), "মজুদ": ("stock",), "পণ্য": ("product",), "প্রোডাক্ট": ("product",),
     "প্রতিযোগী": ("competitor",), "অর্ডার": ("order",), "কেন": ("why",),
+    "কয়টি": ("how many",), "কয়টা": ("how many",), "কতগুলো": ("how many",), "কতটি": ("how many",),
     "কমেছে": ("drop", "down"), "কমলো": ("drop", "down"), "বেড়েছে": ("increase", "up"), "বাড়লো": ("increase", "up"),
     "মার্জিন": ("margin",), "লোকসান": ("loss", "profit"), "প্রচারণা": ("promotion",), "প্রমোশন": ("promotion",),
     "সতর্কতা": ("alert",), "পরামর্শ": ("recommendation",), "ডেড": ("dead stock",), "আটকে": ("locked capital",),

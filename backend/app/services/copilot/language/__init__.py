@@ -7,7 +7,7 @@ from app.services.copilot.language.detector import (
     detect_input_language,
     resolve_language_profile,
 )
-from app.services.copilot.language.normalizer import NormalizedQuery, normalize_digits, normalize_query
+from app.services.copilot.language.normalizer import NormalizedQuery, english_search_terms, normalize_digits, normalize_query
 
 __all__ = [
     "InputLanguage",
@@ -15,6 +15,7 @@ __all__ = [
     "NormalizedQuery",
     "ReplyLanguage",
     "detect_input_language",
+    "english_search_terms",
     "normalize_digits",
     "normalize_query",
     "resolve_language_profile",

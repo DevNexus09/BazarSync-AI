@@ -62,11 +62,22 @@ class CopilotQuestionPlannerTests(unittest.TestCase):
         )
 
     def test_product_count_question_generates_product_tools(self):
-        plan = self._plan("How many products do I have listed?")
+        plan = self._plan("How many products do I have?")
 
         self.assertEqual(CopilotQuestionType.LOOKUP, plan.question_type)
         self.assertIn("run_seller_metric_query", [step.tool_name for step in plan.tool_plan])
         self.assertIn("count_products", [step.tool_name for step in plan.tool_plan])
+
+    def test_listed_and_available_counts_lead_with_count_products(self):
+        # count_products reports the account total beside the listed subset, and filters stock; the metric does neither.
+        for question, filters in (("How many products do I have listed?", {"status": "LISTED"}), ("How many products are available?", {"has_stock": True})):
+            tools = [step for step in self._plan(question).tool_plan if step.tool_name in {"run_seller_metric_query", "count_products"}]
+            self.assertEqual("count_products", tools[0].tool_name, question)
+            self.assertEqual(filters, {key: tools[0].args.get(key) for key in filters}, question)
+
+    def test_unavailable_count_is_not_an_in_stock_count(self):
+        count = next(step for step in self._plan("How many products are unavailable?").tool_plan if step.tool_name == "count_products")
+        self.assertIs(False, count.args.get("has_stock"))
 
     def test_missing_cost_question_generates_list_products(self):
         plan = self._plan("Which products are missing cost?")

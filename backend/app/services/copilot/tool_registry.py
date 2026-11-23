@@ -56,6 +56,8 @@ from app.services.copilot.profit_margin_analytics_service import ProfitMarginAna
 from app.services.copilot.query_constraints import BusinessDomainKey
 from app.services.copilot.sales_revenue_analytics_service import SalesRevenueAnalyticsService
 from app.services.rag_observability import elapsed_ms, log_event, now_ms, observe_latency
+from app.core.config import settings
+from app.services.copilot.language import english_search_terms
 from app.services.rag_retrieval_service import RagRetrievalService
 
 
@@ -2490,6 +2492,7 @@ class SqlAlchemyCopilotToolDataAccess:
             from_event_time=_start_of_day(from_date) if from_date else None,
             to_event_time=_end_of_day(to_date) if to_date else None,
             top_k=top_k,
+            keyword_terms=english_search_terms(question) if settings.rag_keyword_translation_enabled else None,
         )
         return {
             "memory_chunks": [

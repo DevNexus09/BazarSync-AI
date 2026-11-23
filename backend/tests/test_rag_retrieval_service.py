@@ -398,3 +398,223 @@ class RagRrfRetrievalTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RagKeywordTermsTests(unittest.TestCase):
+    """English keyword terms supplied by the Copilot for Bangla/Banglish questions."""
+
+    def setUp(self) -> None:
+        for name, value in (("rag_cosine_distance_enabled", True), ("rag_rrf_enabled", True)):
+            flag = patch.object(rag_retrieval_settings, name, value)
+            flag.start()
+            self.addCleanup(flag.stop)
+
+    def _service(self, repo):
+        return RagRetrievalService(repository=repo, embedding_service=FakeEmbeddingService(), now=datetime(2026, 11, 22, tzinfo=timezone.utc))
+
+    @staticmethod
+    def _keyword_call(repo):
+        return next(kwargs for name, kwargs in repo.calls if name == "keyword_search")
+
+    def test_no_keyword_terms_keeps_existing_keywords(self):
+        from app.services.rag_retrieval_service import _keywords
+
+        seller_id = uuid4()
+        question = "critical stock alert for DEMO-BATA-1"
+        sent = []
+        for terms in (None, ()):
+            repo = FakeRepository()
+            self._service(repo).retrieve_context(seller_id=seller_id, question=question, keyword_terms=terms)
+            sent.append(self._keyword_call(repo)["keywords"])
+        self.assertEqual(sent[0], sent[1])
+        self.assertEqual(_keywords(question), sent[0])
+
+    def test_keyword_terms_reach_keyword_search(self):
+        repo = FakeRepository()
+        self._service(repo).retrieve_context(seller_id=uuid4(), question="গত সপ্তাহে বিক্রি কেন কমেছে?", keyword_terms=("sales",))
+        self.assertIn("sales", self._keyword_call(repo)["keywords"])
+
+    def test_translated_term_ranks_english_chunk(self):
+        seller_id = uuid4()
+        row = chunk(seller_id=seller_id, source_type=RagMemorySourceType.SALES_HISTORY, text="Comfit sales fell 12 percent for SKU-77 last week")
+        repo = FakeRepository(keyword_rows=[row], documents={row.memory_document_id: document_for(row)})
+
+        without = self._service(repo).retrieve_context(seller_id=seller_id, question="sku-77 er bikri koto", min_similarity=0.45)
+        with_terms = self._service(repo).retrieve_context(seller_id=seller_id, question="ek product er bikri koto", keyword_terms=("sales", "sku-77"), min_similarity=0.45)
+        plain = self._service(repo).retrieve_context(seller_id=seller_id, question="ek product er bikri koto", min_similarity=0.45)
+
+        self.assertEqual([row.id], [item.chunk_id for item in without.retrieved_chunks])  # the SKU alone already matched
+        self.assertEqual([row.id], [item.chunk_id for item in with_terms.retrieved_chunks])
+        self.assertEqual([], plain.retrieved_chunks)
+
+    def test_keyword_terms_cannot_widen_seller_scope(self):
+        seller_id = uuid4()
+        other = chunk(seller_id=uuid4(), source_type=RagMemorySourceType.SALES_HISTORY, text="Comfit sales fell for SKU-77")
+        repo = FakeRepository(keyword_rows=[other], documents={other.memory_document_id: document_for(other)})
+
+        result = self._service(repo).retrieve_context(seller_id=seller_id, question="bikri", keyword_terms=("sales", "sku-77"), min_similarity=0.45)
+
+        self.assertEqual([], result.retrieved_chunks)
+
+
+class _FakeReranker:
+    def __init__(self, scores=None) -> None:
+        self.scores = scores
+        self.calls: list[list[str]] = []
+
+    def score(self, question, texts, *, budget_ms):
+        self.calls.append(list(texts))
+        if self.scores is None:
+            return None
+        return [self.scores.get(text, 0.0) for text in texts]
+
+
+class RagRerankerRetrievalTests(unittest.TestCase):
+    """RAG_RERANKER_ENABLED: the cross-encoder reorders the top candidates, never admits new ones."""
+
+    def setUp(self) -> None:
+        for name, value in (("rag_cosine_distance_enabled", True), ("rag_rrf_enabled", True), ("rag_reranker_enabled", True)):
+            flag = patch.object(rag_retrieval_settings, name, value)
+            flag.start()
+            self.addCleanup(flag.stop)
+        self.seller_id = uuid4()
+        self.rows = [
+            chunk(seller_id=self.seller_id, source_type=RagMemorySourceType.SALES_HISTORY, text=f"memory {name}")
+            for name in ("first", "second", "third")
+        ]
+
+    def _repo(self, extra_vector_rows=()):
+        vector_rows = [(row, distance) for row, distance in zip(self.rows, (0.1, 0.2, 0.3))] + list(extra_vector_rows)
+        documents = {row.memory_document_id: document_for(row) for row, _ in vector_rows}
+        return FakeRepository(vector_rows=vector_rows, documents=documents)
+
+    def _ids(self, reranker, repo=None):
+        service = RagRetrievalService(repository=repo or self._repo(), embedding_service=FakeEmbeddingService(), reranker=reranker, now=datetime(2026, 11, 22, tzinfo=timezone.utc))
+        result = service.retrieve_context(seller_id=self.seller_id, question="sales memory", min_similarity=0.45, use_keyword_search=False)
+        return [item.chunk_id for item in result.retrieved_chunks]
+
+    def test_reranker_reorders_top_candidates(self):
+        reranker = _FakeReranker({"memory first": 0.1, "memory second": 0.5, "memory third": 0.9})
+        self.assertEqual([row.id for row in reversed(self.rows)], self._ids(reranker))
+
+    def test_reranker_none_keeps_hybrid_order(self):
+        with patch.object(rag_retrieval_settings, "rag_reranker_enabled", False):
+            flag_off = self._ids(_FakeReranker())
+        self.assertEqual(flag_off, self._ids(_FakeReranker(None)))
+
+    def test_reranker_flag_off_is_never_called(self):
+        reranker = _FakeReranker({})
+        with patch.object(rag_retrieval_settings, "rag_reranker_enabled", False):
+            self._ids(reranker)
+        self.assertEqual([], reranker.calls)
+
+    def test_reranker_cannot_admit_below_floor(self):
+        weak = chunk(seller_id=self.seller_id, source_type=RagMemorySourceType.SALES_HISTORY, text="memory weak")
+        reranker = _FakeReranker({"memory weak": 99.0})
+        ids = self._ids(reranker, repo=self._repo([(weak, 0.9)]))
+        self.assertNotIn(weak.id, ids)
+        self.assertIn("memory weak", reranker.calls[0])  # it was scored, but the similarity floor still applies
+
+    def test_reranker_only_sees_seller_chunks(self):
+        other = chunk(seller_id=uuid4(), source_type=RagMemorySourceType.SALES_HISTORY, text="memory other seller")
+        reranker = _FakeReranker({})
+        self._ids(reranker, repo=self._repo([(other, 0.05)]))
+        self.assertNotIn("memory other seller", reranker.calls[0])
+
+
+class RagFullTextKeywordSearchTests(unittest.TestCase):
+    """RAG_FULLTEXT_KEYWORD_ENABLED: ranked, index-backed keyword search instead of recency-ordered ILIKE."""
+
+    @staticmethod
+    def _compiled(**kwargs):
+        from sqlalchemy.dialects import postgresql
+
+        session = CaptureSession()
+        result = RagMemoryRepository(session).keyword_search(**kwargs)
+        if not session.calls:
+            return result, None, None
+        statement, _ = session.calls[0]
+        compiled = statement.compile(dialect=postgresql.dialect())
+        return result, str(compiled), compiled.params
+
+    def test_fulltext_sql_uses_index_expression_and_rank(self):
+        malicious = "sales' | !x & ("
+        _, sql, params = self._compiled(seller_id=uuid4(), keywords=[malicious, "sku-77"], ranked=True)
+        self.assertIn("to_tsvector", sql)
+        self.assertIn("plainto_tsquery", sql)
+        self.assertIn("ts_rank_cd", sql)
+        self.assertNotIn(malicious, sql)
+        self.assertIn(malicious, params.values())
+
+    def test_fulltext_sql_is_seller_scoped(self):
+        seller_id = uuid4()
+        _, sql, params = self._compiled(seller_id=seller_id, keywords=["sales"], ranked=True)
+        self.assertIn("rag_memory_chunks.seller_id =", sql)
+        self.assertIn(seller_id, params.values())
+        self.assertIn("rag_memory_chunks.deleted_at IS NULL", sql)
+        self.assertIn("rag_memory_documents.deleted_at IS NULL", sql)
+
+    def test_fulltext_skips_query_without_terms(self):
+        result, sql, _ = self._compiled(seller_id=uuid4(), keywords=["", "  "], ranked=True)
+        self.assertEqual([], result)
+        self.assertIsNone(sql)
+
+    def test_ilike_path_unchanged_when_flag_off(self):
+        _, sql, _ = self._compiled(seller_id=uuid4(), keywords=["sales"])
+        self.assertIn("ILIKE", sql.upper())
+        self.assertNotIn("to_tsvector", sql)
+
+    def test_service_passes_ranked_flag(self):
+        for enabled in (False, True):
+            repo = FakeRepository()
+            with patch.object(rag_retrieval_settings, "rag_fulltext_keyword_enabled", enabled):
+                RagRetrievalService(repository=repo, embedding_service=FakeEmbeddingService()).retrieve_context(seller_id=uuid4(), question="sales for sku-77")
+            call = next(kwargs for name, kwargs in repo.calls if name == "keyword_search")
+            self.assertIs(enabled, call["ranked"])
+
+
+class RagGroupCapTests(unittest.TestCase):
+    """RAG_MAX_CHUNKS_PER_GROUP: one (source type, product) group cannot fill every result slot."""
+
+    @staticmethod
+    def _items(groups):
+        from app.services.rag_retrieval_service import _RankedChunk
+
+        return [_RankedChunk(chunk=chunk(source_type=source_type, product_id=product_id, text=f"item {index}"), similarity_score=0.9, vector_rank=index)
+                for index, (source_type, product_id) in enumerate(groups)]
+
+    def test_group_cap_zero_is_identity(self):
+        from app.services.rag_retrieval_service import _cap_per_group
+
+        product = uuid4()
+        items = self._items([(RagMemorySourceType.SALES_HISTORY, product)] * 4)
+        self.assertEqual(items, _cap_per_group(items, 0))
+
+    def test_group_cap_promotes_other_groups(self):
+        from app.services.rag_retrieval_service import _cap_per_group
+
+        product = uuid4()
+        items = self._items([(RagMemorySourceType.SALES_HISTORY, product)] * 5 + [(RagMemorySourceType.INVENTORY_HISTORY, product)])
+        capped = _cap_per_group(items, 2)
+        self.assertEqual(RagMemorySourceType.INVENTORY_HISTORY, capped[2].chunk.source_type)
+        self.assertEqual(len(items), len(capped))
+        self.assertEqual([items[0], items[1]], capped[:2])
+
+    def test_group_cap_backfills_when_only_one_group(self):
+        from app.services.rag_retrieval_service import _cap_per_group
+
+        product = uuid4()
+        items = self._items([(RagMemorySourceType.SALES_HISTORY, product)] * 6)
+        self.assertEqual(items[:4], _cap_per_group(items, 2)[:4])
+
+    def test_group_cap_applies_in_retrieval_when_set(self):
+        seller_id = uuid4()
+        product = uuid4()
+        rows = [chunk(seller_id=seller_id, product_id=product, source_type=RagMemorySourceType.SALES_HISTORY, text=f"sales row {i}") for i in range(4)]
+        other = chunk(seller_id=seller_id, product_id=product, source_type=RagMemorySourceType.INVENTORY_HISTORY, text="stock row")
+        vector_rows = [(row, 0.1 + i * 0.01) for i, row in enumerate(rows)] + [(other, 0.3)]
+        repo = FakeRepository(vector_rows=vector_rows, documents={row.memory_document_id: document_for(row) for row, _ in vector_rows})
+        service = RagRetrievalService(repository=repo, embedding_service=FakeEmbeddingService(), now=datetime(2026, 11, 22, tzinfo=timezone.utc))
+        with patch.object(rag_retrieval_settings, "rag_cosine_distance_enabled", True), patch.object(rag_retrieval_settings, "rag_max_chunks_per_group", 2):
+            result = service.retrieve_context(seller_id=seller_id, question="sales", top_k=3, min_similarity=0.45, use_keyword_search=False)
+        self.assertIn(other.id, [item.chunk_id for item in result.retrieved_chunks])

@@ -291,6 +291,19 @@ TELEGRAM_WEBHOOK_URL=https://batboy-thigh-extras.ngrok-free.dev
 
 The exact webhook path should match the backend Telegram route if the application expects the full callback URL.
 
+## RAG Memory Retrieval Flags (2026-11-24)
+
+Four default-off flags tune how the Copilot's `retrieve_business_memory` tool finds memory chunks. With all of them off, retrieval behaves exactly as before. Measurements and reasoning are in [RAG retrieval evaluation](copilot/rag-retrieval-eval.md).
+
+| Flag | What it does | Recommended |
+|---|---|---|
+| `RAG_KEYWORD_TRANSLATION_ENABLED` | Bangla/Banglish questions also keyword-search with their English words; memory text is English | `true` |
+| `RAG_FULLTEXT_KEYWORD_ENABLED` | Ranked full-text keyword search on a GIN index instead of the newest `ILIKE` matches. Needs `alembic upgrade q1a2b3c4d5e6` first | `true` |
+| `RAG_MAX_CHUNKS_PER_GROUP` | At most N results per (record type, product) before other groups get a slot; 0 = off | `3` |
+| `RAG_RERANKER_ENABLED` | Cross-encoder (`BAAI/bge-reranker-v2-m3`) reorders the top candidates within a time budget | `false` (adds about 1.4 s per lookup on CPU) |
+
+Re-measure after any change with `backend/scripts/evaluate_rag_retrieval.py`.
+
 ## Known Follow-Up Areas
 
 - Verify all Alembic migrations upgrade and downgrade cleanly after the latest Phase 7 files.

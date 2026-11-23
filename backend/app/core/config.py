@@ -249,6 +249,14 @@ class Settings(BaseModel):
     rag_outbox_processing_lease_seconds: int = 900
     rag_cosine_distance_enabled: bool = False
     rag_rrf_enabled: bool = False
+    rag_keyword_translation_enabled: bool = False
+    rag_reranker_enabled: bool = False
+    rag_reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    rag_reranker_candidates: int = 20
+    rag_reranker_budget_ms: int = 1500
+    rag_reranker_max_length: int = 512
+    rag_fulltext_keyword_enabled: bool = False
+    rag_max_chunks_per_group: int = 0
     copilot_groq_model: str | None = None
     copilot_groq_timeout_seconds: float = 20.0
     copilot_overall_timeout_seconds: float = 45.0
@@ -594,6 +602,14 @@ class Settings(BaseModel):
             "rag_outbox_processing_lease_seconds": int(os.getenv("RAG_OUTBOX_PROCESSING_LEASE_SECONDS", "900")),
             "rag_cosine_distance_enabled": _parse_bool(os.getenv("RAG_COSINE_DISTANCE_ENABLED"), default=False),
             "rag_rrf_enabled": _parse_bool(os.getenv("RAG_RRF_ENABLED"), default=False),
+            "rag_keyword_translation_enabled": _parse_bool(os.getenv("RAG_KEYWORD_TRANSLATION_ENABLED"), default=False),
+            "rag_reranker_enabled": _parse_bool(os.getenv("RAG_RERANKER_ENABLED"), default=False),
+            "rag_reranker_model": os.getenv("RAG_RERANKER_MODEL", "BAAI/bge-reranker-v2-m3"),
+            "rag_reranker_candidates": int(os.getenv("RAG_RERANKER_CANDIDATES", "20")),
+            "rag_reranker_budget_ms": int(os.getenv("RAG_RERANKER_BUDGET_MS", "1500")),
+            "rag_reranker_max_length": int(os.getenv("RAG_RERANKER_MAX_LENGTH", "512")),
+            "rag_fulltext_keyword_enabled": _parse_bool(os.getenv("RAG_FULLTEXT_KEYWORD_ENABLED"), default=False),
+            "rag_max_chunks_per_group": int(os.getenv("RAG_MAX_CHUNKS_PER_GROUP", "0")),
             "copilot_groq_model": os.getenv("GROQ_COPILOT_MODEL") or os.getenv("GROQ_MODEL"),
             "copilot_groq_timeout_seconds": float(os.getenv("COPILOT_GROQ_TIMEOUT_SECONDS", "20")),
             "copilot_overall_timeout_seconds": float(os.getenv("COPILOT_OVERALL_TIMEOUT_SECONDS", "45")),

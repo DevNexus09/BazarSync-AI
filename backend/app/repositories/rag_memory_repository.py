@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import bindparam, func, or_, select, text, update
+from sqlalchemy import ColumnElement, bindparam, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -288,6 +289,7 @@ class RagMemoryRepository:
         to_event_time: datetime | None = None,
         include_stale: bool = False,
         limit: int = 50,
+        ranked: bool = False,
     ) -> list[RagMemoryChunk]:
         terms = [term.strip() for term in keywords if term and term.strip()]
         if not terms:
@@ -318,6 +320,20 @@ class RagMemoryRepository:
             statement = statement.where(RagMemoryChunk.event_time <= to_event_time)
 
         predicates = []
+        if ranked:
+            # Matches the GIN index ix_rag_memory_chunks_chunk_text_fts. plainto_tsquery binds each term as
+            # plain text (never tsquery syntax); `||` ORs them so any term can match, ranked by relevance.
+            document = func.to_tsvector("simple", RagMemoryChunk.chunk_text)
+            query: ColumnElement[Any] = func.plainto_tsquery("simple", terms[0])
+            for term in terms[1:]:
+                query = query.op("||")(func.plainto_tsquery("simple", term))
+            statement = statement.where(document.op("@@")(query)).order_by(
+                func.ts_rank_cd(document, query).desc(),
+                RagMemoryChunk.event_time.desc().nullslast(),
+                RagMemoryChunk.id.desc(),
+            )
+            return list(self._db.execute(statement.limit(limit)).scalars().all())
+
         for term in terms:
             pattern = f"%{term}%"
             predicates.append(RagMemoryChunk.chunk_text.ilike(pattern))

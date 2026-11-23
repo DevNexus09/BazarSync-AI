@@ -1,0 +1,550 @@
+[
+  {
+    "id": "en_01",
+    "language": "en",
+    "question": "competitor removed listing for COMFIT MOTION V-2 LADIES COMFIT",
+    "expected": [
+      {
+        "source_type": "COMPETITOR_HISTORY",
+        "product_sku": "DEMO-BATA-542403292"
+      }
+    ]
+  },
+  {
+    "id": "en_02",
+    "language": "en",
+    "question": "new competitor appeared for BATA (MEN) SOFT MENS SANDALS",
+    "expected": [
+      {
+        "source_type": "COMPETITOR_HISTORY",
+        "product_sku": "DEMO-BATA-1575185161"
+      }
+    ]
+  },
+  {
+    "id": "en_03",
+    "language": "en",
+    "question": "price raise recommendation for Black Casual Slip-On Shoe For Men",
+    "expected": [
+      {
+        "source_type": "PRICE_HISTORY",
+        "product_sku": "DEMO-BATA-122185090"
+      }
+    ]
+  },
+  {
+    "id": "en_04",
+    "language": "en",
+    "question": "PATAPATA NEPTUNE flip flop pricing recommendation",
+    "expected": [
+      {
+        "source_type": "PRICE_HISTORY",
+        "product_sku": "DEMO-BATA-541141957"
+      }
+    ]
+  },
+  {
+    "id": "en_05",
+    "language": "en",
+    "question": "how many units of BUBBLE GUMMERS PLAYMAX sneaker are available",
+    "expected": [
+      {
+        "source_type": "INVENTORY_HISTORY",
+        "product_sku": "DEMO-BATA-557618536"
+      }
+    ]
+  },
+  {
+    "id": "en_06",
+    "language": "en",
+    "question": "sales velocity of B. FIRST LEGO SCHOOL SPORTS",
+    "expected": [
+      {
+        "source_type": "INVENTORY_HISTORY",
+        "product_sku": "DEMO-BATA-524128487"
+      }
+    ]
+  },
+  {
+    "id": "en_07",
+    "language": "en",
+    "question": "inventory age of Bata VENUS Women's Slip-on Flat Sandal",
+    "expected": [
+      {
+        "source_type": "INVENTORY_LIFECYCLE",
+        "product_sku": "DEMO-BATA-355895368"
+      }
+    ]
+  },
+  {
+    "id": "en_08",
+    "language": "en",
+    "question": "stock-in lifecycle event for PATAPATA NEPTUNE THONGS",
+    "expected": [
+      {
+        "source_type": "INVENTORY_LIFECYCLE",
+        "product_sku": "DEMO-BATA-541141957"
+      }
+    ]
+  },
+  {
+    "id": "en_09",
+    "language": "en",
+    "question": "sales records for Black Casual Slip-On Shoe For Men",
+    "expected": [
+      {
+        "source_type": "SALES_HISTORY",
+        "product_sku": "DEMO-BATA-122185090"
+      }
+    ]
+  },
+  {
+    "id": "en_10",
+    "language": "en",
+    "question": "units sold of COMFIT MOTION V-2 LADIES COMFIT",
+    "expected": [
+      {
+        "source_type": "SALES_HISTORY",
+        "product_sku": "DEMO-BATA-542403292"
+      }
+    ]
+  },
+  {
+    "id": "en_11",
+    "language": "en",
+    "question": "overall sales revenue summary and order count",
+    "expected": [
+      {
+        "source_type": "SALES_REVENUE_SUMMARY"
+      }
+    ]
+  },
+  {
+    "id": "en_12",
+    "language": "en",
+    "question": "dead-stock recovery recommendation for Bata Comfit AURORA Slip-On Sandal",
+    "expected": [
+      {
+        "source_type": "RECOMMENDATION",
+        "product_sku": "DEMO-BATA-351440540"
+      }
+    ]
+  },
+  {
+    "id": "en_13",
+    "language": "en",
+    "question": "bundle recommendation for BATA (MEN) MERRELS 2.0 MENS SANDALS",
+    "expected": [
+      {
+        "source_type": "RECOMMENDATION",
+        "product_sku": "DEMO-BATA-524131366"
+      }
+    ]
+  },
+  {
+    "id": "en_14",
+    "language": "en",
+    "question": "Telegram reorder deadline alert for BATA SOFT MENS SANDALS",
+    "expected": [
+      {
+        "source_type": "ALERT",
+        "product_sku": "DEMO-BATA-1575185161"
+      }
+    ]
+  },
+  {
+    "id": "en_15",
+    "language": "en",
+    "question": "critical risk inventory alert",
+    "expected": [
+      {
+        "source_type": "ALERT"
+      }
+    ]
+  },
+  {
+    "id": "en_16",
+    "language": "en",
+    "question": "scheduled promotion plans",
+    "expected": [
+      {
+        "source_type": "PROMOTION_PLAN"
+      }
+    ]
+  },
+  {
+    "id": "en_17",
+    "language": "en",
+    "question": "completed promotion plan",
+    "expected": [
+      {
+        "source_type": "PROMOTION_PLAN"
+      }
+    ]
+  },
+  {
+    "id": "en_18",
+    "language": "en",
+    "question": "how did past promotions perform, units sold during promotion",
+    "expected": [
+      {
+        "source_type": "PROMOTION_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "en_19",
+    "language": "en",
+    "question": "seller price changes on Daraz, old price and new price",
+    "expected": [
+      {
+        "source_type": "SELLER_PRICE_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "en_20",
+    "language": "en",
+    "question": "dead-stock classification for Sandak NIPUN Rubber Sandal",
+    "expected": [
+      {
+        "source_type": "DEAD_STOCK_HISTORY",
+        "product_sku": "DEMO-BATA-299085285"
+      }
+    ]
+  },
+  {
+    "id": "en_21",
+    "language": "en",
+    "question": "dead-stock history of Bata VENUS sandal",
+    "expected": [
+      {
+        "source_type": "DEAD_STOCK_HISTORY",
+        "product_sku": "DEMO-BATA-355895368"
+      }
+    ]
+  },
+  {
+    "id": "en_22",
+    "language": "en",
+    "question": "minimum safe price for MERRELS 2.0 MENS SANDALS",
+    "expected": [
+      {
+        "source_type": "PRICING_HISTORY",
+        "product_sku": "DEMO-BATA-524131366"
+      }
+    ]
+  },
+  {
+    "id": "en_23",
+    "language": "en",
+    "question": "margin rate and fee setup for BUBBLE GUMMERS PLAYMAX",
+    "expected": [
+      {
+        "source_type": "PRICING_HISTORY",
+        "product_sku": "DEMO-BATA-557618536"
+      }
+    ]
+  },
+  {
+    "id": "en_24",
+    "language": "en",
+    "question": "what did the copilot say earlier about restocking",
+    "expected": [
+      {
+        "source_type": "COPILOT_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "en_25",
+    "language": "en",
+    "question": "which products had reorder alerts",
+    "expected": [
+      {
+        "source_type": "ALERT"
+      }
+    ]
+  },
+  {
+    "id": "en_26",
+    "language": "en",
+    "question": "DEMO-BATA-541141957 inventory",
+    "expected": [
+      {
+        "source_type": "INVENTORY_LIFECYCLE",
+        "product_sku": "DEMO-BATA-541141957"
+      }
+    ]
+  },
+  {
+    "id": "en_27",
+    "language": "en",
+    "question": "DEMO-BATA-122185090 sales",
+    "expected": [
+      {
+        "source_type": "SALES_HISTORY",
+        "product_sku": "DEMO-BATA-122185090"
+      }
+    ]
+  },
+  {
+    "id": "en_28",
+    "language": "en",
+    "question": "returns and refunds for COMFIT MOTION V-2",
+    "expected": [
+      {
+        "source_type": "SALES_HISTORY",
+        "product_sku": "DEMO-BATA-542403292"
+      }
+    ]
+  },
+  {
+    "id": "en_29",
+    "language": "en",
+    "question": "competitor listings for BATA SOFT MENS SANDALS",
+    "expected": [
+      {
+        "source_type": "COMPETITOR_HISTORY",
+        "product_sku": "DEMO-BATA-1575185161"
+      }
+    ]
+  },
+  {
+    "id": "en_30",
+    "language": "en",
+    "question": "recommended price for Black Casual Slip-On Shoe",
+    "expected": [
+      {
+        "source_type": "PRICE_HISTORY",
+        "product_sku": "DEMO-BATA-122185090"
+      }
+    ]
+  },
+  {
+    "id": "bn_01",
+    "language": "bn",
+    "question": "কমফিট মোশন V-2 এর বিক্রি কেমন?",
+    "expected": [
+      {
+        "source_type": "SALES_HISTORY",
+        "product_sku": "DEMO-BATA-542403292"
+      }
+    ]
+  },
+  {
+    "id": "bn_02",
+    "language": "bn",
+    "question": "Black Casual Slip-On Shoe এর দাম বাড়ানোর পরামর্শ কী?",
+    "expected": [
+      {
+        "source_type": "PRICE_HISTORY",
+        "product_sku": "DEMO-BATA-122185090"
+      }
+    ]
+  },
+  {
+    "id": "bn_03",
+    "language": "bn",
+    "question": "বাবল গামার্স স্নিকারের স্টক কত আছে?",
+    "expected": [
+      {
+        "source_type": "INVENTORY_HISTORY",
+        "product_sku": "DEMO-BATA-557618536"
+      }
+    ]
+  },
+  {
+    "id": "bn_04",
+    "language": "bn",
+    "question": "মোট বিক্রির আয় কত?",
+    "expected": [
+      {
+        "source_type": "SALES_REVENUE_SUMMARY"
+      }
+    ]
+  },
+  {
+    "id": "bn_05",
+    "language": "bn",
+    "question": "কোন পণ্যে নতুন প্রতিযোগী এসেছে?",
+    "expected": [
+      {
+        "source_type": "COMPETITOR_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "bn_06",
+    "language": "bn",
+    "question": "ডেড স্টক পণ্যগুলো কী কী?",
+    "expected": [
+      {
+        "source_type": "DEAD_STOCK_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "bn_07",
+    "language": "bn",
+    "question": "কী টেলিগ্রাম অ্যালার্ট এসেছে?",
+    "expected": [
+      {
+        "source_type": "ALERT"
+      }
+    ]
+  },
+  {
+    "id": "bn_08",
+    "language": "bn",
+    "question": "প্রমোশনের ফলাফল কেমন ছিল?",
+    "expected": [
+      {
+        "source_type": "PROMOTION_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "bn_09",
+    "language": "bn",
+    "question": "Merrels 2.0 স্যান্ডেলের জন্য কী সুপারিশ?",
+    "expected": [
+      {
+        "source_type": "RECOMMENDATION",
+        "product_sku": "DEMO-BATA-524131366"
+      }
+    ]
+  },
+  {
+    "id": "bn_10",
+    "language": "bn",
+    "question": "দাম পরিবর্তনের ইতিহাস দেখাও",
+    "expected": [
+      {
+        "source_type": "SELLER_PRICE_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "banglish_01",
+    "language": "banglish",
+    "question": "comfit motion v-2 er bikri kemon",
+    "expected": [
+      {
+        "source_type": "SALES_HISTORY",
+        "product_sku": "DEMO-BATA-542403292"
+      }
+    ]
+  },
+  {
+    "id": "banglish_02",
+    "language": "banglish",
+    "question": "black casual slip-on shoe er dam barano uchit?",
+    "expected": [
+      {
+        "source_type": "PRICE_HISTORY",
+        "product_sku": "DEMO-BATA-122185090"
+      }
+    ]
+  },
+  {
+    "id": "banglish_03",
+    "language": "banglish",
+    "question": "bubble gummers sneaker er stock koto",
+    "expected": [
+      {
+        "source_type": "INVENTORY_HISTORY",
+        "product_sku": "DEMO-BATA-557618536"
+      }
+    ]
+  },
+  {
+    "id": "banglish_04",
+    "language": "banglish",
+    "question": "mot bikri ar ay koto",
+    "expected": [
+      {
+        "source_type": "SALES_REVENUE_SUMMARY"
+      }
+    ]
+  },
+  {
+    "id": "banglish_05",
+    "language": "banglish",
+    "question": "notun competitor kon product e esheche",
+    "expected": [
+      {
+        "source_type": "COMPETITOR_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "banglish_06",
+    "language": "banglish",
+    "question": "dead stock product gula ki ki",
+    "expected": [
+      {
+        "source_type": "DEAD_STOCK_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "banglish_07",
+    "language": "banglish",
+    "question": "telegram alert ki ashche",
+    "expected": [
+      {
+        "source_type": "ALERT"
+      }
+    ]
+  },
+  {
+    "id": "banglish_08",
+    "language": "banglish",
+    "question": "promotion er result kemon chilo",
+    "expected": [
+      {
+        "source_type": "PROMOTION_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "banglish_09",
+    "language": "banglish",
+    "question": "merrels 2.0 sandal er jonno ki suggestion",
+    "expected": [
+      {
+        "source_type": "RECOMMENDATION",
+        "product_sku": "DEMO-BATA-524131366"
+      }
+    ]
+  },
+  {
+    "id": "banglish_10",
+    "language": "banglish",
+    "question": "dam change er itihash dekhao",
+    "expected": [
+      {
+        "source_type": "SELLER_PRICE_HISTORY"
+      }
+    ]
+  },
+  {
+    "id": "none_01",
+    "language": "en",
+    "question": "How many invoices did we issue to wholesale customers?",
+    "expected": []
+  },
+  {
+    "id": "none_02",
+    "language": "en",
+    "question": "What is the weather in Dhaka today?",
+    "expected": []
+  },
+  {
+    "id": "none_03",
+    "language": "en",
+    "question": "Employee salary payments last month",
+    "expected": []
+  }
+]

@@ -226,6 +226,46 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
         self.assertIn("15", bangla.answer)
         self.assertTrue(bangla.answer.startswith("আপনার ডেটা থেকে"), bangla.answer)
 
+    def test_fallback_states_a_calculated_metric(self):
+        metric = _data_result("run_seller_metric_query", {"metric_key": "product_count", "status": "CALCULATED", "value": 15, "rows": [{"title": "Shoe"}], "unit": "count"})
+
+        for lang, header in (("en", "From your data"), ("banglish", "Apnar data theke")):
+            answer = self.builder.build(classification=_classification(CopilotIntent.UNKNOWN), tool_results=[metric], evidence=[{"source_table": "products", "source_id": "x"}], missing_data=[], reply_language=lang, primary_tools={"run_seller_metric_query"}, period=None)
+            self.assertTrue(answer.answer.startswith(header), answer.answer)
+            self.assertIn("product count: 15", answer.answer)
+
+    def test_fallback_never_prints_a_zero_sales_metric(self):
+        metric = _data_result("run_seller_metric_query", {"metric_key": "gross_revenue", "status": "CALCULATED", "value": "0.00", "currency": "BDT"})
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[metric], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], primary_tools={"run_seller_metric_query"}, period=WEEK)
+
+        self.assertNotIn("0.00", answer.answer)
+
+    def test_fallback_uses_other_tools_when_the_primary_has_no_readable_fact(self):
+        # A metric the builder cannot read (a trend series) must not hide the revenue summary beside it.
+        trend = _data_result("run_seller_metric_query", {"metric_key": "revenue_trend", "status": "CALCULATED", "value": None, "rows": [{"day": "2026-11-16", "value": "10.00"}]})
+        revenue = _data_result("get_revenue_summary", {"gross_revenue": "93503.00", "order_count": 40, "units_sold": 61, "filters_used": WEEK_FILTERS})
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.REVENUE_DIAGNOSIS), tool_results=[trend, revenue], evidence=[{"source_table": "sales_records", "source_id": "x"}], missing_data=[], primary_tools={"run_seller_metric_query"}, period=WEEK)
+
+        self.assertIn("gross revenue: 93503.00", answer.answer)
+        self.assertNotIn("could not find", answer.answer)
+
+    def test_listed_count_states_the_account_total_first(self):
+        count = _data_result("count_products", {"count": 14, "filters_used": {"listed": True}, "listing_summary": {"total_products_in_account": 15, "products_with_active_marketplace_listing": 14, "how_to_answer": "..."}})
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.UNKNOWN), tool_results=[count], evidence=[{"source_table": "products", "source_id": "x"}], missing_data=[], reply_language="banglish", primary_tools={"count_products"}, period=None)
+
+        self.assertEqual(["- total products in account: 15", "- products with active marketplace listing: 14"], answer.answer.splitlines()[1:])
+
+    def test_product_list_rows_are_named_without_a_period_or_primary_tool(self):
+        products = _result("list_products", "products", [{"id": "1", "title": "Lex Loafer", "stock_quantity": 9}])
+
+        answer = self.builder.build(classification=_classification(CopilotIntent.UNKNOWN), tool_results=[products], evidence=[{"source_table": "products", "source_id": "1"}], missing_data=[], reply_language="banglish")
+
+        self.assertIn("Lex Loafer", answer.answer)
+        self.assertNotIn("porishkar", answer.answer)
+
     def test_fallback_shows_memory_only_for_memory_questions(self):
         memory = _result("retrieve_business_memory", "memory_chunks", [{"title": "Supplier delay note", "summary": "late in March"}])
         revenue = _data_result("get_revenue_summary", {"gross_revenue": "250.00", "order_count": 3, "units_sold": 4})

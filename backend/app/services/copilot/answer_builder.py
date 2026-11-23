@@ -143,12 +143,20 @@ class CopilotAnswerBuilder:
             answering = [result for result in tool_results if not primary_tools or result.tool_name in primary_tools]
             with_memory = classification.intent == CopilotIntent.BUSINESS_MEMORY_SEARCH or bool(set(primary_tools) & set(MEMORY_TOOLS))
             lines = _dedupe(_fact_lines(answering, period=period, lang=lang, with_memory=with_memory))[:MAX_LIST_LINES]
+            if not lines and primary_tools:
+                # The primary tools gave no readable fact; other tools' facts beat a "nothing found" reply.
+                answering = [result for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED]
+                lines = _dedupe(_fact_lines(answering, period=period, lang=lang, with_memory=with_memory))[:MAX_LIST_LINES]
             # The intent's next step only fits when its own tool answered; Banglish has no Latin-script step text.
             own_tool = PRIMARY_TOOL_BY_INTENT.get(classification.intent)
             next_step = _next_step(classification.intent, language) if lines and lang != "banglish" and own_tool in {result.tool_name for result in answering} else None
             lead = _header(lang, period) if lines else _by_lang(NOTHING_FOUND_BY_LANG, lang)
         else:
             lines = _answer_lines(classification.intent, rows_by_tool, lang=lang)
+            if not lines:
+                # The intent had no line format for these tools; their facts beat a "nothing found" reply.
+                succeeded = [result for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED]
+                lines = _dedupe(_fact_lines(succeeded, period=None, lang=lang, with_memory=classification.intent == CopilotIntent.BUSINESS_MEMORY_SEARCH))[:MAX_LIST_LINES]
             next_step = _next_step(classification.intent, language) if lines and lang != "banglish" else None
             lead = HEADER["banglish"] + ":" if lang == "banglish" and lines else _text(*(LEAD_BY_INTENT.get(classification.intent, DEFAULT_LEAD) if lines else NOTHING_FOUND), language)
         answer = "\n".join([lead, *(f"- {line}" for line in lines)])
@@ -223,11 +231,33 @@ def _fact_lines(results: list[ToolExecutionResult], *, period: dict[str, Any] | 
             lines.extend(_records_lines(data, period=period, lang=lang))
         elif result.tool_name == "get_product_profile" and isinstance(data.get("product"), dict):
             lines.append(_profile_line(data["product"]))
-        elif isinstance(data.get("count"), int) and not isinstance(data.get("count"), bool):
+        elif isinstance(data.get("count"), int) and not isinstance(data.get("count"), bool) and not isinstance(data.get("listing_summary"), dict):
             # count_* tools return one top-level figure and no rows.
             lines.append(f"{_label(result.tool_name.removeprefix('count_'))}: {data['count']}")
+        elif metric_line := _metric_line(data):
+            lines.append(metric_line)
+        if isinstance(data.get("listing_summary"), dict):
+            # Account total first: sellers saying "listed" usually mean every product they have.
+            summary = data["listing_summary"]
+            lines.extend(f"{_label(key)}: {summary[key]}" for key in ("total_products_in_account", "products_with_active_marketplace_listing") if summary.get(key) is not None)
     others = {name: rows for name, rows in rows_by_tool.items() if name not in {"query_business_records", "get_product_profile"}}
     return [*lines, *_product_lines(others), *(_memory_lines(rows_by_tool) if with_memory else [])]
+
+
+SALES_METRIC_WORDS = ("revenue", "order", "unit", "sales", "profit")
+PRODUCT_ROW_TOOLS = frozenset({"list_products", "search_products"})
+
+
+def _metric_line(data: dict[str, Any]) -> str | None:
+    """One line for a calculated scalar metric (run_seller_metric_query); a zero sales figure is left to the sales tools."""
+    value = data.get("value")
+    metric_key = data.get("metric_key")
+    if not isinstance(metric_key, str) or data.get("status") != "CALCULATED" or value is None or isinstance(value, (bool, dict, list)):
+        return None
+    if _is_zero(value) and any(word in metric_key for word in SALES_METRIC_WORDS):
+        return None  # an observed zero only becomes "no sales" with proof of history (see _no_sales_line)
+    currency = data.get("currency")
+    return f"{_label(metric_key)}: {_safe_value(value)}{f' {currency}' if currency else ''}"
 
 
 def _no_sales_line(tool_name: str, data: dict[str, Any], *, period: dict[str, Any] | None, lang: str) -> str:
@@ -386,7 +416,8 @@ def _product_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
         if tool_name in skip:
             continue
         for row in rows:
-            title = _product_title(row)
+            # list/search rows are products themselves, with a top-level title.
+            title = _product_title(row) or (str(row["title"]) if tool_name in PRODUCT_ROW_TOOLS and row.get("title") else None)
             if not title:
                 continue
             if details.get(title) is None:
