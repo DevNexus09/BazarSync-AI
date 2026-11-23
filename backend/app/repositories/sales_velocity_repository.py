@@ -8,6 +8,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.inventory_history import InventoryHistory
 from app.models.product import Product
 from app.models.sales_record import SalesRecord, SalesRecordStatus
 from app.models.sales_velocity import SalesVelocity
@@ -90,6 +91,29 @@ class SalesVelocityRepository:
             }
             for row in rows
         }
+
+    def daily_available_stock(
+        self,
+        *,
+        seller_id: UUID,
+        product_ids: list[UUID],
+        start_date: date,
+        end_date: date,
+    ) -> dict[UUID, dict[date, int]]:
+        if not product_ids:
+            return {}
+        rows = self._db.execute(
+            select(InventoryHistory.product_id, InventoryHistory.snapshot_date, InventoryHistory.quantity_available).where(
+                InventoryHistory.seller_id == seller_id,
+                InventoryHistory.product_id.in_(product_ids),
+                InventoryHistory.snapshot_date >= start_date,
+                InventoryHistory.snapshot_date <= end_date,
+            )
+        ).all()
+        result: dict[UUID, dict[date, int]] = {}
+        for row in rows:
+            result.setdefault(row.product_id, {})[row.snapshot_date] = int(row.quantity_available)
+        return result
 
     def add_idempotent(self, record: SalesVelocity) -> tuple[SalesVelocity, bool]:
         existing = self.get_for_date(

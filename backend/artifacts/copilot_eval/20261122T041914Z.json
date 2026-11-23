@@ -1,0 +1,428 @@
+{
+  "ran_at": "2026-11-22T04:19:14.152071+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 13,
+  "passed": 9,
+  "score": 0.6923,
+  "tool_match_rate": 0.8462,
+  "rows": [
+    {
+      "id": "rev_change_nov",
+      "question": "Did revenue go up or down for 2026-11-01 to 2026-11-15 compared to the previous period?",
+      "answer": "Revenue went down for 2026-11-01 to 2026-11-15 compared to the previous period.\nRevenue change: BDT -17287.94\nPercentage change: -5.62%\nReview inventory and pricing signals to identify underperforming items.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_change_deterministic",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "retrieve_business_memory",
+        "get_inventory_risks",
+        "get_pricing_recommendations"
+      ],
+      "error": null,
+      "latency_ms": 23473,
+      "passed": false,
+      "facts": [
+        {
+          "label": "previous period revenue",
+          "expected": [
+            "307648.22"
+          ],
+          "found": false
+        },
+        {
+          "label": "change",
+          "expected": [
+            "17287.94"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "rev_change_oct_pct",
+      "question": "By what percent did revenue change from 2026-10-01 to 2026-10-31 versus the period before?",
+      "answer": "Revenue changed by 7.03% (BDT 40298.98) from 2026-10-01 to 2026-10-31 versus the previous period.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5989,
+      "passed": true,
+      "facts": [
+        {
+          "label": "percentage change",
+          "expected": [
+            "7.03",
+            "7.0",
+            "7"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "top3_products_oct",
+      "question": "Show my top 3 products by revenue for 2026-10-01 to 2026-10-31",
+      "answer": "Top 3 products by revenue for 2026-10-01 to 2026-10-31:\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: BDT 127470.00\nCOMFIT MOTION V-2 LADIES COMFIT: BDT 82718.22\nNORTH STAR FLORA Kids' Sneakers: BDT 80247.00\nReview your inventory levels for these top items.",
+      "tools": [
+        "get_top_products_by_revenue",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8761,
+      "passed": true,
+      "facts": [
+        {
+          "label": "first",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "second",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": true
+        },
+        {
+          "label": "third",
+          "expected": [
+            "NORTH STAR FLORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "profit_october",
+      "question": "What was my estimated profit from 2026-10-01 to 2026-10-31?",
+      "answer": "Your estimated profit from 2026-10-01 to 2026-10-31 was BDT 144764.68.\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: BDT 32035.50\nBlack Casual Slip-On Shoe For Men: BDT 19836.48\nBlack Casual Shoes For Men: BDT 19043.65\nReview your profit summary for all product breakdown details.",
+      "tools": [
+        "run_seller_metric_query",
+        "get_profit_summary",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety",
+        "get_pricing_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5100,
+      "passed": true,
+      "facts": [
+        {
+          "label": "estimated profit",
+          "expected": [
+            "144764.68",
+            "144765",
+            "144764.7"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "inventory_units",
+      "question": "How many units of stock do I have in total right now?",
+      "answer": "You have a total of 726 units of stock right now.",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_alert_recommendation_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7856,
+      "passed": true,
+      "facts": [
+        {
+          "label": "available units",
+          "expected": [
+            "726"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_black_casual",
+      "question": "How much stock is left for Black Casual Shoes For Men?",
+      "answer": "Stock left for Black Casual Shoes For Men is 2 units.\nBlack Casual Shoes For Men: reorder now",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "run_seller_metric_query",
+        "get_profit_summary",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety"
+      ],
+      "error": null,
+      "latency_ms": 5144,
+      "passed": true,
+      "facts": [
+        {
+          "label": "stock quantity",
+          "expected": [
+            "2"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_sku",
+      "question": "What is the stock quantity for SKU DEMO-BATA-541167043?",
+      "answer": "Stock quantity for SKU DEMO-BATA-541167043 is not recorded.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_promotion_summary",
+        "get_promotion_recommendations",
+        "get_pricing_recommendations",
+        "get_dead_stock_summary"
+      ],
+      "error": null,
+      "latency_ms": 3329,
+      "passed": false,
+      "facts": [
+        {
+          "label": "stock quantity",
+          "expected": [
+            "26"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": false
+    },
+    {
+      "id": "recent_price_changes",
+      "question": "Which products had recent price changes?",
+      "answer": "Recent price changes were recorded for the following products:\nBUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: old price BDT 964.26, new price BDT 974.00\nCOMFIT MOTION V-2 LADIES COMFIT: old price BDT 2226.51, new price BDT 2249.00\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: old price BDT 1732.50, new price BDT 1750.00\nPATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: old price BDT 132.66, new price BDT 134.00\nBATA (MEN) MERRELS 2.0 MENS SANDALS: old price BDT 741.51, new price BDT 749.00\nReview the pricing history dashboard to check further updates.",
+      "tools": [
+        "get_pricing_recommendations",
+        "retrieve_business_memory",
+        "list_products",
+        "get_competitor_threats",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety",
+        "get_product_price_changes"
+      ],
+      "error": null,
+      "latency_ms": 4318,
+      "passed": true,
+      "facts": [
+        {
+          "label": "a changed product",
+          "expected": [
+            "COMFIT MOTION V-2",
+            "BUBBLE GUMMERS",
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "promotions_completed",
+      "question": "How many promotions have completed?",
+      "answer": "Completed promotions: 3",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_promotion_recommendations",
+        "retrieve_business_memory",
+        "get_pricing_recommendations",
+        "get_top_products_by_revenue",
+        "get_promotion_summary"
+      ],
+      "error": null,
+      "latency_ms": 7313,
+      "passed": true,
+      "facts": [
+        {
+          "label": "completed promotions",
+          "expected": [
+            "3"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "dead_stock_count",
+      "question": "How many products are dead stock?",
+      "answer": "There are 2 products recorded as dead stock.",
+      "tools": [
+        "get_dead_stock_recovery",
+        "retrieve_business_memory",
+        "run_seller_metric_query",
+        "count_products",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_alert_recommendation_summary"
+      ],
+      "error": null,
+      "latency_ms": 3819,
+      "passed": true,
+      "facts": [
+        {
+          "label": "dead stock products",
+          "expected": [
+            "2"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bangla_products",
+      "question": "আমার কতগুলো পণ্য আছে?",
+      "answer": "আপনার অ্যাকাউন্টে মোট ১৫ টি পণ্য আছে।\nআজই আপনার পণ্যের তালিকা দেখে নিন।",
+      "tools": [
+        "get_product_setup_summary",
+        "count_products",
+        "list_products",
+        "search_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 3864,
+      "passed": true,
+      "facts": [
+        {
+          "label": "product count",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "banglish_stock",
+      "question": "Amar total stock koto unit ache?",
+      "answer": "আপনার ব্যবসার সারাংশ:\n- No sales recorded for this period\n- NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER\n- NORTH STAR FLORA Kids' Sneakers: risk critical\n- Black Casual Slip-On Shoe For Men: locked capital 99425.92\n- Lex Loafer in Brown for Men: locked capital 157078.68\n- PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP\n- BATA (MEN) SOFT MENS SANDALS: locked capital 2407.98\n- Black Casual Shoes For Men: risk critical",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_visibility_summary",
+        "get_seo_opportunities"
+      ],
+      "error": null,
+      "latency_ms": 7419,
+      "passed": false,
+      "facts": [
+        {
+          "label": "available units",
+          "expected": [
+            "726"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": false
+    },
+    {
+      "id": "unanswerable_invoices",
+      "question": "How many invoices did I issue from 2026-11-01 to 2026-11-15?",
+      "answer": "I could not find a clear answer in your data yet.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6298,
+      "passed": false,
+      "facts": [
+        {
+          "label": "says invoices are not recorded",
+          "expected": [
+            "not recorded",
+            "no invoice",
+            "don't have invoice",
+            "do not have invoice",
+            "isn't recorded",
+            "not available",
+            "not tracked",
+            "unavailable"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

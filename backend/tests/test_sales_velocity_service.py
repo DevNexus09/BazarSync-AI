@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 import unittest
 from uuid import uuid4
@@ -16,6 +16,8 @@ class FakeSalesVelocityRepository:
         self.sales_records = []
         self.velocity_rows = {}
         self.aggregate_call_count = 0
+        self.stock = {}
+        self.stock_calls = []
 
     def iter_product_batches(self, *, batch_size, seller_id=None, product_id=None):
         filtered = [
@@ -63,6 +65,14 @@ class FakeSalesVelocityRepository:
                 "sales_days": len(values.pop("sales_dates")),
             }
             for product_id, values in result.items()
+        }
+
+    def daily_available_stock(self, *, seller_id, product_ids, start_date, end_date):
+        self.stock_calls.append((seller_id, tuple(product_ids), start_date, end_date))
+        return {
+            pid: {day: qty for day, qty in days.items() if start_date <= day <= end_date}
+            for (sid, pid), days in self.stock.items()
+            if sid == seller_id and pid in product_ids
         }
 
     def add_idempotent(self, record):
@@ -320,3 +330,104 @@ class SalesVelocityServiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StockoutAwareVelocityTests(unittest.TestCase):
+    AS_OF = date(2026, 6, 30)
+
+    def _setup(self, stock_for_day):
+        owner = seller()
+        item = product(owner)
+        repo = FakeSalesVelocityRepository()
+        repo.sales_records = [sale(owner, item, quantity=200, sold_at=datetime(2026, 6, 10, tzinfo=timezone.utc))]
+        # Window is 1-30 Jun; history also covers 31 May (start of 1 Jun).
+        repo.stock[(owner.id, item.id)] = {
+            self.AS_OF - timedelta(days=offset): stock_for_day(self.AS_OF - timedelta(days=offset))
+            for offset in range(31)
+        }
+        return owner, item, repo
+
+    def test_ten_stocked_out_days_use_twenty_day_denominator(self):
+        # Out of stock 20-30 Jun: 21-30 Jun start and end at zero -> 10 stocked-out days.
+        owner, item, repo = self._setup(lambda day: 0 if day >= date(2026, 6, 20) else 5)
+        service = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v2")
+
+        record = service.calculate_for_product(product=item, seller=owner, as_of_date=self.AS_OF).record
+
+        self.assertEqual("10.0000", str(record.daily_sales_rate))
+        self.assertEqual(30, record.observed_days)
+        self.assertEqual(10, record.calculation_metadata["stockout_days"])
+        self.assertEqual(20, record.calculation_metadata["effective_window_days"])
+        self.assertEqual("1.0000", record.calculation_metadata["stock_history_coverage"])
+        self.assertEqual(SalesVelocityDataStatus.SUFFICIENT, record.data_status)
+
+    def test_no_history_matches_v1(self):
+        owner, item, repo = self._setup(lambda day: 0)
+        repo.stock = {}
+        v2 = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v2")
+        v1 = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v1")
+
+        r2 = v2.calculate_for_product(product=item, seller=owner, as_of_date=self.AS_OF).record
+        r1 = v1.calculate_for_product(product=item, seller=owner, as_of_date=self.AS_OF).record
+
+        self.assertEqual(r1.daily_sales_rate, r2.daily_sales_rate)
+        self.assertEqual(0, r2.calculation_metadata["stockout_days"])
+        self.assertEqual("0.0000", r2.calculation_metadata["stock_history_coverage"])
+
+    def test_v1_ignores_stock_history(self):
+        owner, item, repo = self._setup(lambda day: 0)
+        service = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v1")
+
+        record = service.calculate_for_product(product=item, seller=owner, as_of_date=self.AS_OF).record
+
+        self.assertEqual("6.6667", str(record.daily_sales_rate))
+        self.assertEqual([], repo.stock_calls)
+        self.assertNotIn("stockout_days", record.calculation_metadata)
+
+    def test_mostly_stocked_out_window_is_limited(self):
+        owner, item, repo = self._setup(lambda day: 0 if day <= date(2026, 6, 26) else 5)
+        service = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v2")
+
+        record = service.calculate_for_product(product=item, seller=owner, as_of_date=self.AS_OF).record
+
+        self.assertEqual(26, record.calculation_metadata["stockout_days"])
+        self.assertEqual(SalesVelocityDataStatus.LIMITED, record.data_status)
+        self.assertEqual("stocked_out_more_than_80_percent_of_window", record.calculation_metadata["limited_reason"])
+        self.assertLessEqual(record.confidence_score, 65)
+
+    def test_single_zero_snapshot_after_in_stock_day_is_kept(self):
+        # Sold out during 30 Jun: it started the day with stock, so it is not a whole-day stockout.
+        owner, item, repo = self._setup(lambda day: 0 if day == self.AS_OF else 5)
+        service = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v2")
+
+        record = service.calculate_for_product(product=item, seller=owner, as_of_date=self.AS_OF).record
+
+        self.assertEqual(0, record.calculation_metadata["stockout_days"])
+
+    def test_batch_reads_stock_only_for_own_seller(self):
+        owner, item, repo = self._setup(lambda day: 0 if day >= date(2026, 6, 20) else 5)
+        other = seller()
+        other_item = product(other)
+        repo.stock[(other.id, item.id)] = {day: 5 for day in repo.stock[(owner.id, item.id)]}  # same product id, other seller
+        repo.products = [(item, owner), (other_item, other)]
+        repo.sales_records.append(sale(other, other_item, quantity=200, sold_at=datetime(2026, 6, 10, tzinfo=timezone.utc)))
+        service = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v2")
+
+        service.calculate_for_batch(as_of_date=self.AS_OF)
+
+        rates = {row.seller_id: str(row.daily_sales_rate) for row in repo.velocity_rows.values()}
+        self.assertEqual("10.0000", rates[owner.id])
+        self.assertEqual("6.6667", rates[other.id])
+        self.assertEqual({owner.id, other.id}, {call[0] for call in repo.stock_calls})
+
+    def test_v2_redelivery_does_not_duplicate(self):
+        owner, item, repo = self._setup(lambda day: 0 if day >= date(2026, 6, 20) else 5)
+        repo.products = [(item, owner)]
+        service = SalesVelocityService(repository=repo, default_window_days=30, calculation_version="v2")
+
+        first = service.calculate_for_batch(as_of_date=self.AS_OF)
+        second = service.calculate_for_batch(as_of_date=self.AS_OF)
+
+        self.assertEqual((1, 0), (first.created_count, first.skipped_count))
+        self.assertEqual((0, 1), (second.created_count, second.skipped_count))
+        self.assertEqual(1, len(repo.velocity_rows))

@@ -333,3 +333,28 @@ Checks:
 - Backend suite: 1231 passed, 85 skipped.
 - `ruff check app tests scripts`: 52 errors before and after the plan, none in changed files.
 - mypy on the plan's 19 changed Python files: 110 errors before (at `5c0b856`), 109 after.
+
+## Pricing and inventory improvement plan, Phase 1 (2026-11-23)
+
+Plan: [pricing-inventory-improvement-plan.md](../pricing-inventory-improvement-plan.md).
+
+1.1 Unknown competitor stock
+- `calculate_market_stats` now counts `OUT_OF_STOCK` separately (`MarketStats.out_of_stock_competitor_count`, also in snapshot evidence `market_stats`).
+- `calculate_demand_score` builds the availability ratio from known statuses only. All unknown → neutral 50 with `competitor_availability: "unknown"` and known/unknown counts in the components.
+- `PRICING_ANALYTICS_FORMULA_VERSION` default is now `v2`. The dedupe key includes the version, so new snapshots get new keys; the latest-snapshot read does not filter by version, so v1 snapshots stay readable.
+
+1.2 Stockout-aware velocity
+- `SALES_VELOCITY_CALCULATION_VERSION=v2` (default stays `v1`) reads `inventory_history.quantity_available` per day through the new seller-scoped `SalesVelocityRepository.daily_available_stock`.
+- A day is a whole-day stockout when both the previous day's and that day's snapshot are `<= 0`. A single zero snapshot after an in-stock day is kept (it sold out during the day). Days with no snapshot are kept and reported through `stock_history_coverage`.
+- `observed_days` on the row stays the calendar coverage (forecast features and business signals read it that way). The in-stock denominator is `calculation_metadata.effective_window_days`; `stockout_days` is recorded too.
+- More than 80% of the window stocked out → `LIMITED` with `limited_reason`, confidence capped at 65.
+
+1.3 Schedule
+- No staging config is checked in, so the flag could not be turned on from the repo. `.env.example` now documents `SALES_VELOCITY_CALCULATION_VERSION` and `INVENTORY_INTELLIGENCE_SCHEDULE_ENABLED`. Same-day reruns of v2 velocity are covered by a redelivery test (second run skips).
+
+Checks:
+- Backend suite: 1241 passed, 85 skipped (before the redelivery test was added; targeted suites 45 passed after).
+- ruff: 3 pre-existing unused-import warnings in the touched files, none new.
+- mypy on the 3 changed app files: 184 errors before and after (all pre-existing, none in new code).
+- The new repository query was compiled against the PostgreSQL dialect but not run against a database; there is no repository-level DB test harness.
+- Not done: the staging run on a seeded product with a stockout.

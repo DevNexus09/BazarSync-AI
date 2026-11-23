@@ -1,0 +1,428 @@
+{
+  "ran_at": "2026-11-22T03:56:56.555200+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 13,
+  "passed": 2,
+  "score": 0.1538,
+  "tool_match_rate": 0.8462,
+  "rows": [
+    {
+      "id": "rev_change_nov",
+      "question": "Did revenue go up or down for 2026-11-01 to 2026-11-15 compared to the previous period?",
+      "answer": "Revenue went down for 2026-11-01 to 2026-11-01 compared to the previous period, with a change of -17287.94 Tk.\nReview your sales records to identify top performing items.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_change_deterministic",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "retrieve_business_memory",
+        "get_inventory_risks",
+        "get_pricing_recommendations"
+      ],
+      "error": null,
+      "latency_ms": 21743,
+      "passed": false,
+      "facts": [
+        {
+          "label": "previous period revenue",
+          "expected": [
+            "307648.22"
+          ],
+          "found": false
+        },
+        {
+          "label": "change",
+          "expected": [
+            "17287.94"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "rev_change_oct_pct",
+      "question": "By what percent did revenue change from 2026-10-01 to 2026-10-31 versus the period before?",
+      "answer": "Revenue changed by 7.029649509550046737014016080% (an increase of Tk 40298.98) from the previous period to 2026-10-01 to 2026-10-31.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 3925,
+      "passed": false,
+      "facts": [
+        {
+          "label": "percentage change",
+          "expected": [
+            "7.03",
+            "7.0",
+            "7"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "top3_products_oct",
+      "question": "Show my top 3 products by revenue for 2026-10-01 to 2026-10-31",
+      "answer": "NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: 127470.00 BDT\nReview your product catalog for additional top product rankings.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4387,
+      "passed": false,
+      "facts": [
+        {
+          "label": "first",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "second",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": false
+        },
+        {
+          "label": "third",
+          "expected": [
+            "NORTH STAR FLORA"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": false
+    },
+    {
+      "id": "profit_october",
+      "question": "What was my estimated profit from 2026-10-01 to 2026-10-31?",
+      "answer": "Your estimated profit from 2026-10-01 to 2026-10-31 was Tk 147972.02800000.",
+      "tools": [
+        "run_seller_metric_query",
+        "get_profit_summary",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety",
+        "get_pricing_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4795,
+      "passed": false,
+      "facts": [
+        {
+          "label": "estimated profit",
+          "expected": [
+            "144764.68",
+            "144765",
+            "144764.7"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "inventory_units",
+      "question": "How many units of stock do I have in total right now?",
+      "answer": "You have a total of 726 units of stock right now.",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_alert_recommendation_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8536,
+      "passed": true,
+      "facts": [
+        {
+          "label": "available units",
+          "expected": [
+            "726"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_black_casual",
+      "question": "How much stock is left for Black Casual Shoes For Men?",
+      "answer": "Here is your business summary:\n- No sales recorded for this period\n- gross revenue: 0\n- Black Casual Shoes For Men: price gap 165.58",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "run_seller_metric_query",
+        "get_profit_summary",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety"
+      ],
+      "error": null,
+      "latency_ms": 24610,
+      "passed": false,
+      "facts": [
+        {
+          "label": "stock quantity",
+          "expected": [
+            "2"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_sku",
+      "question": "What is the stock quantity for SKU DEMO-BATA-541167043?",
+      "answer": "Stock quantity for SKU DEMO-BATA-541167043 is not recorded.",
+      "tools": [
+        "search_products",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_promotion_summary",
+        "get_promotion_recommendations",
+        "get_pricing_recommendations",
+        "get_dead_stock_summary"
+      ],
+      "error": null,
+      "latency_ms": 5534,
+      "passed": false,
+      "facts": [
+        {
+          "label": "stock quantity",
+          "expected": [
+            "26"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "recent_price_changes",
+      "question": "Which products had recent price changes?",
+      "answer": "Price changes are not recorded.",
+      "tools": [
+        "get_pricing_recommendations",
+        "retrieve_business_memory",
+        "list_products",
+        "get_competitor_threats",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety",
+        "get_product_price_changes"
+      ],
+      "error": null,
+      "latency_ms": 6054,
+      "passed": false,
+      "facts": [
+        {
+          "label": "a changed product",
+          "expected": [
+            "COMFIT MOTION V-2",
+            "BUBBLE GUMMERS",
+            "NORTH STAR HAFSA"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "promotions_completed",
+      "question": "How many promotions have completed?",
+      "answer": "Completed promotions are not recorded, but dead stock recovery recommendations are available.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_promotion_recommendations",
+        "retrieve_business_memory",
+        "get_pricing_recommendations",
+        "get_top_products_by_revenue",
+        "get_promotion_summary"
+      ],
+      "error": null,
+      "latency_ms": 4953,
+      "passed": false,
+      "facts": [
+        {
+          "label": "completed promotions",
+          "expected": [
+            "3"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "dead_stock_count",
+      "question": "How many products are dead stock?",
+      "answer": "Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: 1 at-risk dead stock product",
+      "tools": [
+        "get_dead_stock_recovery",
+        "retrieve_business_memory",
+        "run_seller_metric_query",
+        "count_products",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_alert_recommendation_summary"
+      ],
+      "error": null,
+      "latency_ms": 4296,
+      "passed": false,
+      "facts": [
+        {
+          "label": "dead stock products",
+          "expected": [
+            "2"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bangla_products",
+      "question": "আমার কতগুলো পণ্য আছে?",
+      "answer": "আপনার ডেটায় এখনো পরিষ্কার উত্তর পাইনি।",
+      "tools": [
+        "get_product_setup_summary",
+        "count_products",
+        "list_products",
+        "search_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4260,
+      "passed": false,
+      "facts": [
+        {
+          "label": "product count",
+          "expected": [
+            "15"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "banglish_stock",
+      "question": "Amar total stock koto unit ache?",
+      "answer": "Apnar total stock 726 units ache.\nAj-i inventory report ta dekhe nin.",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_visibility_summary",
+        "get_seo_opportunities"
+      ],
+      "error": null,
+      "latency_ms": 8037,
+      "passed": true,
+      "facts": [
+        {
+          "label": "available units",
+          "expected": [
+            "726"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": false
+    },
+    {
+      "id": "unanswerable_invoices",
+      "question": "How many invoices did I issue from 2026-11-01 to 2026-11-15?",
+      "answer": "I could not find a clear answer in your data yet.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8492,
+      "passed": false,
+      "facts": [
+        {
+          "label": "says invoices are not recorded",
+          "expected": [
+            "not recorded",
+            "no invoice",
+            "don't have invoice",
+            "do not have invoice",
+            "isn't recorded",
+            "not available",
+            "not tracked",
+            "unavailable"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

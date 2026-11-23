@@ -186,7 +186,7 @@ class Settings(BaseModel):
     pricing_analytics_demand_product_maturity_weight: float = 15.0
     pricing_analytics_demand_velocity_reference_units_per_day: float = 10.0
     pricing_analytics_demand_recent_sales_reference_units: int = 100
-    pricing_analytics_formula_version: str = "v1"
+    pricing_analytics_formula_version: str = "v2"
     demand_response_min_observations: int = 6
     demand_response_min_price_variation_rate: float = 0.05
     demand_response_min_coverage_days: int = 14
@@ -510,7 +510,7 @@ class Settings(BaseModel):
             "pricing_analytics_demand_product_maturity_weight": float(os.getenv("PRICING_ANALYTICS_DEMAND_PRODUCT_MATURITY_WEIGHT", "15.0")),
             "pricing_analytics_demand_velocity_reference_units_per_day": float(os.getenv("PRICING_ANALYTICS_DEMAND_VELOCITY_REFERENCE_UNITS_PER_DAY", "10.0")),
             "pricing_analytics_demand_recent_sales_reference_units": int(os.getenv("PRICING_ANALYTICS_DEMAND_RECENT_SALES_REFERENCE_UNITS", "100")),
-            "pricing_analytics_formula_version": os.getenv("PRICING_ANALYTICS_FORMULA_VERSION", "v1"),
+            "pricing_analytics_formula_version": os.getenv("PRICING_ANALYTICS_FORMULA_VERSION", "v2"),
             "demand_response_min_observations": int(os.getenv("DEMAND_RESPONSE_MIN_OBSERVATIONS", "6")),
             "demand_response_min_price_variation_rate": float(os.getenv("DEMAND_RESPONSE_MIN_PRICE_VARIATION_RATE", "0.05")),
             "demand_response_min_coverage_days": int(os.getenv("DEMAND_RESPONSE_MIN_COVERAGE_DAYS", "14")),

@@ -532,6 +532,11 @@ export function CopilotWidget() {
   }
 
   const openConversation = (id: string) => {
+    // Re-picking the open chat would clear messages without a refetch to restore them.
+    if (id === conversationId) {
+      setHistoryOpen(false)
+      return
+    }
     setFreshChat(false)
     setConversationId(id)
     setMessages([])
@@ -670,11 +675,7 @@ export function CopilotWidget() {
           {messages.length === 0 ? (
             <div className="copilot-scroll flex-1 overflow-y-auto p-3">
               <div className="copilot-column">
-                <CopilotEmptyState
-                  onSuggestedQuestion={submitQuestion}
-                  disabled={ask.isPending}
-                  language={uiLanguage}
-                />
+                <CopilotEmptyState />
                 {errorBox ? <div className="mt-3">{errorBox}</div> : null}
               </div>
             </div>

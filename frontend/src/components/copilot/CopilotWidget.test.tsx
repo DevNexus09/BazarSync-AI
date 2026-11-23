@@ -305,7 +305,7 @@ describe("CopilotWidget", () => {
     await submitQuestion()
 
     expect(
-      screen.getByText(/copilot is checking your business data/i)
+      screen.getByRole("status")
     ).toBeInTheDocument()
 
     await screen.findByText(/restock product a today/i)
@@ -315,75 +315,13 @@ describe("CopilotWidget", () => {
     expect(screen.getByText(/supplier lead time is missing/i)).not.toBeVisible()
   })
 
-  it("clicking a suggested question sends it directly", async () => {
+  it("shows no suggested question cards in an empty chat", async () => {
     renderWidget()
     await openWidget()
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /which competitor is hurting me/i })
-    )
-
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenCalledWith(
-        expect.objectContaining({
-          question: "Which competitor is hurting me?",
-        })
-      )
-    )
-  })
-
-  it("renders grouped suggestions and submits broad business questions", async () => {
-    renderWidget()
-    await openWidget()
-
-    expect(screen.getByText("Business overview")).toBeInTheDocument()
-    expect(screen.getAllByText("Revenue").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Competitors").length).toBeGreaterThan(0)
-
-    await userEvent.click(
-      screen.getByRole("button", { name: /how many products do i have listed/i })
-    )
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          question: "How many products do I have listed?",
-        })
-      )
-    )
-
-    await screen.findByText(/restock product a today/i)
-
-    cleanup()
-    window.localStorage.clear()
-    vi.mocked(copilotService.askCopilot).mockClear()
-    renderWidget()
-    await openWidget()
-    await userEvent.click(
-      screen.getByRole("button", { name: /what is my revenue this week/i })
-    )
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          question: "What is my revenue this week?",
-        })
-      )
-    )
-
-    cleanup()
-    window.localStorage.clear()
-    vi.mocked(copilotService.askCopilot).mockClear()
-    renderWidget()
-    await openWidget()
-    await userEvent.click(
-      screen.getByRole("button", { name: /which competitor is hurting me/i })
-    )
-    await waitFor(() =>
-      expect(copilotService.askCopilot).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          question: "Which competitor is hurting me?",
-        })
-      )
-    )
+    expect(screen.getByText("Ask your AI Business Copilot")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /which competitor is hurting me/i })).toBeNull()
+    expect(screen.queryByText("Business overview")).toBeNull()
   })
 
   it("hydrates prior conversation messages when opened", async () => {

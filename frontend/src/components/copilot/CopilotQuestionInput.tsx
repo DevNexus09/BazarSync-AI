@@ -1,12 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 import type { KeyboardEvent } from "react"
-import { Send } from "lucide-react"
+import { ArrowUp } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 const MAX_QUESTION_LENGTH = 2000
 const COUNTER_THRESHOLD = 1600
-const MAX_TEXTAREA_HEIGHT_PX = 112
+const MAX_TEXTAREA_HEIGHT_PX = 160
 
 export const CopilotQuestionInput = forwardRef<
   HTMLTextAreaElement,
@@ -60,56 +60,71 @@ export const CopilotQuestionInput = forwardRef<
 
   return (
     <form
-      className="border-t border-border/60 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="bg-card px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       onSubmit={(event) => {
         event.preventDefault()
         submit()
       }}
     >
       <div className="copilot-column">
-      <div className="flex items-end gap-2">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          rows={2}
-          maxLength={MAX_QUESTION_LENGTH}
-          disabled={disabled}
-          onCompositionStart={() => setIsComposing(true)}
-          onCompositionEnd={() => setIsComposing(false)}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (composing(event)) {
-              return
-            }
-            if (event.key === "Escape") {
-              event.preventDefault()
-              event.stopPropagation()
-              onEscape()
-            }
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault()
-              submit()
-            }
-          }}
-          placeholder={placeholder ?? "Ask about restock, pricing, competitors..."}
-          aria-label="Ask Copilot a business question"
-          aria-describedby="copilot-input-hint"
-          className="max-h-28 min-h-11 flex-1 resize-none rounded-xl border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/25 disabled:opacity-60"
-        />
-        <Button type="submit" size="icon-lg" aria-label="Send question" disabled={disabled || !value.trim()}>
-          <Send className="size-4" />
-        </Button>
-      </div>
-      <div className="mt-2 flex items-start justify-between gap-2">
-        <p id="copilot-input-hint" className="text-[11px] text-muted-foreground">
-          {hint ?? "Shift+Enter adds a new line. Marketplace changes are not executed automatically."}
-        </p>
-        {value.length >= COUNTER_THRESHOLD ? (
-          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground" aria-live="polite">
-            {value.length}/{MAX_QUESTION_LENGTH}
-          </span>
-        ) : null}
-      </div>
+        <div
+          className={cn(
+            "flex items-end gap-2 rounded-2xl border border-border/70 bg-background p-1.5 pl-3.5 shadow-sm transition",
+            "focus-within:border-primary/50 focus-within:shadow-md focus-within:ring-4 focus-within:ring-primary/10",
+            disabled && "opacity-70"
+          )}
+        >
+          <textarea
+            ref={textareaRef}
+            value={value}
+            rows={1}
+            maxLength={MAX_QUESTION_LENGTH}
+            disabled={disabled}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (composing(event)) {
+                return
+              }
+              if (event.key === "Escape") {
+                event.preventDefault()
+                event.stopPropagation()
+                onEscape()
+              }
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault()
+                submit()
+              }
+            }}
+            placeholder={placeholder ?? "Ask about restock, pricing, competitors..."}
+            aria-label="Ask Copilot a business question"
+            aria-describedby="copilot-input-hint"
+            className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground/80 disabled:cursor-not-allowed"
+          />
+          <button
+            type="submit"
+            aria-label="Send question"
+            disabled={disabled || !value.trim()}
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm transition",
+              "hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+            )}
+          >
+            <ArrowUp className="size-4" strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="mt-1.5 flex items-start justify-between gap-2 px-1">
+          <p id="copilot-input-hint" className="text-[11px] text-muted-foreground/80">
+            {hint ?? "Shift+Enter adds a new line. Marketplace changes are not executed automatically."}
+          </p>
+          {value.length >= COUNTER_THRESHOLD ? (
+            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground" aria-live="polite">
+              {value.length}/{MAX_QUESTION_LENGTH}
+            </span>
+          ) : null}
+        </div>
       </div>
     </form>
   )

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react"
-import { Bot } from "lucide-react"
 
 import { CopilotAssistantMessage, type CopilotAssistantActions } from "@/components/copilot/CopilotAssistantMessage"
 import { CopilotStageSteps } from "@/components/copilot/CopilotStageSteps"
@@ -55,13 +54,7 @@ export function CopilotMessageList({
           />
         )
       )}
-      {isLoading && stage ? <CopilotStageSteps stage={stage} language={language} /> : null}
-      {isLoading && !stage ? (
-        <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card p-3 text-sm text-muted-foreground">
-          <Bot className="size-4 animate-pulse text-primary motion-reduce:animate-none" aria-hidden="true" />
-          {t(language, "thinking")}
-        </div>
-      ) : null}
+      {isLoading ? <CopilotStageSteps stage={stage} language={language} /> : null}
       {/* Announce only the newest answer, not the whole list, to screen readers. */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {isLoading ? "" : latestAssistant ? t(language, "answerReady") : ""}

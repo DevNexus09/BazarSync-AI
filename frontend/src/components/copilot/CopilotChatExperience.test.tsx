@@ -243,7 +243,7 @@ describe("Copilot chat experience", () => {
     await screen.findByRole("option", { name: "Banglish" })
     await ask("What should I restock?")
 
-    expect(await screen.findByText("Checked: Restock recommendations")).toBeInTheDocument()
+    expect(await screen.findByText("Checking restock recommendations…")).toBeInTheDocument()
     expect(copilotService.askCopilot).not.toHaveBeenCalled()
     release(answer)
     expect(await screen.findByText("Quick recommendation")).toBeInTheDocument()

@@ -1,0 +1,120 @@
+{
+  "ran_at": "2026-11-21T20:40:38.262319+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 3,
+  "passed": 1,
+  "score": 0.3333,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "rev_category_mens",
+      "question": "How much revenue did Men's Footwear make from 2026-10-01 to 2026-10-31?",
+      "answer": "Here is what changed in your sales:\n- gross revenue: 235260.96\n- net revenue: 233274.00\n- previous period revenue: 221199.41\n- revenue change: 14061.55\n- percentage change: 6.36\n- units sold: 245\n- order count: 129\n- average order value: 1823.73",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 18565,
+      "passed": true,
+      "facts": [
+        {
+          "label": "category revenue",
+          "expected": [
+            "235260.96"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_in_week",
+      "question": "What stock did I receive between 2026-11-08 and 2026-11-14?",
+      "answer": "Here is your business summary:\n- Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: price gap 114.58\n- Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: price gap 573.58\n- Black Casual Shoes For Men: price gap 165.58\n- Bata Comfit AURORA Slip-On Sandal for Women: price gap 254.83\n- Lex Loafer in Brown for Men: price gap 318.58\n- BATA (MEN) SOFT MENS SANDALS: price gap 101.83\n- Black Casual Slip-On Shoe For Men: price gap 165.58\n- Sandak NIPUN Rubber Sandal for Women by Bata: price gap 41.99",
+      "tools": [
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_alert_recommendation_summary",
+        "retrieve_business_memory",
+        "query_business_records"
+      ],
+      "error": null,
+      "latency_ms": 4026,
+      "passed": false,
+      "facts": [
+        {
+          "label": "product 1",
+          "expected": [
+            "PATAPATA NEPTUNE"
+          ],
+          "found": false
+        },
+        {
+          "label": "qty 1",
+          "expected": [
+            "40"
+          ],
+          "found": false
+        },
+        {
+          "label": "product 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": true
+        },
+        {
+          "label": "qty 2",
+          "expected": [
+            "60"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "unanswerable_invoices",
+      "question": "How many invoices did I issue from 2026-11-01 to 2026-11-15?",
+      "answer": "I could not find a clear answer in your data yet.",
+      "tools": [
+        "retrieve_business_memory",
+        "query_business_records"
+      ],
+      "error": null,
+      "latency_ms": 2561,
+      "passed": false,
+      "facts": [
+        {
+          "label": "says invoices are not recorded",
+          "expected": [
+            "not recorded",
+            "no invoice",
+            "don't have invoice",
+            "do not have invoice",
+            "isn't recorded",
+            "not available",
+            "not tracked",
+            "unavailable"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

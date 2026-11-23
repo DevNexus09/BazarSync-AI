@@ -96,22 +96,19 @@ describe("CopilotQuestionInput", () => {
 })
 
 describe("CopilotStageSteps", () => {
-  it("marks earlier steps done, the current step active, and names the data being looked up", async () => {
+  it("shows one status line that follows the streamed stage in each language", async () => {
     const { CopilotStageSteps } = await import("@/components/copilot/CopilotStageSteps")
     const { rerender } = render(<CopilotStageSteps stage={{ stage: "understanding" }} language="en" />)
-
-    let steps = screen.getAllByRole("listitem")
-    expect(steps.map((step) => step.dataset.state)).toEqual(["active", "todo", "todo"])
-    expect(steps[0]).toHaveAttribute("aria-current", "step")
+    expect(screen.getByRole("status")).toHaveTextContent("Thinking…")
 
     rerender(<CopilotStageSteps stage={{ stage: "tool", tool: "Revenue summary", status: "SUCCEEDED" }} language="en" />)
-    steps = screen.getAllByRole("listitem")
-    expect(steps.map((step) => step.dataset.state)).toEqual(["done", "active", "todo"])
-    expect(steps[1]).toHaveTextContent("Looking up revenue summary")
+    expect(screen.getByRole("status")).toHaveTextContent("Checking revenue summary…")
 
-    rerender(<CopilotStageSteps stage={{ stage: "writing" }} language="bn" />)
-    steps = screen.getAllByRole("listitem")
-    expect(steps.map((step) => step.dataset.state)).toEqual(["done", "done", "active"])
+    rerender(<CopilotStageSteps stage={{ stage: "writing" }} language="banglish" />)
+    expect(screen.getByRole("status")).toHaveTextContent("Preparing answer…")
+
+    rerender(<CopilotStageSteps stage={null} language="bn" />)
+    expect(screen.getByRole("status")).toHaveTextContent("বিশ্লেষণ করা হচ্ছে…")
   })
 })
 

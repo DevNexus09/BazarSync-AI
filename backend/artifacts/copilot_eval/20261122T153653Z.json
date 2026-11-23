@@ -1,0 +1,2701 @@
+{
+  "ran_at": "2026-11-22T15:36:53.736118+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 100,
+  "passed": 100,
+  "score": 1.0,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "bn001_sales",
+      "question": "Ei mashe amar total sales koto hoise?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) apnar mot bikri ৳383,863.28 — 181 ta order, 397 unit. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 231,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "181"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn002_sales",
+      "question": "Gotokal koto taka bikri hoise?",
+      "answer": "Gotokal (21 Nov 2026) kono bikri record hoy nai. Shesh bikri record hoyeche 20 Nov 2026 e.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 55,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no sales",
+            "kono bikri record hoy nai"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "20 Nov"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn003_sales",
+      "question": "Last 7 din e amar revenue koto?",
+      "answer": "Last 7 din (16 Nov 2026 – 22 Nov 2026) apnar mot bikri ৳93,503.00 — 43 ta order, 85 unit. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 65,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "93503.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "43"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn004_sales",
+      "question": "October mashe amar mot bikri koto chilo?",
+      "answer": "October 2026 (1 Oct 2026 – 31 Oct 2026) apnar mot bikri ৳613,570.52 — 298 ta order, 625 unit.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 98,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "613570.52"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn005_sales",
+      "question": "November er prothom 15 dine koto taka sale hoise?",
+      "answer": "November er prothom 15 din (1 Nov 2026 – 15 Nov 2026) apnar mot bikri ৳290,360.28 — 138 ta order, 312 unit.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 94,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "290360.28"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn006_sales",
+      "question": "Ajke kono order ashse?",
+      "answer": "Ajke (22 Nov 2026) kono order ashe nai. Shesh order record hoyeche 20 Nov 2026 e.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 57,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "kono order ashe nai",
+            "no orders"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "20 Nov"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn007_sales",
+      "question": "Ei shoptahe koyta order paisi?",
+      "answer": "Ei shoptahe (16 Nov 2026 – 22 Nov 2026) apni 43 ta order peyechen (৳93,503.00, 85 unit). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 73,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "43"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn008_sales",
+      "question": "October e total koyta order chilo?",
+      "answer": "October 2026 (1 Oct 2026 – 31 Oct 2026) apni 298 ta order peyechen (৳613,570.52, 625 unit).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 308,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "298"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn009_sales",
+      "question": "Ei mashe koto unit product bikri korsi?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) apni 397 unit bikri korechen (181 ta order, ৳383,863.28). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 100,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "397"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn010_sales",
+      "question": "Amar average order value koto?",
+      "answer": "Apnar average order value shob mile ৳2,088.03 (1146 ta order), ar ei mashe (1 Nov 2026 – 22 Nov 2026) ৳2,120.79.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 131,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2088.03"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "2120.79"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn011_sales",
+      "question": "Gotomash er tulonay ei mashe sales barse na komse?",
+      "answer": "Bikri komeche 6.76%: ei mashe (1 Nov 2026 – 22 Nov 2026) ৳383,863.28, gotomasher same shomoy (1 Oct 2026 – 22 Oct 2026) chilo ৳411,685.32. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 130,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "6.76"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "411685.32"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "383863.28"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn012_sales",
+      "question": "October theke November e revenue koto percent change hoise?",
+      "answer": "Revenue -37.44% change hoyeche: October (1 Oct 2026 – 31 Oct 2026) ৳613,570.52, November (1 Nov 2026 – 22 Nov 2026) ৳383,863.28. November er ekhon porjonto 22 din; October er same 22 diner (৳411,685.32) tulonay change -6.76%. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 143,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "37.44"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "6.76"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn013_sales",
+      "question": "Kon din sobcheye beshi bikri hoise?",
+      "answer": "Shobcheye beshi bikri hoyeche 31 Jul 2026 (Friday) e (shuru theke ekhon porjonto (24 Jul 2026 – 22 Nov 2026)): ৳33,676.44, 13 ta order.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 55,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "31 Jul"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "33676.44"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn014_sales",
+      "question": "Amar weekend e beshi sale hoy naki weekday te?",
+      "answer": "Apnar weekend e beshi bikri hoy: weekday (Robi–Brihoshpoti) te gore ৳19,656.44/din, weekend (Shukro–Shoni) e ৳20,630.89/din — 4.96% beshi (24 Jul 2026 – 20 Nov 2026).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 54,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "weekend e beshi",
+            "more on weekends"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "20630.89"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "19656.44"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn015_sales",
+      "question": "Last 30 din er daily average sales koto?",
+      "answer": "Last 30 din (24 Oct 2026 – 22 Nov 2026) gore protidin bikri ৳20,070.25 (sales data ache emon 28 dine mot ৳561,966.88). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 106,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "20070.25"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn016_sales",
+      "question": "Amar sales trend ta kemon jacche?",
+      "answer": "Last 4 shoptahe (20 Nov 2026 porjonto) sales trend niche namche — 11.95%. Shoptahik bikri: 24 Oct 2026–30 Oct 2026: ৳152,339.80, 31 Oct 2026–6 Nov 2026: ৳149,555.04, 7 Nov 2026–13 Nov 2026: ৳125,933.04, 14 Nov 2026–20 Nov 2026: ৳134,139.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 51,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "11.95"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "134139.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn017_sales",
+      "question": "Ei bochor e ekhon porjonto total revenue koto?",
+      "answer": "Ei bochor (1 Jan 2026 – 22 Nov 2026) apnar mot bikri ৳2,392,878.44 — 1146 ta order, 2333 unit. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 101,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2392878.44"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn018_sales",
+      "question": "Gotokal er cheye ajke sales beshi na kom?",
+      "answer": "Ajker bikri (৳0.00) gotokal er (৳0.00) cheye shoman. Dui dinei kono bikri record nai; shesh bikri record 20 Nov 2026 e.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 60,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "shoman",
+            "the same"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "20 Nov"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn019_sales",
+      "question": "Last week e koto taka er order cancel hoise?",
+      "answer": "Last week (9 Nov 2026 – 15 Nov 2026) 0 ta order cancel hoyeche, mot ৳0.00. Shesh cancel hoyeche 16 Nov 2026 e: 15 ta order, ৳17,970.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 52,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "17970.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "16 Nov"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn020_sales",
+      "question": "Kono return ba refund hoise ei mashe?",
+      "answer": "Haan — ei mashe (1 Nov 2026 – 22 Nov 2026) 2 ta order e 4 unit return/refund hoyeche, mot ৳4,248.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 60,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "4248.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "4 unit"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn021_product",
+      "question": "Amar best selling product konta?",
+      "answer": "Apnar best selling product (shuru theke ekhon porjonto (24 Jul 2026 – 22 Nov 2026)) holo NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: revenue ৳486,500.00, 283 unit. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn022_product",
+      "question": "October e top 5 product kon gula revenue onujayi?",
+      "answer": "October 2026 (1 Oct 2026 – 31 Oct 2026) revenue onujayi top 5 product: 1. NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: ৳127,470.00 (74 units); 2. COMFIT MOTION V-2 LADIES COMFIT: ৳82,718.22 (38 units); 3. NORTH STAR FLORA Kids' Sneakers: ৳80,247.00 (71 units); 4. Black Casual Shoes For Men: ৳70,011.12 (73 units); 5. Black Casual Slip-On Shoe For Men: ৳65,978.76 (69 units).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 67,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "NORTH STAR FLORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "Black Casual Shoes For Men"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 5",
+          "expected": [
+            "Black Casual Slip-On"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn023_product",
+      "question": "Kon product sobcheye kom bikri hoise?",
+      "answer": "Shuru theke ekhon porjonto (24 Jul 2026 – 22 Nov 2026) bikri howa product er moddhe shobcheye kom BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: 4 units (৳3,759.64). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 55,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn024_product",
+      "question": "Kon product gula ekdom bikri hoy nai last 30 din e?",
+      "answer": "Last 30 din (24 Oct 2026 – 22 Nov 2026) 2 ta product ekdom bikri hoy nai: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (stock 38), Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men (stock 70). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 60,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn025_product",
+      "question": "Lex Loafer in Brown for Men koyta bikri hoise November e?",
+      "answer": "November 2026 (1 Nov 2026 – 22 Nov 2026) Lex Loafer in Brown for Men 9 ta bikri hoyeche — ৳16,116.40 (9 ta order). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 50,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "16116.40"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "9 ta",
+            "9 units"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn026_product",
+      "question": "Black Casual Shoes For Men er dam koto?",
+      "answer": "Black Casual Shoes For Men er selling price ৳974.00 (cost ৳594.14).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 32,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "974.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn027_product",
+      "question": "Amar mot koyta product ache?",
+      "answer": "Apnar mot 15 ta product ache (15 ta active).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 37,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn028_product",
+      "question": "Kon category te sobcheye beshi bikri hoy?",
+      "answer": "Shobcheye beshi bikri hoy Men's Footwear e (shuru theke ekhon porjonto (24 Jul 2026 – 22 Nov 2026)): ৳994,269.82. Shob category: Men's Footwear ৳994,269.82 (41.6%), Women's Footwear ৳962,324.93 (40.2%), Children's Footwear ৳419,915.59 (17.5%), Other ৳16,368.10 (0.7%).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 56,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Men's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "994269.82"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn029_product",
+      "question": "Men's Footwear category theke October e koto revenue aise?",
+      "answer": "October 2026 (1 Oct 2026 – 31 Oct 2026) Men's Footwear theke ৳235,260.96 revenue esheche (129 ta order, 245 unit).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 75,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "235260.96"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn030_product",
+      "question": "Amar sob category er list dao",
+      "answer": "Apnar 4 ta category: Children's Footwear (3 products), Men's Footwear (6 products), Other (1 products), Women's Footwear (5 products).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 36,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Children's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Men's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "Women's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "Other"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn031_product",
+      "question": "Kon product er margin sobcheye beshi?",
+      "answer": "Shobcheye beshi margin: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP — Daraz fee kete 34.00% (proti unit ৳45.56 labh). Tarpor: Sandak NIPUN Rubber Sandal for Women by Bata 33.00%, Black Casual Slip-On Shoe For Men 32.00%.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 33,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn032_product",
+      "question": "Sobcheye dami product konta amar?",
+      "answer": "Apnar shobcheye dami product Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men — dam ৳3,374.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 39,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "3374"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn033_product",
+      "question": "Sobcheye sosta product konta?",
+      "answer": "Apnar shobcheye sosta product PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP — dam ৳134.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "134"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn034_product",
+      "question": "Kon product er rating kom ba review kharap?",
+      "answer": "Kom rating er product (4.0 er niche): Bata Comfit AURORA Slip-On Sandal for Women: 3.40/5 (12 reviews); BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: 3.60/5 (5 reviews); BATA (MEN) SOFT MENS SANDALS: 3.80/5 (21 reviews). Ei product gulor review e size, quality ba delivery complaint dekhe nin.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 41,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "3.40"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn035_product",
+      "question": "Amar kon product gula Daraz e listed ache?",
+      "answer": "Apnar 15 ta product er moddhe 15 ta Daraz Bangladesh e listed: 14 ta active, active na: Bata Comfit AURORA Slip-On Sandal for Women.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 38,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn036_stock",
+      "question": "Amar total stock koto unit ache?",
+      "answer": "Apnar mot stock 726 unit — 15 ta product er moddhe 14 ta te stock ache.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "726"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn037_stock",
+      "question": "Kon kon product stock out hoye gese?",
+      "answer": "Stock shesh hoye geche: Bata Comfit AURORA Slip-On Sandal for Women.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn038_stock",
+      "question": "Kon product er stock prai shesh, low stock ache?",
+      "answer": "Low stock (ekhonkar bikrir gote 14 diner kom, ba shesh): Bata Comfit AURORA Slip-On Sandal for Women: 0 left; Black Casual Shoes For Men: 2 left (~1 days); BATA (MEN) SOFT MENS SANDALS: 7 left (~5 days); NORTH STAR FLORA Kids' Sneakers: 9 left (~4 days); Sandak NIPUN Rubber Sandal for Women by Bata: 10 left (~4 days); NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: 26 left (~11 days).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 52,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Black Casual Shoes For Men"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn039_stock",
+      "question": "Black Casual Shoes For Men er stock koto baki ache?",
+      "answer": "Black Casual Shoes For Men (SKU DEMO-BATA-320140080) er stock ache 2 unit.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 41,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2 unit"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn040_stock",
+      "question": "SKU DEMO-BATA-541167043 er stock koto?",
+      "answer": "NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (SKU DEMO-BATA-541167043) er stock ache 26 unit.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 39,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "26"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn041_stock",
+      "question": "Amar inventory er total value koto taka?",
+      "answer": "Apnar inventory er value cost price e ৳595,431.23 (selling price e ৳938,829.00), mot 726 unit.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "595431.23"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn042_stock",
+      "question": "Kon product reorder kora dorkar ekhon?",
+      "answer": "Ekhon reorder korun: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: order 12 units (stock 64, by 2 Dec 2026); COMFIT MOTION V-2 LADIES COMFIT: order 18 units (stock 20, deadline passed 21 Nov 2026); Sandak NIPUN Rubber Sandal for Women by Bata: order 72 units (stock 10, deadline passed 21 Nov 2026); Black Casual Shoes For Men: order 72 units (stock 2, deadline passed 21 Nov 2026); NORTH STAR FLORA Kids' Sneakers: order 72 units (stock 9, deadline passed 21 Nov 2026); BATA (MEN) MERRELS 2.0 MENS SANDALS: order 18 units (stock 34, by 25 Nov 2026); Bata Comfit AURORA Slip-On Sandal for Women: order 24 units (stock 0, deadline passed 21 Nov 2026); NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: order 42 units (stock 26, deadline passed 21 Nov 2026); BATA (MEN) SOFT MENS SANDALS: order 42 units (stock 7, deadline passed 21 Nov 2026). Order er age supplier lead time dekhe nin.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 67,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Black Casual Shoes For Men"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn043_stock",
+      "question": "Ei shoptahe koto stock in hoise?",
+      "answer": "Ei shoptahe (16 Nov 2026 – 22 Nov 2026) kono stock in hoy nai. Shesh stock in hoyeche 12 Nov 2026 e: Sandak NIPUN Rubber Sandal for Women by Bata (60 units).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 42,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "kono stock in hoy nai",
+            "no stock was received"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "12 Nov"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn044_stock",
+      "question": "Last stock in kobe korsi ar ki ki product?",
+      "answer": "Shesh stock in hoyeche 12 Nov 2026 e: Sandak NIPUN Rubber Sandal for Women by Bata (60 units).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 38,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "12 Nov"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "60"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn045_stock",
+      "question": "Sandak NIPUN er stock kinte unit cost koto porse?",
+      "answer": "Sandak NIPUN Rubber Sandal for Women by Bata: 12 Nov 2026 e 60 unit stock in hoyeche, proti unit ৳140.79 (mot ৳8,447.40).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 40,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "140.79"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn046_stock",
+      "question": "Amar stock koto din cholbe current sales e?",
+      "answer": "Last 30 diner gote (22.6 unit/din) apnar 726 unit stock mote pray 32 din cholbe — kintu shob product e na. Age shesh hobe: Bata Comfit AURORA Slip-On Sandal for Women ~0 days (0 left), Black Casual Shoes For Men ~1 days (2 left), NORTH STAR FLORA Kids' Sneakers ~4 days (9 left). Already shesh: Bata Comfit AURORA Slip-On Sandal for Women.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 50,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "32"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn047_stock",
+      "question": "Kon product er stock beshi pore ache, bikri hocche na?",
+      "answer": "Beshi pore ache (last 30 diner gote shobcheye dhire bikri): BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: 38 unit (30 dine bikri nai, cost e ৳24,057.80); Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: 70 unit (30 dine bikri nai, cost e ৳151,155.20); Lex Loafer in Brown for Men: 130 unit (~260 diner stock, cost e ৳160,789.20); Black Casual Slip-On Shoe For Men: 180 unit (~78 diner stock, cost e ৳101,685.60).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 54,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn048_stock",
+      "question": "Dead stock e koto taka atke ache?",
+      "answer": "Dead, at-risk ba slow-moving stock e ৳474,912.89 atke ache (cost price e, proti product er latest assessment).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "474912.89"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn049_stock",
+      "question": "Koyta product dead stock hoye gese?",
+      "answer": "Ekhon 1 ta product dead stock, aro 11 ta at-risk ar 1 ta slow moving (proti product er latest assessment).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 44,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "1 ta product dead stock",
+            "1 product is dead stock"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn050_stock",
+      "question": "Dead stock gula ki korle bikri hobe?",
+      "answer": "Slow ar dead stock bikri korte: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: bundle (24 units); Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: bundle (61 units); COMFIT MOTION V-2 LADIES COMFIT: bundle (19 units); NORTH STAR FLORA Kids' Sneakers: bundle (7 units). Best seller er sathe bundle korun ba choto, margin-safe discount din; proti step nije approve korben.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 52,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "bundle"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "VENUS"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn051_price",
+      "question": "Lex Loafer er dam koto rakha uchit?",
+      "answer": "Lex Loafer in Brown for Men: ekhonkar dam ৳1,874.00 e rakhun — kono open price recommendation nai. MarginGuard minimum ৳1,586.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 43,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "1874"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1586"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn052_price",
+      "question": "Kon product er dam komano dorkar?",
+      "answer": "Ekhon kono product er dam komano dorkar nai — kono open price-komano recommendation nai. Ekta dam baranor recommendation ache: Black Casual Slip-On Shoe For Men ৳974.00 → ৳1,071.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 42,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "dam komano dorkar nai",
+            "no product needs a price cut"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1071"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn053_price",
+      "question": "Recently kon product er dam change hoise?",
+      "answer": "Recent price change: Bata Comfit AURORA Slip-On Sandal for Women: ৳1,484.01 → ৳1,499.00 (21 Nov 2026); PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: ৳132.66 → ৳134.00 (21 Nov 2026); NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: ৳1,732.50 → ৳1,750.00 (21 Nov 2026); NORTH STAR FLORA Kids' Sneakers: ৳1,138.50 → ৳1,150.00 (21 Nov 2026); Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: ৳667.26 → ৳674.00 (21 Nov 2026); Lex Loafer in Brown for Men: ৳1,855.26 → ৳1,874.00 (21 Nov 2026); BATA (MEN) SOFT MENS SANDALS: ৳593.01 → ৳599.00 (21 Nov 2026); Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: ৳3,340.26 → ৳3,374.00 (21 Nov 2026); BATA (MEN) MERRELS 2.0 MENS SANDALS: ৳741.51 → ৳749.00 (21 Nov 2026); Sandak NIPUN Rubber Sandal for Women by Bata: ৳244.53 → ৳247.00 (21 Nov 2026); COMFIT MOTION V-2 LADIES COMFIT: ৳2,226.51 → ৳2,249.00 (21 Nov 2026); BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: ৳964.26 → ৳974.00 (21 Nov 2026); Black Casual Slip-On Shoe For Men: ৳964.26 → ৳974.00 (21 Nov 2026); Black Casual Shoes For Men: ৳964.26 → ৳974.00 (21 Nov 2026); B. FIRST LEGO SCHOOL SPORTS: ৳741.51 → ৳749.00 (21 Nov 2026).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 44,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn054_price",
+      "question": "BUBBLE GUMMERS PLAYMAX er last price change ki chilo?",
+      "answer": "BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER er last price change: 21 Nov 2026 e ৳964.26 → ৳974.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 40,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "964.26"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "974"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn055_price",
+      "question": "Dam 10% barale amar revenue e ki effect porbe?",
+      "answer": "Shob product e dam 10.00% barale 30 diner revenue ৳643,154.00 theke ৳671,577.05 hobe (4.42%), ar Daraz fee kete profit ৳167,571.37 theke ৳213,703.62. Hishab ta last 30 diner (20 Nov 2026 porjonto) asol unit bikri ar proti product er demand elasticity diye; live dam kichui change kora hoyni.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 43,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "643154.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "671577.05"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "4.42"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn056_price",
+      "question": "Kon product e discount dile beshi bikri hobe?",
+      "answer": "Discount dile shobcheye beshi bikri barbe: BATA (MEN) MERRELS 2.0 MENS SANDALS (elasticity -5.00 → about 50.00% more units for 10% off, stock 34); Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (elasticity -0.80 → about 8.00% more units for 10% off, stock 64); Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men (elasticity -0.80 → about 8.00% more units for 10% off, stock 70). 10% chhar dileo egulo MarginGuard er minimum dam er upore thake.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 32,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "MERRELS"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn057_price",
+      "question": "Amar product er dam competitor der cheye beshi naki kom?",
+      "answer": "Competitor der median dam er tulonay apnar 15 ta product er moddhe 15 ta te dam beshi, 0 ta te kom. Beshi: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP, Black Casual Slip-On Shoe For Men, Lex Loafer in Brown for Men, NORTH STAR FLORA Kids' Sneakers, BATA (MEN) SOFT MENS SANDALS, Sandak NIPUN Rubber Sandal for Women by Bata, Black Casual Shoes For Men, Bata Comfit AURORA Slip-On Sandal for Women, Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers, Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men, B. FIRST LEGO SCHOOL SPORTS, BATA (MEN) MERRELS 2.0 MENS SANDALS, NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, COMFIT MOTION V-2 LADIES COMFIT, BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER. Kom: nai.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 32,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15 ta te dam beshi"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn058_price",
+      "question": "Kon product e loss hocche, cost er niche bikri hocche?",
+      "answer": "Kono product loss e bikri hocche na: shob product er dam cost + Daraz fee er upore. Shobcheye kom labh PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP e — fee kete proti unit ৳45.56.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 31,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "kono product loss e bikri hocche na",
+            "no product is selling at a loss"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn059_price",
+      "question": "Amar pricing policy ki set kora ache?",
+      "answer": "15 ta active pricing policy ache (15 ta te same niyom): minimum margin 12.00%, proti unit e minimum profit ৳10.00, ek bare dam shorbochcho 15.00% komano ar 20.00% barano jabe.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 39,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "12.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "10.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "15.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "20.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn060_price",
+      "question": "Daraz commission ar fee kete amar profit koto thake?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026): bikri ৳383,863.28, Daraz commission + payment fee ৳38,386.33; product er cost o fee kete apnar profit thake ৳90,830.95 (bikrir 23.66%). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 55,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "38386.33"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "90830.95"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn061_competitor",
+      "question": "Ami koyjon competitor track kortesi?",
+      "answer": "Apni 5 ta competitor store er (Bata, Demo Synthetic Store 1, Demo Synthetic Store 2, Demo Synthetic Store 3, Demo Synthetic Store 4) mot 89 ta competitor listing track korchen.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 25,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "89"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "5"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn062_competitor",
+      "question": "Competitor ra koybar amar product er cheye kom dame bikri korse?",
+      "answer": "Competitor ra 136 bar (price observation) apnar cheye kom dame bikri korse — apnar 15 ta product e, 40 ta alada competitor listing theke.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 60,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "136"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn063_competitor",
+      "question": "Kon competitor sobcheye aggressive dam komacche?",
+      "answer": "Shobcheye aggressive competitor holo Demo Synthetic Store 1: 15 bar dam komiyeche, gore 10.00%. Baki ra — nai.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 36,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Demo Synthetic Store 1"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn064_competitor",
+      "question": "Amar main competitor ke?",
+      "answer": "Apnar main competitor holo Demo Synthetic Store 1: apnar 15 ta product er moddhe 15 ta te 15 ta listing diye compete kore — apni je 5 ta competitor store track koren tader moddhe shobcheye beshi overlap.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 23,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Demo Synthetic Store 1"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn065_competitor",
+      "question": "Competitor der latest price change gula dekhao",
+      "answer": "Competitor der latest price change: 14 Nov 2026: Demo Synthetic Store 1 — Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers e dam 20.99% bariyeche (৳114.58); 14 Nov 2026: Demo Synthetic Store 1 — Black Casual Slip-On Shoe For Men e dam 20.99% bariyeche (৳165.58); 14 Nov 2026: Demo Synthetic Store 1 — Lex Loafer in Brown for Men e dam 20.99% bariyeche (৳318.58); 14 Nov 2026: Demo Synthetic Store 1 — NORTH STAR FLORA Kids' Sneakers e dam 20.99% bariyeche (৳195.50); 14 Nov 2026: Demo Synthetic Store 1 — BATA (MEN) SOFT MENS SANDALS e dam 20.99% bariyeche (৳101.83).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 30,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Demo Synthetic Store 1"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "20.99"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn066_competitor",
+      "question": "Market e kono notun opportunity ache?",
+      "answer": "Ekhon 45 ta open market opportunity ache. Top 3: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER (competitor price rise, score 80.5); COMFIT MOTION V-2 LADIES COMFIT (competitor price rise, score 80.5); NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (competitor price rise, score 80.5).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 27,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "45"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn067_competitor",
+      "question": "Kon product er market demand barse?",
+      "answer": "Ei product gulor demand barche (20 Nov 2026 porjonto last 30 din vs tar ager 30 din, unit hishebe): Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: 69 units vs 6 (1050.00%); PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: 53 units vs 11 (381.82%); B. FIRST LEGO SCHOOL SPORTS: 47 units vs 13 (261.54%); BATA (MEN) MERRELS 2.0 MENS SANDALS: 54 units vs 18 (200.00%); BATA (MEN) SOFT MENS SANDALS: 43 units vs 31 (38.71%).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 37,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "VENUS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1050"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn068_competitor",
+      "question": "Amar product ranking Daraz search e kemon?",
+      "answer": "Daraz search ranking (21 Nov 2026): 15 ta product er gor position #20.5. Shobcheye bhalo: COMFIT MOTION V-2 LADIES COMFIT #2, Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men #5, Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers #7. Shobcheye durbol: Lex Loafer in Brown for Men #34, Black Casual Shoes For Men #35, BATA (MEN) MERRELS 2.0 MENS SANDALS #42.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 26,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "20.5"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn069_competitor",
+      "question": "Competitor der stock shesh hoye gese emon kono product ache?",
+      "answer": "Ekhon kono tracked competitor er stock shesh nai. Age competitor der 15 bar stock shesh hoyechilo (Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers, PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP, Sandak NIPUN Rubber Sandal for Women by Bata, Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men, Lex Loafer in Brown for Men, BATA (MEN) MERRELS 2.0 MENS SANDALS, NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, B. FIRST LEGO SCHOOL SPORTS, NORTH STAR FLORA Kids' Sneakers, Bata Comfit AURORA Slip-On Sandal for Women, BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER, COMFIT MOTION V-2 LADIES COMFIT, Black Casual Shoes For Men, BATA (MEN) SOFT MENS SANDALS, Black Casual Slip-On Shoe For Men), kintu ekhon shobai abar stock e ache.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 44,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "stock shesh nai",
+            "out of stock right now"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn070_competitor",
+      "question": "Kon category te competition kom?",
+      "answer": "Shobcheye kom competition: Children's Footwear (proti product e 4.0 ta competitor listing). Details — Children's Footwear: 3 ta product e 12 ta competitor listing, Women's Footwear: 5 ta product e 20 ta competitor listing, Men's Footwear: 6 ta product e 46 ta competitor listing, Other: 1 ta product e 11 ta competitor listing.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 25,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Children's Footwear"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn071_profit",
+      "question": "October e amar estimated profit koto?",
+      "answer": "October 2026 (1 Oct 2026 – 31 Oct 2026) apnar estimated profit ৳144,764.68 — ৳613,570.52 bikri te (23.59% margin, product cost ar Daraz fee kete).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "144764.68"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn072_profit",
+      "question": "Ei mashe amar profit margin koto percent?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) apnar profit margin 23.66%: ৳383,863.28 bikri te ৳90,830.95 estimated profit (product cost ar Daraz fee kete). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 50,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "23.66"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn073_profit",
+      "question": "Kon product theke sobcheye beshi profit hoy?",
+      "answer": "Shobcheye beshi profit ashe (shuru theke ekhon porjonto (24 Jul 2026 – 22 Nov 2026)) NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER theke — estimated ৳124,740.00. Top 3: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: ৳124,740.00 on ৳486,500.00 sales; Black Casual Slip-On Shoe For Men: ৳81,814.05 on ৳267,285.08 sales; Black Casual Shoes For Men: ৳73,592.52 on ৳266,613.02 sales.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 86,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "124740.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn074_profit",
+      "question": "Amar mot khoroch koto hoise ei mashe?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) mot khoroch ৳40,697.00 — shipping ৳15,552.00, supplier purchase ৳11,449.00, advertising ৳10,087.00, packaging ৳3,609.00.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 33,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "40697.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn075_profit",
+      "question": "Advertising e koto taka khoroch korsi?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) advertising e khoroch ৳10,087.00. July theke mot ৳51,312.00. Er baire promotion campaign e ৳750.00 khoroch hoyeche.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 28,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "10087.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "51312.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn076_profit",
+      "question": "Shipping cost e koto jacche?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) shipping e khoroch ৳15,552.00 (181 ta order e proti order ৳85.92).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 48,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15552.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn077_profit",
+      "question": "Ami ki loss e achi naki profit e?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) apni profit e achen: product cost ar Daraz fee kete ৳90,830.95 profit, tar theke ৳29,248.00 operating khoroch (ads, shipping, packaging) bad dile net ৳61,582.95. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 47,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "profit e",
+            "in profit"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "61582.95"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn078_profit",
+      "question": "Gotomash er cheye profit barse?",
+      "answer": "Profit komeche: ei mashe (1 Nov 2026 – 22 Nov 2026) ৳90,830.95, gotomasher same shomoy (1 Oct 2026 – 22 Oct 2026) chilo ৳106,579.80 (-14.78%). (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 69,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "90830.95"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "106579.80"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "14.78"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn079_profit",
+      "question": "Amar cash flow kemon?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) cash flow: cash in ৳341,228.95 (net sales ৳379,615.28 theke Daraz fee ৳38,386.33 bad), cash out (paid) ৳0.00, tai net ৳341,228.95. Unpaid bill ache ৳171,822.02; egulo dile hobe ৳169,406.93. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 58,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "341228.95"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "171822.02"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn080_profit",
+      "question": "Supplier ke koto taka dite hobe?",
+      "answer": "Supplier ke mot ৳142,574.02 dite hobe — Bata Bangladesh Distributor (demo) er 7 ta unpaid bill. Due date: ৳28,665.00 due 23 Nov 2026 (Stock-in 26 units); ৳14,332.50 due 23 Nov 2026 (Stock-in 13 units); ৳27,116.16 due 25 Nov 2026 (Stock-in 48 units); ৳40,674.24 due 27 Nov 2026 (Stock-in 72 units); ৳20,337.12 due 27 Nov 2026 (Stock-in 36 units).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 23,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "142574.02"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn081_promo",
+      "question": "Amar kono active promotion ache?",
+      "answer": "Apnar 1 ta active/scheduled promotion ache: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: scheduled, 10.00% off from 23 Nov 2026.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 23,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1 ta",
+            "1 active"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn082_promo",
+      "question": "Koyta promotion complete hoise?",
+      "answer": "3 ta promotion complete hoyeche: Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers, B. FIRST LEGO SCHOOL SPORTS, PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 22,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "3 ta",
+            "3 promotions"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn083_promo",
+      "question": "Last promotion e koto bikri hoise?",
+      "answer": "Shesh promotion (B. FIRST LEGO SCHOOL SPORTS, shesh 7 Nov 2026) e 22 unit bikri hoyeche — revenue ৳14,006.30, profit ৳4,034.28, khoroch ৳250.00 (ROI 16.14).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 26,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "B. FIRST LEGO"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "22"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn084_promo",
+      "question": "Eid er jonno ki offer deya uchit?",
+      "answer": "Eid er jonno: (1) slow stock clear korte Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: bundle (61 units); B. FIRST LEGO SCHOOL SPORTS: bundle (81 units); NORTH STAR FLORA Kids' Sneakers: bundle (7 units); (2) best seller (NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, NORTH STAR FLORA Kids' Sneakers) full dame ba olpo discount e rakhun ar stock ready rakhun. Shob offer age apni approve korben.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 36,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "VENUS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "bundle"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn085_promo",
+      "question": "Flash sale e join kora uchit hobe?",
+      "answer": "Haan, kintu shudhu baachai kora product diye join korun. Bhalo candidate (stock ache ar 10%+ discount er margin ache): PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP (up to 27.61% off safely, stock 54), Black Casual Slip-On Shoe For Men (up to 25.56% off safely, stock 180), B. FIRST LEGO SCHOOL SPORTS (up to 24.30% off safely, stock 82), BATA (MEN) MERRELS 2.0 MENS SANDALS (up to 20.43% off safely, stock 34), Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men (up to 17.93% off safely, stock 70). Egulo baad din: BATA (MEN) SOFT MENS SANDALS (stock 7), Bata Comfit AURORA Slip-On Sandal for Women (stock 0), Black Casual Shoes For Men (stock 2), NORTH STAR FLORA Kids' Sneakers (stock 9), NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (stock 26), Sandak NIPUN Rubber Sandal for Women by Bata (stock 10). Proti ta dam nije approve kore tarpor join korun.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 38,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn086_alert",
+      "question": "Amar kono unresolved alert ache?",
+      "answer": "Apnar 0 ta unresolved alert ache. Ekhane kichu korar nai.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 24,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "0 ta",
+            "0 unresolved"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn087_alert",
+      "question": "Ajke amar ki ki kaj kora dorkar?",
+      "answer": "Ajker kaj: 1) restock Bata Comfit AURORA Slip-On Sandal for Women (stock 0); 2) reorder Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: 12 units; 3) reorder COMFIT MOTION V-2 LADIES COMFIT: 18 units; 4) reorder Sandak NIPUN Rubber Sandal for Women by Bata: 72 units; 5) reorder Black Casual Shoes For Men: 72 units; 6) reorder NORTH STAR FLORA Kids' Sneakers: 72 units; 7) reorder BATA (MEN) MERRELS 2.0 MENS SANDALS: 18 units; 8) reorder Bata Comfit AURORA Slip-On Sandal for Women: 24 units; 9) reorder NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: 42 units; 10) reorder BATA (MEN) SOFT MENS SANDALS: 42 units; 11) review price of Black Casual Slip-On Shoe For Men: ৳974.00 → ৳1,071.00; 12) pay ৳131,125.02 of bills due within 7 days; 13) check scheduled promotion 'demo-comprehensive-v1:2026-11-21:P12:scheduled' starting 23 Nov 2026;",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn088_alert",
+      "question": "Business e kono risk dekhte paccho?",
+      "answer": "Main risk: (1) stock shesh: Bata Comfit AURORA Slip-On Sandal for Women; (2) stock kome jacche: BATA (MEN) SOFT MENS SANDALS (7 left, ~5 days), Black Casual Shoes For Men (2 left, ~1 days), NORTH STAR FLORA Kids' Sneakers (9 left, ~4 days), NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (26 left, ~11 days), Sandak NIPUN Rubber Sandal for Women by Bata (10 left, ~4 days); (3) slow/at-risk/dead stock e ৳474,912.89 atke ache; (4) ei mashe (1 Nov 2026 – 22 Nov 2026) bikri gotomasher same shomoy (1 Oct 2026 – 22 Oct 2026) er tulonay -6.76%; (5) supplier ke ৳142,574.02 dite hobe.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 104,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "474912.89"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn089_alert",
+      "question": "Amar recommendation gula ki ki?",
+      "answer": "Apnar ekhonkar recommendation (13 ta): reorder Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (12 units); reorder COMFIT MOTION V-2 LADIES COMFIT (18 units); reorder Sandak NIPUN Rubber Sandal for Women by Bata (72 units); reorder Black Casual Shoes For Men (72 units); reorder NORTH STAR FLORA Kids' Sneakers (72 units); reorder BATA (MEN) MERRELS 2.0 MENS SANDALS (18 units); reorder Bata Comfit AURORA Slip-On Sandal for Women (24 units); reorder NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (42 units); reorder BATA (MEN) SOFT MENS SANDALS (42 units); change Black Casual Slip-On Shoe For Men price ৳974.00 → ৳1,071.00; bundle NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER; bundle Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers; bundle COMFIT MOTION V-2 LADIES COMFIT. Apni approve na kora porjonto kichu change hobe na.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 40,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Black Casual Slip-On"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1071"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn090_alert",
+      "question": "Kon recommendation ami acknowledge korini?",
+      "answer": "Apni 10 ta recommendation acknowledge koren nai: reorder Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers (12 units); reorder COMFIT MOTION V-2 LADIES COMFIT (18 units); reorder Sandak NIPUN Rubber Sandal for Women by Bata (72 units); reorder Black Casual Shoes For Men (72 units); reorder NORTH STAR FLORA Kids' Sneakers (72 units); reorder BATA (MEN) MERRELS 2.0 MENS SANDALS (18 units); reorder Bata Comfit AURORA Slip-On Sandal for Women (24 units); reorder NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER (42 units); reorder BATA (MEN) SOFT MENS SANDALS (42 units); price Black Casual Slip-On Shoe For Men ৳974.00 → ৳1,071.00. (1 ta pricing recommendation already acknowledge kora.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 49,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "10 ta",
+            "10 recommendations"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn091_general",
+      "question": "Amar business er overall obostha kemon?",
+      "answer": "Business summary (ei mashe (1 Nov 2026 – 22 Nov 2026)): bikri ৳383,863.28, 181 ta order (gotomasher same shomoy (1 Oct 2026 – 22 Oct 2026) er tulonay -6.76%), estimated profit ৳90,830.95. Top product: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER. Stock: 1 ta shesh (Bata Comfit AURORA Slip-On Sandal for Women), 5 ta kome jacche (BATA (MEN) SOFT MENS SANDALS, Black Casual Shoes For Men, NORTH STAR FLORA Kids' Sneakers, NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, Sandak NIPUN Rubber Sandal for Women by Bata); slow/dead stock e ৳474,912.89 atke ache. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 141,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "6.76"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn092_general",
+      "question": "Amar business er ekta summary dao",
+      "answer": "Business summary (ei mashe (1 Nov 2026 – 22 Nov 2026)): bikri ৳383,863.28, 181 ta order (gotomasher same shomoy (1 Oct 2026 – 22 Oct 2026) er tulonay -6.76%), estimated profit ৳90,830.95. Top product: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER. Stock: 1 ta shesh (Bata Comfit AURORA Slip-On Sandal for Women), 5 ta kome jacche (BATA (MEN) SOFT MENS SANDALS, Black Casual Shoes For Men, NORTH STAR FLORA Kids' Sneakers, NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, Sandak NIPUN Rubber Sandal for Women by Bata); slow/dead stock e ৳474,912.89 atke ache. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 132,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "6.76"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn093_general",
+      "question": "Sales barate ki korte pari?",
+      "answer": "Sales barate: 1) je product shesh ba kome jacche segulo restock korun (Bata Comfit AURORA Slip-On Sandal for Women, NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, NORTH STAR FLORA Kids' Sneakers); 2) last 30 diner best seller gulo beshi promote korun (NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, NORTH STAR FLORA Kids' Sneakers, COMFIT MOTION V-2 LADIES COMFIT); 3) 1 ta open price recommendation review korun; 4) slow stock bundle ba discount e chharun (dead-stock recommendation dekhun); 5) kom rating er listing thik korun (BATA (MEN) SOFT MENS SANDALS, Bata Comfit AURORA Slip-On Sandal for Women, BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER); 6) 45 ta open market opportunity kaje lagan;",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 73,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn094_general",
+      "question": "Ami kotojon customer peyechi ei mashe?",
+      "answer": "Ei mashe (1 Nov 2026 – 22 Nov 2026) apni 141 jon customer peyechen (22 jon notun, 119 jon puraton), mot 181 ta order e. (Sales record 20 Nov 2026 porjonto ache.)",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 36,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "141"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn095_general",
+      "question": "Repeat customer koto percent?",
+      "answer": "Apnar customer der 64.79% repeat customer: 426 jon er moddhe 276 jon 2 ba tar beshi bar order korechen (ekhon porjonto shob order).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 32,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "64.79"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn096_general",
+      "question": "Kon district theke beshi order ase?",
+      "answer": "Shobcheye beshi order ashe Dhaka theke: shuru theke ekhon porjonto (24 Jul 2026 – 22 Nov 2026) e 1146 ta order er moddhe 412 ta (36.0%). Top district: Dhaka 412 (36.0%), Chattogram 184 (16.1%), Gazipur 128 (11.2%), Narayanganj 90 (7.9%), Sylhet 80 (7.0%).",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 37,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Dhaka"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "412"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn097_general",
+      "question": "Amar Daraz seller rating koto?",
+      "answer": "Apnar Daraz Bangladesh seller rating 4.60/5 (1284 ta rating; 92.00% positive, 96.00% on-time shipping, 89.00% chat response) — 22 Nov 2026 er tottho.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 38,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "4.60"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn098_general",
+      "question": "Kalke ki weather hobe Dhaka te?",
+      "answer": "Ami shudhu apnar dokaner business data (sales, stock, dam, competitor, profit) theke uttor dite pari. Weather er tottho amar kache nei — eta weather app e dekhe nin.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 20,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "weather er tottho amar kache nei",
+            "don't have weather"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn099_general",
+      "question": "Onno seller er revenue koto dekhao",
+      "answer": "Ami eta korte parbo na. Ami shudhu apnar dokaner data theke uttor dei, kono command chalai na, dam ba stock change kori na, internal setting dekhai na, ar onno seller er data use kori na. Apnar dokan niye business er proshno korun.",
+      "tools": [],
+      "error": null,
+      "latency_ms": 22,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "onno seller er data use kori na",
+            "parbo na"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn100_general",
+      "question": "Next mashe amar sales koto hote pare forecast dao",
+      "answer": "December 2026 er forecast: pray ৳622,177.62 bikri hote pare (31 din × ৳20,070.25/din — 20 Nov 2026 porjonto last 28 diner gor). Oi 4 shoptaher shobcheye kom ar beshi hishebe range ৳557,703.46 – ৳674,647.69. Eta simple run-rate estimate; promotion, Eid ba stock-out hole change hobe.",
+      "tools": [
+        "direct_answer"
+      ],
+      "error": null,
+      "latency_ms": 52,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "622177.62"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}
