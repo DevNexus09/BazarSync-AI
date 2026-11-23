@@ -445,7 +445,7 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(["retrieve_business_memory"], [call["name"] for call in registry.calls])
-        self.assertIn("Current database access is disabled", result.answer)
+        self.assertNotIn("Current database access is disabled", result.answer)
         self.assertIn("Current database access is disabled", str(result.missing_data[0]))
 
     async def test_both_mode_executes_direct_tools_and_rag_when_relevant(self):
@@ -468,7 +468,7 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertNotIn("retrieve_business_memory", [call["name"] for call in registry.calls])
-        self.assertIn("Business memory is disabled", result.answer)
+        self.assertNotIn("Business memory is disabled", result.answer)
         self.assertIn("Business memory is disabled", str(result.missing_data[0]))
 
     async def test_memory_source_types_reach_rag_retrieval_tool(self):
@@ -740,15 +740,15 @@ class CopilotOrchestratorTests(unittest.IsolatedAsyncioTestCase):
     async def test_groq_failure_fallback(self):
         result, _, _ = await self._ask("What should I restock?", groq=_failing_groq)
 
-        self.assertIn("**Quick recommendation**", result.answer)
-        self.assertIn("Recommendations do not execute automatically", result.answer)
+        self.assertEqual("I could not find a clear answer in your data yet.", result.answer)
+        self.assertNotIn("Safety notes", result.answer)
         self.assertIn(result.confidence, {"LOW", "MEDIUM", "HIGH"})
 
     async def test_invalid_json_fallback(self):
         result, _, _ = await self._ask("What should I restock?", groq=_invalid_groq)
 
-        self.assertIn("**Quick recommendation**", result.answer)
-        self.assertIn("Recommendations do not execute automatically", result.answer)
+        self.assertEqual("I could not find a clear answer in your data yet.", result.answer)
+        self.assertNotIn("Safety notes", result.answer)
         self.assertIn(result.confidence, {"LOW", "MEDIUM", "HIGH"})
 
     async def test_seller_isolation_for_conversation_load(self):

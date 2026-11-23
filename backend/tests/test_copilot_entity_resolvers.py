@@ -129,6 +129,44 @@ class EntityResolverUnitTests(unittest.TestCase):
         self.assertTrue(ambiguous.ambiguous)
         self.assertIsNone(ambiguous.selected_id)
 
+    def test_own_product_question_is_not_a_competitor_clarification(self) -> None:
+        # Baseline eval: "selling price of <own product>" asked "Which competitor do you mean?" because every
+        # competitor tracked for that product matched, and a store named like the brand matched inside the SKU.
+        competitors = [
+            CompetitorCandidate(uuid4(), "Fresh Rice 5kg", "Fresh Mart", PRODUCT_A_ID, "Rice 5kg Pack", None, "Daraz"),
+            CompetitorCandidate(uuid4(), "Daily Rice 5kg", "Daily Mart", PRODUCT_A_ID, "Rice 5kg Pack", None, "Daraz"),
+        ]
+        resolver = CopilotEntityResolver(
+            product_resolver=self.product_resolver,
+            category_resolver=CategoryResolver(categories=[]),
+            marketplace_resolver=MarketplaceResolver(marketplaces=[]),
+            competitor_resolver=CompetitorResolver(competitors=competitors),
+        )
+
+        own = resolver.resolve(seller_id=SELLER_ID, question="What is the selling price of Rice 5kg Pack?")
+        asked = resolver.resolve(seller_id=SELLER_ID, question="Which competitors undercut Rice 5kg Pack?")
+
+        self.assertIsNone(own.clarification_question)
+        self.assertEqual(str(PRODUCT_A_ID), own.product_resolution.selected_id)
+        self.assertFalse(own.competitor_resolution.ambiguous)
+        self.assertIsNotNone(asked.clarification_question)
+
+    def test_exact_category_is_not_narrowed_by_a_fuzzy_product_match(self) -> None:
+        # Baseline eval: "revenue of Men's Footwear" fuzzily picked a women's product whose title says "Footwear",
+        # so the category total came back as 0.
+        products = [ProductEntityCandidate(id=PRODUCT_B_ID, title="Venus Women's Flat Sandal Fashion Footwear", category="Women's Footwear")]
+        resolver = CopilotEntityResolver(
+            product_resolver=ProductResolver(source=_ProductSource(products)),
+            category_resolver=CategoryResolver(categories=["Men's Footwear", "Women's Footwear"]),
+            marketplace_resolver=MarketplaceResolver(marketplaces=[]),
+            competitor_resolver=CompetitorResolver(competitors=[]),
+        )
+
+        result = resolver.resolve(seller_id=SELLER_ID, question="How much revenue did Men's Footwear make last month?")
+
+        self.assertEqual(["Men's Footwear"], result.categories)
+        self.assertEqual([], result.products)
+
     def test_follow_up_inherits_entity_and_explicit_entity_overrides_it(self) -> None:
         resolver = CopilotEntityResolver(
             product_resolver=self.product_resolver,

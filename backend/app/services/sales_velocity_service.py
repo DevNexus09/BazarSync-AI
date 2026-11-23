@@ -18,6 +18,9 @@ from app.repositories.sales_velocity_repository import SalesVelocityRepository
 
 logger = logging.getLogger(__name__)
 
+STOCKOUT_AWARE_VERSION = "v2"
+STOCKOUT_LIMITED_SHARE = Decimal("0.80")
+
 
 class SalesVelocityRepositoryProtocol(Protocol):
     def iter_product_batches(
@@ -38,6 +41,15 @@ class SalesVelocityRepositoryProtocol(Protocol):
     ) -> dict[UUID, dict[str, int]]: ...
 
     def add_idempotent(self, record: SalesVelocity) -> tuple[SalesVelocity, bool]: ...
+
+    def daily_available_stock(
+        self,
+        *,
+        seller_id: UUID,
+        product_ids: list[UUID],
+        start_date: date,
+        end_date: date,
+    ) -> dict[UUID, dict[date, int]]: ...
 
     def latest(
         self,
@@ -160,6 +172,7 @@ class SalesVelocityService:
             window_start=window_start,
             window_end=window_end,
         ).get(product.id, {})
+        stock = self._stock_by_day(product.seller_id, [product.id], as_of, window, version).get(product.id, {})
         return self.calculate_from_aggregate(
             product=product,
             seller=seller_obj,
@@ -167,6 +180,7 @@ class SalesVelocityService:
             window_days=window,
             aggregate=aggregate,
             calculation_version=version,
+            stock_by_day=stock,
         )
 
     def calculate_for_batch(
@@ -206,6 +220,7 @@ class SalesVelocityService:
                         window_start=window_start,
                         window_end=window_end,
                     )
+                    stock = self._stock_by_day(batch_seller_id, [item.id for item in products], as_of, window, version)
                     for product in products:
                         calculation = self.calculate_from_aggregate(
                             product=product,
@@ -214,6 +229,7 @@ class SalesVelocityService:
                             window_days=window,
                             aggregate=aggregates.get(product.id, {}),
                             calculation_version=version,
+                            stock_by_day=stock.get(product.id, {}),
                         )
                         outcome = self._save_calculation(calculation, calculated_at=timestamp)
                         if outcome.created:
@@ -246,15 +262,24 @@ class SalesVelocityService:
         window_days: int,
         aggregate: dict[str, int],
         calculation_version: str,
+        stock_by_day: dict[date, int] | None = None,
     ) -> SalesVelocityCalculation:
         observed_days = self.observed_days(product, seller, as_of_date, window_days)
+        stockout_aware = calculation_version == STOCKOUT_AWARE_VERSION
+        stockout_days, covered_days = (
+            self.stockout_days(stock_by_day or {}, as_of_date, observed_days) if stockout_aware else (0, 0)
+        )
+        effective_days = max(1, observed_days - stockout_days)
         gross = int(aggregate.get("gross_units_sold", 0))
         returned = int(aggregate.get("returned_units", 0))
         net = max(0, int(aggregate.get("net_units_sold", 0)))
         valid_records = int(aggregate.get("valid_sales_records", 0))
         sales_days = int(aggregate.get("sales_days", 0))
-        daily_rate = (Decimal(net) / Decimal(observed_days)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+        daily_rate = (Decimal(net) / Decimal(effective_days)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
         data_status = self.data_status(valid_records=valid_records, observed_days=observed_days, window_days=window_days)
+        mostly_stocked_out = Decimal(stockout_days) > STOCKOUT_LIMITED_SHARE * Decimal(observed_days)
+        if mostly_stocked_out and data_status == SalesVelocityDataStatus.SUFFICIENT:
+            data_status = SalesVelocityDataStatus.LIMITED
         confidence = self.confidence_score(
             valid_records=valid_records,
             observed_days=observed_days,
@@ -263,7 +288,7 @@ class SalesVelocityService:
         )
         metadata = {
             "formula": "daily_sales_rate = net_units_sold / effective_window_days",
-            "effective_window_days": observed_days,
+            "effective_window_days": effective_days,
             "valid_statuses": ["COMPLETED", "FULFILLED"],
             "excluded_statuses": ["PENDING", "CANCELLED", "FAILED_PAYMENT"],
             "test_orders_excluded": True,
@@ -271,6 +296,18 @@ class SalesVelocityService:
             "valid_sales_records": valid_records,
             "confidence_formula": "50*observed_window_coverage + 30*valid_record_coverage + 20*sales_data_availability",
         }
+        if stockout_aware:
+            metadata["formula"] = "daily_sales_rate = net_units_sold / (observed_days - stockout_days)"
+            metadata["stockout_days"] = stockout_days
+            metadata["stockout_day_definition"] = (
+                "quantity_available <= 0 in both the previous day's and the day's inventory_history snapshot"
+            )
+            metadata["stock_history_coverage"] = str(
+                (Decimal(covered_days) / Decimal(observed_days)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+            )
+            metadata["missing_stock_history_assumption"] = "days without history are kept in the window (unknown, not in stock)"
+            if mostly_stocked_out:
+                metadata["limited_reason"] = "stocked_out_more_than_80_percent_of_window"
         if valid_records == 0:
             metadata["insufficient_data_reason"] = "no_valid_completed_or_fulfilled_sales_records"
         return SalesVelocityCalculation(
@@ -422,6 +459,39 @@ class SalesVelocityService:
         product_date = _ensure_utc(created_at).astimezone(_seller_timezone(seller)).date()
         product_age_days = max(1, (as_of_date - product_date).days + 1)
         return max(1, min(window_days, product_age_days))
+
+    @staticmethod
+    def stockout_days(stock_by_day: dict[date, int], as_of_date: date, observed_days: int) -> tuple[int, int]:
+        """Return (stocked-out days, days with history) over the last observed_days ending at as_of_date.
+
+        A day is stocked out for the whole day only when it starts (previous day's snapshot) and ends
+        (its own snapshot) with nothing available. A missing snapshot means unknown, so the day is kept.
+        """
+        stocked_out = 0
+        covered = 0
+        for offset in range(observed_days):
+            day = as_of_date - timedelta(days=offset)
+            end = stock_by_day.get(day)
+            if end is None:
+                continue
+            covered += 1
+            start = stock_by_day.get(day - timedelta(days=1))
+            if start is not None and start <= 0 and end <= 0:
+                stocked_out += 1
+        return stocked_out, covered
+
+    def _stock_by_day(
+        self, seller_id: UUID, product_ids: list[UUID], as_of_date: date, window_days: int, version: str
+    ) -> dict[UUID, dict[date, int]]:
+        if version != STOCKOUT_AWARE_VERSION:
+            return {}
+        return self._repository.daily_available_stock(
+            seller_id=seller_id,
+            product_ids=product_ids,
+            # One extra day so the first window day has a start-of-day reading.
+            start_date=as_of_date - timedelta(days=window_days),
+            end_date=as_of_date,
+        )
 
     @staticmethod
     def business_date_for_seller(seller: Seller, captured_at: datetime) -> date:

@@ -3,6 +3,7 @@ import { getAuthToken } from "@/services/auth-storage"
 import type {
   CopilotActionProposal,
   CopilotActionProposalTransition,
+  CopilotAskPayload,
   CopilotAskRequest,
   CopilotAskResponse,
   CopilotConversation,
@@ -144,23 +145,14 @@ export async function askCopilot(
   return normalizeAskResponse(data)
 }
 
-function buildAskPayload(request: CopilotAskRequest): CopilotAskRequest {
-  const payload = omitUndefined<CopilotAskRequest>({
+function buildAskPayload(request: CopilotAskRequest): CopilotAskPayload {
+  // The backend still accepts filter fields; the client sends none and always uses data + memory.
+  const payload = omitUndefined<CopilotAskPayload>({
     conversation_id: request.conversation_id,
     question: request.question,
-    product_id: request.product_id || undefined,
-    from_date: request.from_date || undefined,
-    to_date: request.to_date || undefined,
-    domain_filters: request.domain_filters?.length
-      ? request.domain_filters
-      : undefined,
     language: request.language ?? "auto",
-    include_current_data: request.include_current_data ?? true,
-    include_memory: request.include_memory ?? true,
-    memory_source_types: request.memory_source_types?.length
-      ? request.memory_source_types
-      : undefined,
-    top_k: request.top_k ?? 8,
+    include_current_data: true,
+    include_memory: true,
   })
 
   if (request.debug === true && import.meta.env.DEV) {

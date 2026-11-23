@@ -70,6 +70,9 @@ class SalesRecord(Base):
     line_total: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     marketplace_listing_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Opaque marketplace buyer reference (never a name or phone) and delivery district; NULL = not imported.
+    customer_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    delivery_district: Mapped[str | None] = mapped_column(String(80), nullable=True)
     price_source: Mapped[SalesRecordPriceSource] = mapped_column(
         SAEnum(SalesRecordPriceSource, name="sales_record_price_source"),
         nullable=False,

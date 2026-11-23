@@ -1,0 +1,39 @@
+{
+  "ran_at": "2026-11-22T03:25:32.084617+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 1,
+  "passed": 0,
+  "score": 0.0,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "unanswerable_invoices",
+      "question": "How many invoices did I issue from 2026-11-01 to 2026-11-15?",
+      "answer": "I could not find enough seller-specific history to answer this reliably.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 25200,
+      "passed": false,
+      "facts": [
+        {
+          "label": "says invoices are not recorded",
+          "expected": [
+            "not recorded",
+            "no invoice",
+            "don't have invoice",
+            "do not have invoice",
+            "isn't recorded",
+            "not available",
+            "not tracked",
+            "unavailable"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

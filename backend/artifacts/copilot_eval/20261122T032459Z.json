@@ -1,0 +1,96 @@
+{
+  "ran_at": "2026-11-22T03:24:59.527625+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 3,
+  "passed": 2,
+  "score": 0.6667,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "product_count",
+      "question": "How many products do I have?",
+      "answer": "You have 15 products.",
+      "tools": [
+        "run_seller_metric_query",
+        "count_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 43696,
+      "passed": true,
+      "facts": [
+        {
+          "label": "product count",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_in_units_oct",
+      "question": "How many units did I receive into stock from 2026-10-26 to 2026-10-31?",
+      "answer": "You received 156 units into stock from 2026-10-26 to 2026-10-31.",
+      "tools": [
+        "query_business_records",
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_alert_recommendation_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12907,
+      "passed": true,
+      "facts": [
+        {
+          "label": "units received",
+          "expected": [
+            "156"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "unanswerable_invoices",
+      "question": "How many invoices did I issue from 2026-11-01 to 2026-11-15?",
+      "answer": "I could not find a clear answer in your data yet.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10383,
+      "passed": false,
+      "facts": [
+        {
+          "label": "says invoices are not recorded",
+          "expected": [
+            "not recorded",
+            "no invoice",
+            "don't have invoice",
+            "do not have invoice",
+            "isn't recorded",
+            "not available",
+            "not tracked",
+            "unavailable"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

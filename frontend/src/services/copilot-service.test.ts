@@ -33,42 +33,27 @@ describe("copilot service", () => {
     })
   })
 
-  it("posts the backend CopilotAskRequest contract without deprecated source_types", async () => {
-    await askCopilot({
+  it("sends no filters: only the question, conversation and language, with data and memory on", async () => {
+    await askCopilot({ conversation_id: "conversation-1", question: "What changed?", language: "bn" })
+
+    expect(apiClient.post).toHaveBeenCalledWith("/copilot/ask", {
       conversation_id: "conversation-1",
       question: "What changed?",
-      product_id: null,
-      from_date: "2026-07-01",
-      to_date: "2026-07-12",
-      domain_filters: ["SALES_REVENUE", "COMPETITOR"],
-      language: "auto",
-      include_current_data: false,
+      language: "bn",
+      include_current_data: true,
       include_memory: true,
-      memory_source_types: ["SALES_HISTORY"],
-      top_k: 5,
     })
+  })
 
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/copilot/ask",
-      expect.objectContaining({
-        conversation_id: "conversation-1",
-        question: "What changed?",
-        from_date: "2026-07-01",
-        to_date: "2026-07-12",
-        domain_filters: ["SALES_REVENUE", "COMPETITOR"],
-        include_current_data: false,
-        include_memory: true,
-        memory_source_types: ["SALES_HISTORY"],
-        top_k: 5,
-      })
-    )
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/copilot/ask",
-      expect.not.objectContaining({
-        source_types: expect.anything(),
-        product_id: expect.anything(),
-      })
-    )
+  it("defaults language to auto and omits a missing conversation id", async () => {
+    await askCopilot({ question: "Revenue for 2026-10-01 to 2026-10-31?" })
+
+    expect(apiClient.post).toHaveBeenCalledWith("/copilot/ask", {
+      question: "Revenue for 2026-10-01 to 2026-10-31?",
+      language: "auto",
+      include_current_data: true,
+      include_memory: true,
+    })
   })
 
   it("posts feedback for an assistant message", async () => {

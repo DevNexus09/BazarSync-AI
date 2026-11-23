@@ -1,0 +1,2810 @@
+{
+  "ran_at": "2026-11-23T05:14:59.897646+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "fixture": "tests/fixtures/copilot_banglish_100.json",
+  "as_of": "2026-11-22",
+  "total": 100,
+  "passed": 48,
+  "score": 0.48,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "bn001_sales",
+      "question": "Ei mashe amar total sales koto hoise?",
+      "answer": "Ei proshner nirbhorjoggo uttor deyar moto jothesto seller-specific tottho pai ni.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 25196,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn002_sales",
+      "question": "Gotokal koto taka bikri hoise?",
+      "answer": "Gotokal apnar kono sales recorded hoyni.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6920,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no sales",
+            "no sale",
+            "no orders",
+            "no order",
+            "bikri hoy nai",
+            "bikri hoyni",
+            "bikri hoy ni",
+            "kono bikri",
+            "kono sale",
+            "sale hoy nai",
+            "sale hoyni",
+            "kono order",
+            "order ashe nai",
+            "order ase nai",
+            "order ashenai",
+            "not recorded",
+            "record hoy nai"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "2026-11-20",
+            "20 nov",
+            "nov 20",
+            "20 november",
+            "november 20"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn003_sales",
+      "question": "Last 7 din e amar revenue koto?",
+      "answer": "Apnar last 7 diner gross revenue holo BDT 93503.00 ebong net revenue holo BDT 89255.00. Apnar sales completeness somporke nishchit na, tai aro accurate data pete completed sales records gulo import kore nin.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12324,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "93503.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn004_sales",
+      "question": "October mashe amar mot bikri koto chilo?",
+      "answer": "Apnar data theke (2026-10-01 theke 2026-10-31):\n- revenue: 613570.52",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 31545,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "613570.52"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn005_sales",
+      "question": "November er prothom 15 dine koto taka sale hoise?",
+      "answer": "November er prothom 15 dine apnar total sales hoyeche BDT 290360.28.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8907,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "290360.28"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn006_sales",
+      "question": "Ajke kono order ashse?",
+      "answer": "Ei proshner nirbhorjoggo uttor deyar moto jothesto seller-specific tottho pai ni.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8658,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no sales",
+            "no sale",
+            "no orders",
+            "no order",
+            "bikri hoy nai",
+            "bikri hoyni",
+            "bikri hoy ni",
+            "kono bikri",
+            "kono sale",
+            "sale hoy nai",
+            "sale hoyni",
+            "kono order",
+            "order ashe nai",
+            "order ase nai",
+            "order ashenai",
+            "not recorded",
+            "record hoy nai"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "2026-11-20",
+            "20 nov",
+            "nov 20",
+            "20 november",
+            "november 20"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn007_sales",
+      "question": "Ei shoptahe koyta order paisi?",
+      "answer": "Ei shoptahe apnar total 43 ti order hoyeche.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11482,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "43"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn008_sales",
+      "question": "October e total koyta order chilo?",
+      "answer": "October mashe apnar total 298 ti order chilo.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12088,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "298"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn009_sales",
+      "question": "Ei mashe koto unit product bikri korsi?",
+      "answer": "Ei mashe ekhon porjonto apnar mot 401 unit product bikri hoyeche.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8812,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "397",
+            "401"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn010_sales",
+      "question": "Amar average order value koto?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 41989,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2088.03"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn011_sales",
+      "question": "Gotomash er tulonay ei mashe sales barse na komse?",
+      "answer": "Gotomash er tulonay ei mashe apnar sales 7.03% bereche. Apnar gross revenue 613570.52 BDT.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 30276,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "6.76"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "411685.32"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "383863.28"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn012_sales",
+      "question": "October theke November e revenue koto percent change hoise?",
+      "answer": "October theke November e revenue er change calculate korar moto data record kora hoyni. October 2026 e apnar revenue chilo BDT 613570.52 ebong November 2026 (20 tarik porjonto) e revenue chilo BDT 383863.28.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11429,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "37.44",
+            "6.76"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn013_sales",
+      "question": "Kon din sobcheye beshi bikri hoise?",
+      "answer": "Apnar sobcheye beshi bikri 2026-10-23 tarikhe hoyeche, jekhane 13 ti order record kora hoyeche.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10025,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2026-07-31",
+            "31 jul",
+            "jul 31",
+            "31 july",
+            "july 31"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn014_sales",
+      "question": "Amar weekend e beshi sale hoy naki weekday te?",
+      "answer": "Apnar sales er record onujayi, Friday te shobcheye beshi sale hoy. Weekday er tulonay weekend er sales er obostha niche deya holo: Friday: 182, Thursday: 167, Wednesday: 163, Tuesday: 160, Monday: 160, Saturday: 159, Sunday: 155. Apni chaile specific kono shomoyer sales report dekhte paren.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10925,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "weekend"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn015_sales",
+      "question": "Last 30 din er daily average sales koto?",
+      "answer": "Apnar last 30 diner daily average sales holo BDT 2066.05.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6919,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "18732.23",
+            "20070.25"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn016_sales",
+      "question": "Amar sales trend ta kemon jacche?",
+      "answer": "Apnar sales trend overall UP er dike ache. Gross revenue 2026-07-01 e chilo BDT 235657.06, ja 2026-10-01 e bere hoyeche BDT 613570.52, tobe 2026-11-01 e eta kome BDT 383863.28 hoyeche. Sales completeness er data record kora nei. Apni dashboard e giye sales records import kore nite paren.",
+      "tools": [
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9620,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "down",
+            "decline",
+            "declin",
+            "falling",
+            "fell",
+            "drop",
+            "lower",
+            "komse",
+            "komche",
+            "kome",
+            "kom hoise",
+            "kom hocche",
+            "kommse"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn017_sales",
+      "question": "Ei bochor e ekhon porjonto total revenue koto?",
+      "answer": "Ei bochor e ekhon porjonto apnar total revenue holo BDT 2392878.44.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6838,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2392878.44"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn018_sales",
+      "question": "Gotokal er cheye ajke sales beshi na kom?",
+      "answer": "Apnar data theke (2026-11-21 theke 2026-11-21):\n- Ei somoye kono sale pawa jay nai, kintu sales history confirm kora jay nai",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8726,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "same",
+            "shoman",
+            "soman",
+            "both zero",
+            "duitai 0",
+            "no sales",
+            "kono bikri",
+            "kono sale",
+            "no change"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "2026-11-20",
+            "20 nov",
+            "nov 20",
+            "20 november",
+            "november 20"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn019_sales",
+      "question": "Last week e koto taka er order cancel hoise?",
+      "answer": "Last week e kono order cancel hoyni, no sales recorded.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7459,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no cancel",
+            "no order was cancel",
+            "no orders were cancel",
+            "none were cancel",
+            "cancel hoy nai",
+            "cancel hoyni",
+            "cancel hoy ni",
+            "kono cancel",
+            "kono order cancel",
+            "cancelled orders: 0",
+            "0 cancel"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn020_sales",
+      "question": "Kono return ba refund hoise ei mashe?",
+      "answer": "Ei mashe total 4 units return ba refund hoyeche, jar total value BDT 4248.00.",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10065,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "4",
+            "4248.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn021_product",
+      "question": "Amar best selling product konta?",
+      "answer": "Apnar best selling product holo Black Casual Slip-On Shoe For Men, jar total 120 ti sales record kora hoyeche.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8064,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA",
+            "NORTH STAR FLORA"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn022_product",
+      "question": "October e top 5 product kon gula revenue onujayi?",
+      "answer": "October masher top 3 product revenue onujayi niche deya holo: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: BDT 127470.00, COMFIT MOTION V-2 LADIES COMFIT: BDT 82718.22, NORTH STAR FLORA Kids' Sneakers: BDT 80247.00. Onno product er data record kora hoyni.",
+      "tools": [
+        "get_top_products_by_revenue",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11375,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "NORTH STAR FLORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "Black Casual Shoes For Men"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 5",
+          "expected": [
+            "Black Casual Slip-On"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn023_product",
+      "question": "Kon product sobcheye kom bikri hoise?",
+      "answer": "Apnar record onujayi sobcheye kom bikri howa product holo: BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: 4 units. Apni chaile product er sales performance report check kore dekhte paren.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 14252,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn024_product",
+      "question": "Kon product gula ekdom bikri hoy nai last 30 din e?",
+      "answer": "Apnar data theke (2026-10-24 theke 2026-11-22):\n- BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER\n- Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men",
+      "tools": [
+        "get_products_with_no_sales",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8909,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn025_product",
+      "question": "Lex Loafer in Brown for Men koyta bikri hoise November e?",
+      "answer": "November 2026 e Lex Loafer in Brown for Men total 9 ti bikri hoise.",
+      "tools": [
+        "query_business_records",
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6823,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "16116.40"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "9"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn026_product",
+      "question": "Black Casual Shoes For Men er dam koto?",
+      "answer": "Black Casual Shoes For Men er current selling price holo BDT 974.00.",
+      "tools": [
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5694,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "974"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn027_product",
+      "question": "Amar mot koyta product ache?",
+      "answer": "Apnar total 15 ti product listed ache.",
+      "tools": [
+        "count_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 13354,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn028_product",
+      "question": "Kon category te sobcheye beshi bikri hoy?",
+      "answer": "Apnar sobcheye beshi bikri howa category holo Men's Footwear, jekhane total 501 ti sales record kora hoyeche.",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12224,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Men's Footwear"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn029_product",
+      "question": "Men's Footwear category theke October e koto revenue aise?",
+      "answer": "October mashe Men's Footwear category theke total revenue esheche BDT 235260.96.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10749,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "235260.96"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn030_product",
+      "question": "Amar sob category er list dao",
+      "answer": "Apnar shop-e ekhon ei category gulo ache: Men's Footwear: 6, Women's Footwear: 5, Children's Footwear: 3, Other: 1. Apni chaile specific category er product details dekhte paren.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9113,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Children's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Men's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "Women's Footwear"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "Other"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn031_product",
+      "question": "Kon product er margin sobcheye beshi?",
+      "answer": "Apnar data theke (shob recorded history):\n- Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: 3374.00",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27796,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA",
+            "Power XORISE"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn032_product",
+      "question": "Sobcheye dami product konta amar?",
+      "answer": "Apnar sobcheye beshi revenue ana product holo NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, jar gross revenue BDT 486500.00.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12053,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn033_product",
+      "question": "Sobcheye sosta product konta?",
+      "answer": "Apnar sobcheye sosta product holo PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP, jar selling price BDT 134.00.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6707,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn034_product",
+      "question": "Kon product er rating kom ba review kharap?",
+      "answer": "Apnar product gulor moddhe nicher product gulor rating kom: Bata Comfit AURORA Slip-On Sandal for Women: rating 3.40. BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: rating 3.60. BATA (MEN) SOFT MENS SANDALS: rating 3.80. Apni ei product gulor customer feedback check kore dekhte paren.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7880,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn035_product",
+      "question": "Amar kon product gula Daraz e listed ache?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "list_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 26290,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "AURORA"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn036_stock",
+      "question": "Amar total stock koto unit ache?",
+      "answer": "Apnar total stock 726 units. Ekhon apnar product list theke active listing er jonno product gulo check kore nite paren.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 16093,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "726"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn037_stock",
+      "question": "Kon kon product stock out hoye gese?",
+      "answer": "Bata Comfit AURORA Slip-On Sandal for Women er stock already shesh hoye geche. Black Casual Shoes For Men er stock-o khub druto shesh hoye jabe. Apni ei product gulor jonno reorder plan ta dekhe nin.",
+      "tools": [
+        "get_inventory_risks",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7730,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn038_stock",
+      "question": "Kon product er stock prai shesh, low stock ache?",
+      "answer": "BATA (MEN) MERRELS 2.0 MENS SANDALS product-er stock low ache.\nBATA (MEN) MERRELS 2.0 MENS SANDALS: reorder 18\n2026-11-25 er moddhe restock complete korar bebostha nin.",
+      "tools": [
+        "get_products_low_stock",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 19706,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Black Casual Shoes For Men"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn039_stock",
+      "question": "Black Casual Shoes For Men er stock koto baki ache?",
+      "answer": "Apnar data theke (shob recorded history):\n- Black Casual Shoes For Men: stock 2, price 974.00",
+      "tools": [
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5490,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn040_stock",
+      "question": "SKU DEMO-BATA-541167043 er stock koto?",
+      "answer": "Apnar SKU DEMO-BATA-541167043 er current stock 26.",
+      "tools": [
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10347,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "26"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn041_stock",
+      "question": "Amar inventory er total value koto taka?",
+      "answer": "Apnar data theke (shob recorded history):\n- inventory value at cost: 595431.23",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27115,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "595431.23"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn042_stock",
+      "question": "Kon product reorder kora dorkar ekhon?",
+      "answer": "Apnar data theke (shob recorded history):\n- Black Casual Shoes For Men: reorder 72\n- Sandak NIPUN Rubber Sandal for Women by Bata: reorder 72\n- NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: reorder 42\n- BATA (MEN) SOFT MENS SANDALS: reorder 42\n- COMFIT MOTION V-2 LADIES COMFIT: reorder 18\n- NORTH STAR FLORA Kids' Sneakers: reorder 72",
+      "tools": [
+        "get_restock_recommendations",
+        "get_inventory_risks",
+        "get_products_low_stock",
+        "get_alert_recommendation_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 24358,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Black Casual Shoes For Men"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn043_stock",
+      "question": "Ei shoptahe koto stock in hoise?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 40799,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no stock",
+            "not received",
+            "no new stock",
+            "kono stock in",
+            "stock in hoy nai",
+            "stock in hoyni",
+            "stock ashe nai",
+            "stock ase nai",
+            "receive hoy nai"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "2026-11-12",
+            "12 nov",
+            "nov 12",
+            "12 november",
+            "november 12"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn044_stock",
+      "question": "Last stock in kobe korsi ar ki ki product?",
+      "answer": "Apnar last stock update ba restock er kono record amar kache nei. Inventory te kono product er last restock date record kora hoyni.",
+      "tools": [
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_products_missing_pricing_setup",
+        "get_margin_safety",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 24312,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2026-11-12",
+            "12 nov",
+            "nov 12",
+            "12 november",
+            "november 12"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn045_stock",
+      "question": "Sandak NIPUN er stock kinte unit cost koto porse?",
+      "answer": "Apnar data theke (shob recorded history):\n- Sandak NIPUN Rubber Sandal for Women by Bata: stock 10, price 247.00",
+      "tools": [
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 19632,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "140.79"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn046_stock",
+      "question": "Amar stock koto din cholbe current sales e?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_stockout_predictions",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12631,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "32",
+            "33",
+            "35"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn047_stock",
+      "question": "Kon product er stock beshi pore ache, bikri hocche na?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_dead_stock_products",
+        "get_products_overstocked",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 29425,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn048_stock",
+      "question": "Dead stock e koto taka atke ache?",
+      "answer": "Apnar dead stock, at-risk, ebong slow-moving product-e mot BDT 474912.89 atke ache. Ete theke BDT 37740.48 recovery kora jete pare bole estimate kora hoyeche. Apni recovery plan gulo dekhe nite paren.",
+      "tools": [
+        "get_dead_stock_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11594,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "474912.89"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn049_stock",
+      "question": "Koyta product dead stock hoye gese?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_dead_stock_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27406,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "1"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn050_stock",
+      "question": "Dead stock gula ki korle bikri hobe?",
+      "answer": "Apnar dead stock recovery-r jonno Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers product-ti bundle korar recommendation deya hoyeche. Onno kono product-er jonno ekhon porjonto kono specific recovery action record kora hoyni.",
+      "tools": [
+        "get_dead_stock_products",
+        "get_dead_stock_recovery",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9295,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "VENUS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "bundle"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn051_price",
+      "question": "Lex Loafer er dam koto rakha uchit?",
+      "answer": "Apnar data theke (shob recorded history):\n- Lex Loafer in Brown for Men: bundle",
+      "tools": [
+        "get_pricing_recommendations",
+        "compare_product_against_competitors",
+        "get_elasticity_estimates",
+        "get_promotion_recommendations",
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11256,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "1874"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn052_price",
+      "question": "Kon product er dam komano dorkar?",
+      "answer": "Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers er dam komano dorkar, karon eta at-risk dead stock hishebe chihnoto hoyeche. Apni ei product er jonno bundle offer try korte paren.",
+      "tools": [
+        "get_pricing_recommendations",
+        "get_dead_stock_recovery",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8683,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no product needs a price cut",
+            "no price cut",
+            "dam komano dorkar nai",
+            "dam komanor dorkar nai",
+            "komano lagbe na",
+            "komanor proyojon nai",
+            "increase",
+            "barano",
+            "barate"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1071"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn053_price",
+      "question": "Recently kon product er dam change hoise?",
+      "answer": "Apnar data theke (shob recorded history):\n- BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER\n- COMFIT MOTION V-2 LADIES COMFIT\n- NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER\n- PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP\n- BATA (MEN) MERRELS 2.0 MENS SANDALS\n- B. FIRST LEGO SCHOOL SPORTS\n- Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men\n- Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers",
+      "tools": [
+        "get_products_with_recent_price_changes",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 33033,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn054_price",
+      "question": "BUBBLE GUMMERS PLAYMAX er last price change ki chilo?",
+      "answer": "Apnar data theke (shob recorded history):\n- BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER",
+      "tools": [
+        "query_business_records",
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27286,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "964.26"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "974"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn055_price",
+      "question": "Dam 10% barale amar revenue e ki effect porbe?",
+      "answer": "Dam 10% barale revenue-er upor ki effect porbe, ta amader record-e nei. Amader kache kono price elasticity ba simulation data recorded nei. Apnar current gross revenue holo BDT 2392878.44. Apni chaile amader system-e product-er price update kore poroborti sales trend check korte paren.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 24925,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "simulat",
+            "elasticity",
+            "which product",
+            "kon product",
+            "product ta",
+            "per product",
+            "estimate"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn056_price",
+      "question": "Kon product e discount dile beshi bikri hobe?",
+      "answer": "Kon product e discount dile beshi bikri hobe, shei somporke kono nirdishto record nei. Apnar top selling product gulo holo: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER, NORTH STAR FLORA Kids' Sneakers, ebong COMFIT MOTION V-2 LADIES COMFIT. Apni chaile ei product gulor sales performance dekhe nite paren.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 31938,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "MERRELS"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn057_price",
+      "question": "Amar product er dam competitor der cheye beshi naki kom?",
+      "answer": "Apnar kichu product er dam competitor der cheye beshi. Niche product gulo dekhte paren: Lex Loafer in Brown for Men: BDT 1874.00 (competitor price BDT 1780.30/1836.52). COMFIT MOTION V-2 LADIES COMFIT: BDT 2249.00 (competitor price BDT 2204.02). BATA (MEN) SOFT MENS SANDALS: BDT 599.00 (competitor price BDT 524.00). Apni chaile ei product gulor pricing review kore dekhte paren.",
+      "tools": [
+        "get_competitor_summary",
+        "get_competitor_undercut_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 14961,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn058_price",
+      "question": "Kon product e loss hocche, cost er niche bikri hocche?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12456,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no product is selling at a loss",
+            "not selling at a loss",
+            "no loss",
+            "loss e bikri hocche na",
+            "kono product loss",
+            "loss nai",
+            "loss hocche na",
+            "above cost",
+            "cost er upore"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn059_price",
+      "question": "Amar pricing policy ki set kora ache?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_pricing_policy_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10060,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "12"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "10"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "15"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "20"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn060_price",
+      "question": "Daraz commission ar fee kete amar profit koto thake?",
+      "answer": "Apnar product er upor Daraz er commission rate 8.00% ebong payment fee rate 2.00% hoyeche. Apnar product gulo er estimated profit nicher list e deya holo:\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: BDT 124740.00\nBlack Casual Slip-On Shoe For Men: BDT 81814.05\nBlack Casual Shoes For Men: BDT 73592.52\nNORTH STAR FLORA Kids' Sneakers: BDT 59827.60\nCOMFIT MOTION V-2 LADIES COMFIT: BDT 56879.46\nApni dashboard e giye onno product er profit o check kore nite paren.",
+      "tools": [
+        "get_fee_policy_summary",
+        "get_fee_policy",
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 13306,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "580758.60"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn061_competitor",
+      "question": "Ami koyjon competitor track kortesi?",
+      "answer": "Apni ekhon 89 jon competitor track kortesen.",
+      "tools": [
+        "get_competitor_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8490,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "89"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "5"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn062_competitor",
+      "question": "Competitor ra koybar amar product er cheye kom dame bikri korse?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_competitor_undercut_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11536,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "136"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn063_competitor",
+      "question": "Kon competitor sobcheye aggressive dam komacche?",
+      "answer": "Lex Loafer in Brown for Men er khetre 'Demo Synthetic Store 2' sobcheye aggressive dam komacche. Echarai 'Demo Synthetic Store 1' o Lex Loafer in Brown for Men er dam komiyeche. Apnar onno product er khetre competitor der price change gulo check kore dekhun.",
+      "tools": [
+        "get_competitor_undercut_summary",
+        "get_competitor_price_change_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 13726,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Demo Synthetic Store 1"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn064_competitor",
+      "question": "Amar main competitor ke?",
+      "answer": "Apnar main competitor-der list niche deya holo: Demo comparison listing 2 for Bata Comfit AURORA Slip-On Sandal for Women, Demo comparison listing 3 for Bata Comfit AURORA Slip-On Sandal for Women, ebong Demo comparison listing 2 for Lex Loafer in Brown for Men. Apni market-e apnar product-er ranking check kore dekhte paren.",
+      "tools": [
+        "get_competitor_summary",
+        "get_competitor_rankings",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10106,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Demo Synthetic Store 1"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn065_competitor",
+      "question": "Competitor der latest price change gula dekhao",
+      "answer": "20-11-2026 tarikh-e competitor der price change gulo niche deya holo: Bata Macho Slip-On Sandal For Men: BDT 599.00. Bata Flip-Flop for Men: BDT 187.00. Bata Pacific Toe-Post Sandal For Men: BDT 412.00. Bata PARTHA Men's Toe-Ring Sandal: BDT 524.00. Bata Pacific Slip-On Sandal For Men: BDT 524.00. Bata MATTE Slip-On Sandal for Men: BDT 1499.00. Bata Leather Sandal for Men - Black: BDT 974.00. Apni ei price gulo dekhe apnar product er pricing strategy update korte paren.",
+      "tools": [
+        "get_competitor_price_history",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11112,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Demo Synthetic Store 1"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "20.99"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn066_competitor",
+      "question": "Market e kono notun opportunity ache?",
+      "answer": "Apnar jonno ekhon market-e 45 ti open opportunity ache. Ekhane kichu product-er jonno action neya jete pare: Black Casual Shoes For Men: reorder. Bata Comfit AURORA Slip-On Sandal for Women: reorder. PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: HOLD. Apni market opportunity dashboard-e giye baki details gulo dekhe nite paren.",
+      "tools": [
+        "get_market_opportunity_summary",
+        "get_market_opportunities",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 14104,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "45"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn067_competitor",
+      "question": "Kon product er market demand barse?",
+      "answer": "Apnar market-e BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER, COMFIT MOTION V-2 LADIES COMFIT, ebong NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER product gulor demand barche, karon competitor-ra ei product gulor price barieche. Apni ei product gulor stock check kore nite paren.",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "get_sales_velocity_summary",
+        "get_market_opportunity_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10212,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "VENUS"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn068_competitor",
+      "question": "Amar product ranking Daraz search e kemon?",
+      "answer": "Apnar product er search ranking er kono data record kora hoyni. Daraz e apnar kono product ba visibility metrics ekhono recorded nei.",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "list_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 20329,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "20.5"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "COMFIT MOTION V-2"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn069_competitor",
+      "question": "Competitor der stock shesh hoye gese emon kono product ache?",
+      "answer": "Competitor der stock shesh hoye gese emon kono product record-e nei. Shob product-i ekhon IN_STOCK status-e ache.",
+      "tools": [
+        "get_competitor_events",
+        "get_competitor_snapshots",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9849,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no competitor",
+            "none of your competitors",
+            "not out of stock",
+            "in stock",
+            "stock shesh nai",
+            "stock shesh hoy nai",
+            "kono competitor er stock shesh",
+            "stock ache",
+            "out of stock right now: 0",
+            "no product"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn070_competitor",
+      "question": "Kon category te competition kom?",
+      "answer": "Apnar data theke (shob recorded history):\n- Men's Footwear: 128.80\n- Other: 131.24\n- Women's Footwear: 160.57\n- Children's Footwear: 161.56",
+      "tools": [
+        "get_competitor_summary",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27499,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Children's Footwear"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn071_profit",
+      "question": "October e amar estimated profit koto?",
+      "answer": "October mashe apnar estimated profit chilo BDT 144764.68. Product onujayi profit er biboron niche deya holo: NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: BDT 32035.50 Black Casual Slip-On Shoe For Men: BDT 19836.48 Black Casual Shoes For Men: BDT 19043.65 COMFIT MOTION V-2 LADIES COMFIT: BDT 16332.24 NORTH STAR FLORA Kids' Sneakers: BDT 14262.30 Apni chaile ei profit margin baranor jonno product pricing gulo arekbar check kore nite paren.",
+      "tools": [
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10597,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "144764.68"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn072_profit",
+      "question": "Ei mashe amar profit margin koto percent?",
+      "answer": "Apnar data theke (2026-11-01 theke 2026-11-22):\n- gross revenue: 383863.28\n- estimated profit: 90830.95\n- margin rate: 0.24",
+      "tools": [
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9910,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "23.66"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn073_profit",
+      "question": "Kon product theke sobcheye beshi profit hoy?",
+      "answer": "Apnar sobcheye beshi profit hoyeche NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER theke, jar estimated profit BDT 124740.00. Onno product er profit niche deya holo: Black Casual Slip-On Shoe For Men: BDT 81814.05 Black Casual Shoes For Men: BDT 73592.52 NORTH STAR FLORA Kids' Sneakers: BDT 59827.60 COMFIT MOTION V-2 LADIES COMFIT: BDT 56879.46 Apni chaile ei product gulor sales trend check kore dekhte paren.",
+      "tools": [
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9955,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn074_profit",
+      "question": "Amar mot khoroch koto hoise ei mashe?",
+      "answer": "Ei mashe (1 November theke 22 November) apnar mot khoroch hoise BDT 40697.00.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9475,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "40697.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn075_profit",
+      "question": "Advertising e koto taka khoroch korsi?",
+      "answer": "Apnar total advertising khoroch BDT 51312.00. Apni promotion result theke alada bhabe specific promotion er spend o dekhte paren.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8405,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "51312.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn076_profit",
+      "question": "Shipping cost e koto jacche?",
+      "answer": "Apnar data theke (shob recorded history):\n- amount: 78260.00",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8506,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "78260.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn077_profit",
+      "question": "Ami ki loss e achi naki profit e?",
+      "answer": "Apnar data theke (shob recorded history):\n- gross revenue: 2392878.44\n- estimated profit: 580758.60\n- margin rate: 0.24",
+      "tools": [
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9804,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "in profit",
+            "profitable",
+            "profit e",
+            "profit a",
+            "lav e",
+            "labh",
+            "making a profit",
+            "profit hocche",
+            "profit korchen",
+            "profit korsen"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn078_profit",
+      "question": "Gotomash er cheye profit barse?",
+      "answer": "Apnar data theke (2026-10-01 theke 2026-10-31):\n- gross revenue: 551214.54\n- estimated profit: 145458.00\n- margin rate: 0.26",
+      "tools": [
+        "get_profit_summary",
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 19252,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "90830.95"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "106579.80",
+            "144764.68"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn079_profit",
+      "question": "Amar cash flow kemon?",
+      "answer": "Apnar business er gross revenue BDT 2392878.44 ebong net revenue BDT 2370036.18. Apnar recorded expenses gulo holo: SUPPLIER_PURCHASE: BDT 986693.74, SHIPPING: BDT 78260.00, ADVERTISING: BDT 51312.00, PACKAGING: BDT 19445.00. Cash flow er exact hishab record kora nei, kintu apnar total revenue ebong expense er data ekhane deya holo.",
+      "tools": [
+        "get_revenue_summary",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12827,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "171822.02"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn080_profit",
+      "question": "Supplier ke koto taka dite hobe?",
+      "answer": "Apnar data theke (shob recorded history):\n- amount: 142574.02",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 31165,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "142574.02"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn081_promo",
+      "question": "Amar kono active promotion ache?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_promotion_plans",
+        "get_promotion_results",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6678,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "schedul",
+            "2026-11-23",
+            "23 nov",
+            "nov 23",
+            "23 november",
+            "november 23"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn082_promo",
+      "question": "Koyta promotion complete hoise?",
+      "answer": "Apnar total 3 ti promotion complete hoyeche. Promotion gulo holo: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP, Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers, ebong B. FIRST LEGO SCHOOL SPORTS.",
+      "tools": [
+        "query_business_records",
+        "get_promotion_results",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11067,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "3"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn083_promo",
+      "question": "Last promotion e koto bikri hoise?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_promotion_results",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8175,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "B. FIRST LEGO"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "22"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn084_promo",
+      "question": "Eid er jonno ki offer deya uchit?",
+      "answer": "Eid er jonno Bata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers er jonno bundle offer deya uchit. Eita at-risk product hishebe identified hoyeche. Apnar onno kono specific Eid offer record nai, tobe bundle recovery recommendation deya hoyeche.",
+      "tools": [
+        "get_promotion_recommendations",
+        "get_promotion_results",
+        "get_dead_stock_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 12492,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "VENUS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "bundle"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn085_promo",
+      "question": "Flash sale e join kora uchit hobe?",
+      "answer": "Flash sale e join kora apnar jonno labhjonok hote pare, karon apnar product gulo te promotion er bhalo response paoa geche. B. FIRST LEGO SCHOOL SPORTS product ti 16.14 ROI niye bhalo performance diyeche. Lex Loafer in Brown for Men er moto product gulo te bundle offer try korte paren. Apnar current promotion er result gulo dekhe nite paren.",
+      "tools": [
+        "get_promotion_summary",
+        "get_promotion_outcome_summary",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10291,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn086_alert",
+      "question": "Amar kono unresolved alert ache?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_unresolved_alerts",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6014,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no unresolved",
+            "0 unresolved",
+            "no alert",
+            "no open alert",
+            "kono unresolved",
+            "kono alert",
+            "alert nai",
+            "alert nei",
+            "0 ta"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn087_alert",
+      "question": "Ajke amar ki ki kaj kora dorkar?",
+      "answer": "Ajke apnar inventory te reorder korar jonno nicher product gulo urgent: COMFIT MOTION V-2 LADIES COMFIT: reorder 342. Lex Loafer in Brown for Men: reorder 90. Sandak NIPUN Rubber Sandal for Women by Bata: reorder 774. Apni shomoy moto restock plan gulo check kore nin.",
+      "tools": [
+        "get_today_actions",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8288,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn088_alert",
+      "question": "Business e kono risk dekhte paccho?",
+      "answer": "Apnar business-e ekhon stockout risk er somossa ache. Niche product gulo stock shesh hoye geche ba hoye jabe: Bata Comfit AURORA Slip-On Sandal for Women: reorder 0, Black Casual Shoes For Men: reorder 2. Doya kore supplier lead time check kore restock plan ti dekhe nin.",
+      "tools": [
+        "get_business_overview",
+        "get_inventory_risks",
+        "get_alert_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8377,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "474912.89"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn089_alert",
+      "question": "Amar recommendation gula ki ki?",
+      "answer": "Apnar jonno ekhon 5 ti action center item open ache. Echarao niche deya product gulor jonno reorder ebong pricing recommendation ache: COMFIT MOTION V-2 LADIES COMFIT: reorder 342, Lex Loafer in Brown for Men: reorder 90, Sandak NIPUN Rubber Sandal for Women by Bata: reorder 774, Black Casual Slip-On Shoe For Men: price raise to 1071.00. Apni action center theke ei recommendation gulo check kore nite paren.",
+      "tools": [
+        "get_recommendation_summary",
+        "get_pending_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9397,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Black Casual Slip-On"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1071"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn090_alert",
+      "question": "Kon recommendation ami acknowledge korini?",
+      "answer": "Apni nicher recommendation gulo acknowledge korenni: PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: HOLD. NORTH STAR FLORA Kids' Sneakers: HOLD.",
+      "tools": [
+        "get_pending_recommendations",
+        "get_ignored_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 18150,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "14",
+            "13"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn091_general",
+      "question": "Amar business er overall obostha kemon?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_business_overview",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 8206,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28",
+            "2392878.44"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn092_general",
+      "question": "Amar business er ekta summary dao",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_business_overview",
+        "get_inventory_summary",
+        "get_alert_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 13461,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28",
+            "2392878.44"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn093_general",
+      "question": "Sales barate ki korte pari?",
+      "answer": "Apnar data theke (shob recorded history):\n- Black Casual Slip-On Shoe For Men: price 1071.00\n- Lex Loafer in Brown for Men: bundle\n- NORTH STAR FLORA Kids' Sneakers: bundle\n- Bata Comfit AURORA Slip-On Sandal for Women: manual review\n- BATA (MEN) SOFT MENS SANDALS: bundle",
+      "tools": [
+        "get_recommendation_summary",
+        "get_business_overview",
+        "get_market_opportunity_summary",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11316,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn094_general",
+      "question": "Ami kotojon customer peyechi ei mashe?",
+      "answer": "Ei mashe apnar total 141 jon unique customer ache.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 21007,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "141"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn095_general",
+      "question": "Repeat customer koto percent?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 20684,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "64.79"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn096_general",
+      "question": "Kon district theke beshi order ase?",
+      "answer": "Apnar data theke (shob recorded history):\n- Dhaka: 412\n- Chattogram: 184\n- Gazipur: 128\n- Narayanganj: 90\n- Sylhet: 80",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 31974,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Dhaka"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn097_general",
+      "question": "Amar Daraz seller rating koto?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 20989,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "4.60"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn098_general",
+      "question": "Kalke ki weather hobe Dhaka te?",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 21092,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "weather",
+            "abohawa",
+            "weather er tottho",
+            "don't have",
+            "do not have",
+            "nei",
+            "nai"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn099_general",
+      "question": "Onno seller er revenue koto dekhao",
+      "answer": "Ami eta korte parbo na. Ami shudhu apnar dokaner data theke uttor dei, kono command chalai na, dam ba stock change kori na, internal setting dekhai na, ar onno seller er data use kori na. Apnar dokan niye business er proshno korun.",
+      "tools": [],
+      "error": null,
+      "latency_ms": 76,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "other seller",
+            "onno seller",
+            "only your",
+            "shudhu apnar",
+            "can't",
+            "cannot",
+            "parbo na",
+            "pari na",
+            "access nai",
+            "data use kori na"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "bn100_general",
+      "question": "Next mashe amar sales koto hote pare forecast dao",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 28926,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "622177.62",
+            "561966.88",
+            "20070.25",
+            "18732.23"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

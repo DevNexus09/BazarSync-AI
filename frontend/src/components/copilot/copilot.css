@@ -3,9 +3,82 @@
 
 .copilot-root {
   font-family: "Inter Variable", "Noto Sans Bengali", sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .copilot-root :lang(bn) {
   font-family: "Noto Sans Bengali", "Inter Variable", sans-serif;
   line-height: 1.7;
+}
+
+.copilot-root ::selection {
+  background: rgb(var(--primary) / 0.3);
+  color: rgb(var(--foreground));
+}
+
+.copilot-root textarea {
+  caret-color: rgb(var(--primary));
+}
+
+.copilot-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--muted-foreground) / 0.35) transparent;
+  overscroll-behavior: contain;
+}
+
+/* Full-page mode keeps a readable column instead of stretching answers edge to edge. */
+[data-expanded] .copilot-column {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+}
+
+/* Thinking line: text with a soft light sweep, and a slowly turning mark. */
+.copilot-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--muted-foreground)) 0%,
+    rgb(var(--muted-foreground)) 40%,
+    rgb(var(--foreground)) 50%,
+    rgb(var(--muted-foreground)) 60%,
+    rgb(var(--muted-foreground)) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: copilot-shimmer 2.2s linear infinite;
+}
+
+.copilot-thinking-mark {
+  animation: copilot-spin 3s ease-in-out infinite;
+}
+
+.copilot-fade-in {
+  animation: copilot-fade-in 240ms ease-out, copilot-shimmer 2.2s linear infinite;
+}
+
+@keyframes copilot-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+
+@keyframes copilot-spin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(0.85); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes copilot-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copilot-shimmer,
+  .copilot-fade-in,
+  .copilot-thinking-mark {
+    animation: none;
+    color: rgb(var(--muted-foreground));
+  }
 }

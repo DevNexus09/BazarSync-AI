@@ -8,10 +8,6 @@ import { CopilotWidget } from "@/components/copilot/CopilotWidget"
 import * as copilotService from "@/services/copilot-service"
 import type { CopilotAskResponse, CopilotFeatures } from "@/types/copilot"
 
-vi.mock("@/hooks/use-products", () => ({
-  useProducts: () => ({ data: [{ id: "product-1", title: "Product A" }] }),
-}))
-
 vi.mock("@/services/copilot-service", () => ({
   listCopilotConversations: vi.fn(),
   createCopilotConversation: vi.fn(),
@@ -123,13 +119,14 @@ describe("Copilot chat experience", () => {
     expect(screen.queryByRole("option", { name: "Banglish" })).toBeNull()
   })
 
-  it("renders markdown answers, readable tool names and follow-up chips that ask again", async () => {
+  it("renders markdown answers without tool badges and follow-up chips that ask again", async () => {
     renderWidget()
     await open()
     await ask("What should I restock?")
 
     expect((await screen.findByText("Quick recommendation")).tagName).toBe("STRONG")
-    expect(screen.getByText("Restock recommendations")).toBeInTheDocument()
+    // Tool names live only in the collapsed Sources section, never in the answer itself.
+    expect(screen.getByText("Restock recommendations")).not.toBeVisible()
 
     await userEvent.click(screen.getByRole("button", { name: "Which products are closest to stocking out?" }))
     await waitFor(() => expect(copilotService.askCopilot).toHaveBeenCalledTimes(2))
@@ -246,7 +243,7 @@ describe("Copilot chat experience", () => {
     await screen.findByRole("option", { name: "Banglish" })
     await ask("What should I restock?")
 
-    expect(await screen.findByText("Checked: Restock recommendations")).toBeInTheDocument()
+    expect(await screen.findByText("Checking restock recommendations…")).toBeInTheDocument()
     expect(copilotService.askCopilot).not.toHaveBeenCalled()
     release(answer)
     expect(await screen.findByText("Quick recommendation")).toBeInTheDocument()

@@ -1,0 +1,120 @@
+{
+  "ran_at": "2026-11-21T20:42:14.552806+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "total": 3,
+  "passed": 1,
+  "score": 0.3333,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "rev_category_mens",
+      "question": "How much revenue did Men's Footwear make from 2026-10-01 to 2026-10-31?",
+      "answer": "Men's Footwear made a gross revenue of 235260.96 BDT from 2026-10-01 to 2026-10-31.\nBlack Casual Shoes For Men: gross revenue 70011.12 BDT\nReview sales trends to identify growth opportunities.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "explain_revenue_drop",
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_pricing_recommendations",
+        "get_promotion_recommendations",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 18536,
+      "passed": true,
+      "facts": [
+        {
+          "label": "category revenue",
+          "expected": [
+            "235260.96"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "stock_in_week",
+      "question": "What stock did I receive between 2026-11-08 and 2026-11-14?",
+      "answer": "Stock received records are not recorded for the period between 2026-11-08 and 2026-11-14. Review inventory risk assessments instead.",
+      "tools": [
+        "get_competitor_threats",
+        "get_inventory_risks",
+        "get_dead_stock_summary",
+        "get_dead_stock_recovery",
+        "get_alert_recommendation_summary",
+        "retrieve_business_memory",
+        "query_business_records"
+      ],
+      "error": null,
+      "latency_ms": 4580,
+      "passed": false,
+      "facts": [
+        {
+          "label": "product 1",
+          "expected": [
+            "PATAPATA NEPTUNE"
+          ],
+          "found": false
+        },
+        {
+          "label": "qty 1",
+          "expected": [
+            "40"
+          ],
+          "found": false
+        },
+        {
+          "label": "product 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": false
+        },
+        {
+          "label": "qty 2",
+          "expected": [
+            "60"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "unanswerable_invoices",
+      "question": "How many invoices did I issue from 2026-11-01 to 2026-11-15?",
+      "answer": "I could not find a clear answer in your data yet.",
+      "tools": [
+        "retrieve_business_memory",
+        "query_business_records"
+      ],
+      "error": null,
+      "latency_ms": 3118,
+      "passed": false,
+      "facts": [
+        {
+          "label": "says invoices are not recorded",
+          "expected": [
+            "not recorded",
+            "no invoice",
+            "don't have invoice",
+            "do not have invoice",
+            "isn't recorded",
+            "not available",
+            "not tracked",
+            "unavailable"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

@@ -235,6 +235,8 @@ async def generate_completion(
             model=selected_model,
             request_id=request_id,
             error=exc.__class__.__name__,
+            # 413 here means the prompt is over the account's tokens-per-minute limit.
+            status=getattr(exc, "status_code", None),
         )
         raise GroqAPIError("Groq API error occurred.") from exc
 

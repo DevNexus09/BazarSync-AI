@@ -186,7 +186,7 @@ class Settings(BaseModel):
     pricing_analytics_demand_product_maturity_weight: float = 15.0
     pricing_analytics_demand_velocity_reference_units_per_day: float = 10.0
     pricing_analytics_demand_recent_sales_reference_units: int = 100
-    pricing_analytics_formula_version: str = "v1"
+    pricing_analytics_formula_version: str = "v2"
     demand_response_min_observations: int = 6
     demand_response_min_price_variation_rate: float = 0.05
     demand_response_min_coverage_days: int = 14
@@ -214,7 +214,7 @@ class Settings(BaseModel):
     rag_chunking_version: str = "v1"
     rag_max_chunk_chars: int = 1500
     rag_chunk_overlap_chars: int = 150
-    rag_retrieval_top_k: int = 8
+    rag_retrieval_top_k: int = 12
     rag_min_similarity: float = 0.35
     rag_prompt_version: str = "v1"
     rag_groq_model: str | None = None
@@ -228,6 +228,7 @@ class Settings(BaseModel):
     rag_outbox_max_backoff_seconds: int = 3600
     rag_outbox_processing_lease_seconds: int = 900
     rag_cosine_distance_enabled: bool = False
+    rag_rrf_enabled: bool = False
     copilot_groq_model: str | None = None
     copilot_groq_timeout_seconds: float = 20.0
     copilot_overall_timeout_seconds: float = 45.0
@@ -243,6 +244,9 @@ class Settings(BaseModel):
     copilot_llm_answer_routes_banglish: str = ""
     copilot_anthropic_effort: str = "low"
     copilot_anthropic_max_tokens: int = 16000
+    openai_base_url: str = "https://api.openai.com/v1"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
     copilot_prompt_tool_chars: int = 12000
     copilot_prompt_total_chars: int = 48000
     copilot_conversation_memory_enabled: bool = False
@@ -254,6 +258,9 @@ class Settings(BaseModel):
     copilot_tool_concurrency: int = 4
     copilot_llm_planner_fallback_enabled: bool = False
     copilot_streaming_enabled: bool = False
+    copilot_agent_loop_enabled: bool = False
+    copilot_fallback_max_tools: int = 4
+    copilot_always_retrieve_memory: bool = False
     copilot_strict_safety_planning_enabled: bool = False
     rag_query_embedding_cache_size: int = 0
 
@@ -503,7 +510,7 @@ class Settings(BaseModel):
             "pricing_analytics_demand_product_maturity_weight": float(os.getenv("PRICING_ANALYTICS_DEMAND_PRODUCT_MATURITY_WEIGHT", "15.0")),
             "pricing_analytics_demand_velocity_reference_units_per_day": float(os.getenv("PRICING_ANALYTICS_DEMAND_VELOCITY_REFERENCE_UNITS_PER_DAY", "10.0")),
             "pricing_analytics_demand_recent_sales_reference_units": int(os.getenv("PRICING_ANALYTICS_DEMAND_RECENT_SALES_REFERENCE_UNITS", "100")),
-            "pricing_analytics_formula_version": os.getenv("PRICING_ANALYTICS_FORMULA_VERSION", "v1"),
+            "pricing_analytics_formula_version": os.getenv("PRICING_ANALYTICS_FORMULA_VERSION", "v2"),
             "demand_response_min_observations": int(os.getenv("DEMAND_RESPONSE_MIN_OBSERVATIONS", "6")),
             "demand_response_min_price_variation_rate": float(os.getenv("DEMAND_RESPONSE_MIN_PRICE_VARIATION_RATE", "0.05")),
             "demand_response_min_coverage_days": int(os.getenv("DEMAND_RESPONSE_MIN_COVERAGE_DAYS", "14")),
@@ -534,7 +541,7 @@ class Settings(BaseModel):
             "rag_chunking_version": os.getenv("RAG_CHUNKING_VERSION", "v1"),
             "rag_max_chunk_chars": int(os.getenv("RAG_MAX_CHUNK_CHARS", "1500")),
             "rag_chunk_overlap_chars": int(os.getenv("RAG_CHUNK_OVERLAP_CHARS", "150")),
-            "rag_retrieval_top_k": int(os.getenv("RAG_RETRIEVAL_TOP_K", "8")),
+            "rag_retrieval_top_k": int(os.getenv("RAG_RETRIEVAL_TOP_K", "12")),
             "rag_min_similarity": float(os.getenv("RAG_MIN_SIMILARITY", "0.35")),
             "rag_prompt_version": os.getenv("RAG_PROMPT_VERSION", "v1"),
             "rag_groq_model": os.getenv("RAG_GROQ_MODEL"),
@@ -548,6 +555,7 @@ class Settings(BaseModel):
             "rag_outbox_max_backoff_seconds": int(os.getenv("RAG_OUTBOX_MAX_BACKOFF_SECONDS", "3600")),
             "rag_outbox_processing_lease_seconds": int(os.getenv("RAG_OUTBOX_PROCESSING_LEASE_SECONDS", "900")),
             "rag_cosine_distance_enabled": _parse_bool(os.getenv("RAG_COSINE_DISTANCE_ENABLED"), default=False),
+            "rag_rrf_enabled": _parse_bool(os.getenv("RAG_RRF_ENABLED"), default=False),
             "copilot_groq_model": os.getenv("GROQ_COPILOT_MODEL") or os.getenv("GROQ_MODEL"),
             "copilot_groq_timeout_seconds": float(os.getenv("COPILOT_GROQ_TIMEOUT_SECONDS", "20")),
             "copilot_overall_timeout_seconds": float(os.getenv("COPILOT_OVERALL_TIMEOUT_SECONDS", "45")),
@@ -563,6 +571,9 @@ class Settings(BaseModel):
             "copilot_llm_answer_routes_banglish": os.getenv("COPILOT_LLM_ANSWER_ROUTES_BANGLISH", ""),
             "copilot_anthropic_effort": os.getenv("COPILOT_ANTHROPIC_EFFORT", "low"),
             "copilot_anthropic_max_tokens": int(os.getenv("COPILOT_ANTHROPIC_MAX_TOKENS", "16000")),
+            "openai_base_url": os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1",
+            "gemini_base_url": os.getenv("GEMINI_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai",
+            "openrouter_base_url": os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1",
             "copilot_prompt_tool_chars": int(os.getenv("COPILOT_PROMPT_TOOL_CHARS", "12000")),
             "copilot_prompt_total_chars": int(os.getenv("COPILOT_PROMPT_TOTAL_CHARS", "48000")),
             "copilot_conversation_memory_enabled": _parse_bool(os.getenv("COPILOT_CONVERSATION_MEMORY_ENABLED"), default=False),
@@ -574,6 +585,9 @@ class Settings(BaseModel):
             "copilot_tool_concurrency": int(os.getenv("COPILOT_TOOL_CONCURRENCY", "4")),
             "copilot_llm_planner_fallback_enabled": _parse_bool(os.getenv("COPILOT_LLM_PLANNER_FALLBACK_ENABLED"), default=False),
             "copilot_streaming_enabled": _parse_bool(os.getenv("COPILOT_STREAMING_ENABLED"), default=False),
+            "copilot_agent_loop_enabled": _parse_bool(os.getenv("COPILOT_AGENT_LOOP_ENABLED"), default=False),
+            "copilot_fallback_max_tools": int(os.getenv("COPILOT_FALLBACK_MAX_TOOLS", "4")),
+            "copilot_always_retrieve_memory": _parse_bool(os.getenv("COPILOT_ALWAYS_RETRIEVE_MEMORY"), default=False),
             "copilot_strict_safety_planning_enabled": _parse_bool(os.getenv("COPILOT_STRICT_SAFETY_PLANNING_ENABLED"), default=False),
             "rag_query_embedding_cache_size": int(os.getenv("RAG_QUERY_EMBEDDING_CACHE_SIZE", "0")),
         }

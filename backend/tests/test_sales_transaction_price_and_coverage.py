@@ -189,6 +189,29 @@ class SalesTransactionPriceAndCoverageTests(unittest.TestCase):
         self.assertEqual(2, payload["order_count"])
         self.assertEqual(Decimal("20.00"), payload["gross_revenue"])
 
+    def test_zero_sales_period_states_seller_scoped_latest_valid_sale_date(self) -> None:
+        own = self._product("Own")
+        other = self._product("Other", seller=self.other_seller)
+        self.db.add_all([own, other])
+        self.db.flush()
+        self.db.add_all(
+            [
+                # 2025-01-02 20:00 UTC is 2025-01-03 in Dhaka.
+                self._sale(own, source_reference="valid", unit_price=Decimal("10.00"), sold_at=datetime(2025, 1, 2, 20, tzinfo=timezone.utc)),
+                self._sale(own, source_reference="cancelled", status=SalesRecordStatus.CANCELLED, unit_price=Decimal("10.00"), sold_at=datetime(2025, 3, 1, tzinfo=timezone.utc)),
+                self._sale(other, source_reference="other", unit_price=Decimal("10.00"), sold_at=datetime(2025, 3, 5, tzinfo=timezone.utc)),
+            ]
+        )
+        self.db.commit()
+        service = SalesRevenueAnalyticsService(self.db)
+
+        summary, _ = service.get_revenue_summary(seller_id=self.seller.id, from_date=date(2025, 2, 1), to_date=date(2025, 2, 28), compare_to_previous_period=False)
+        trends, _ = service.get_sales_trends(seller_id=self.seller.id, from_date=date(2025, 2, 1), to_date=date(2025, 2, 28), granularity="day")
+
+        self.assertEqual(0, summary["order_count"])
+        self.assertEqual("2025-01-03", summary["latest_recorded_sale_date"])
+        self.assertEqual("2025-01-03", trends["latest_recorded_sale_date"])
+
     def test_complete_coverage_allows_no_sales_claim(self) -> None:
         product = self._product("Covered")
         self.db.add(product)
@@ -286,13 +309,14 @@ class SalesTransactionPriceAndCoverageTests(unittest.TestCase):
         quantity: int = 1,
         unit_price: Decimal | None = None,
         is_test_order: bool = False,
+        sold_at: datetime = datetime(2025, 1, 2, tzinfo=timezone.utc),
     ) -> SalesRecord:
         return SalesRecord(
             seller_id=product.seller_id,
             product_id=product.id,
             source_reference=source_reference,
             status=status,
-            sold_at=datetime(2025, 1, 2, tzinfo=timezone.utc),
+            sold_at=sold_at,
             quantity_sold=quantity,
             unit_price=unit_price,
             line_total=None if unit_price is None else unit_price * Decimal(quantity),

@@ -1,0 +1,184 @@
+"""End-to-end Business Copilot accuracy eval against a seeded seller (outside request handlers).
+
+Runs each golden question through ``CopilotOrchestrator.ask`` with the current settings
+(real tools, real database, configured LLM providers) and checks that every expected fact
+appears in the answer. Live LLM calls may cost money; questions run sequentially.
+
+    python scripts/copilot_eval.py --seller-id <uuid>
+    python scripts/copilot_eval.py --seller-id <uuid> --only rev_october,stock_in_week
+    python scripts/copilot_eval.py --seller-id <uuid> --fixture tests/fixtures/copilot_banglish_heldout.json --as-of 2026-11-22
+
+``--as-of`` pins "today" to that day at 21:00 Asia/Dhaka for the planner, the classifier and the
+agent loop, so relative periods ("last 7 din", "gotokal") resolve the same way on every run.
+
+The orchestrator persists one Copilot conversation per question for that seller, exactly
+like the API does; those conversations are tagged ``metadata_json.source = "copilot_eval"``
+so RAG backfill never indexes them as the seller's history. Results go to ``artifacts/copilot_eval/<timestamp>.json``.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+from datetime import date, datetime, time as day_time, timezone
+from decimal import Decimal, InvalidOperation
+import json
+from pathlib import Path
+import re
+import sys
+import time
+from typing import Any
+from uuid import UUID
+from zoneinfo import ZoneInfo
+
+BACKEND = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND))
+
+FIXTURE = BACKEND / "tests" / "fixtures" / "copilot_golden_questions.json"
+OUTPUT_DIR = BACKEND / "artifacts" / "copilot_eval"
+BANGLA_DIGITS = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
+NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def normalize(text: str) -> str:
+    text = (text or "").translate(BANGLA_DIGITS).casefold()
+    # "290,360.28" and "2,90,360.28" (lakh grouping) both become "290360.28".
+    text = re.sub(r"(?<=\d),(?=\d)", "", text)
+    return " ".join(text.split())
+
+
+def _numbers(text: str) -> list[Decimal]:
+    return [Decimal(token) for token in NUMBER_RE.findall(text)]
+
+
+def value_present(expected: str, answer: str) -> bool:
+    """Numbers match exactly or at the same rounding the answer used; text matches as a substring."""
+    norm_answer = normalize(answer)
+    norm_expected = normalize(expected)
+    try:
+        target = Decimal(norm_expected)
+    except InvalidOperation:
+        return norm_expected in norm_answer
+    for number in _numbers(norm_answer):
+        exponent = number.as_tuple().exponent
+        places = -exponent if isinstance(exponent, int) and exponent < 0 else 0
+        # Sign is ignored: "fell by 17,287.94" restates a change of -17287.94.
+        if abs(number) == abs(target.quantize(Decimal(1).scaleb(-places))):
+            return True
+    return False
+
+
+def grade(case: dict[str, Any], answer: str, tools: list[str]) -> dict[str, Any]:
+    facts = []
+    for fact in case.get("expected_facts", []):
+        options = fact.get("any_of") or [fact["value"]]
+        facts.append({"label": fact["label"], "expected": options, "found": any(value_present(option, answer) for option in options)})
+    forbidden = [value for value in case.get("must_not_contain", []) if normalize(value) in normalize(answer)]
+    expected_tools = case.get("expected_tools_any") or []
+    return {
+        "passed": all(fact["found"] for fact in facts) and not forbidden,
+        "facts": facts,
+        "forbidden_found": forbidden,
+        "tool_match": (not expected_tools) or any(tool in tools for tool in expected_tools),
+    }
+
+
+def as_of_now(value: str | None) -> datetime | None:
+    """``YYYY-MM-DD`` -> that day at 21:00 in the seller calendar (Asia/Dhaka)."""
+    if not value:
+        return None
+    return datetime.combine(date.fromisoformat(value), day_time(21, 0), tzinfo=ZoneInfo("Asia/Dhaka"))
+
+
+async def run(args: argparse.Namespace) -> dict[str, Any]:
+    from app.db.session import SessionLocal
+    from app.repositories.copilot_repository import CopilotRepository
+    from app.services.copilot import orchestrator as orchestrator_module
+    from app.services.copilot.entity_resolver import CopilotEntityResolver
+    from app.services.copilot.intent_classifier import CopilotIntentClassifier
+    from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
+    from app.services.copilot.question_planner import CopilotQuestionPlanner
+    from app.services.rag_memory_backfill_service import EVAL_CONVERSATION_SOURCE
+
+    as_of = as_of_now(args.as_of)
+    if as_of is not None:
+        # The agent loop's "today" (the planner and classifier get it per orchestrator below).
+        orchestrator_module._today_seller = as_of.date  # type: ignore[assignment]
+
+    cases = json.loads(Path(args.fixture).read_text(encoding="utf-8"))["questions"]
+    if args.only:
+        wanted = set(args.only.split(","))
+        cases = [case for case in cases if case["id"] in wanted]
+    seller_id = UUID(args.seller_id)
+    rows = []
+    for case in cases:
+        started = time.monotonic()
+        with SessionLocal() as session:
+            try:
+                # Tagged so RAG backfill never indexes eval turns as the seller's Copilot history.
+                conversation = CopilotRepository(session).create_conversation(
+                    seller_id=seller_id, user_id=seller_id, title=f"[eval] {case['id']}", metadata_json={"source": EVAL_CONVERSATION_SOURCE}
+                )
+                # None keeps the orchestrator's own defaults (real "now").
+                planner = None if as_of is None else CopilotQuestionPlanner(entity_resolver=CopilotEntityResolver(db=session), now=as_of)
+                classifier = None if as_of is None else CopilotIntentClassifier(db=session, now=as_of)
+                result = await CopilotOrchestrator(db=session, question_planner=planner, classifier=classifier).ask(
+                    CopilotOrchestratorRequest(
+                        seller_id=seller_id,
+                        user_id=seller_id,
+                        conversation_id=conversation.id,
+                        question=case["question"],
+                        requested_language="auto",
+                        include_tool_trace=True,
+                    )
+                )
+                answer = result.answer
+                tools = [str(item.get("tool_name") or item.get("name") or "") for item in result.tools_used]
+                error = None
+            except Exception as exc:  # noqa: BLE001 - one crashing question is a failed row, not a failed run
+                session.rollback()
+                answer, tools, error = "", [], f"{exc.__class__.__name__}: {exc}"
+        row = {"id": case["id"], "question": case["question"], "answer": answer, "tools": tools, "error": error, "latency_ms": int((time.monotonic() - started) * 1000)}
+        row.update(grade(case, answer, tools))
+        if error:
+            row["passed"] = False
+        rows.append(row)
+        print(f"{'PASS' if row['passed'] else 'FAIL'}  {case['id']:<28} tools={'ok' if row['tool_match'] else 'miss'}  {row['latency_ms']}ms", flush=True)
+        if not row["passed"] and args.verbose:
+            print(f"      answer: {answer[:300]!r}  error={error}", flush=True)
+        if args.pause:
+            # Free tiers limit tokens per minute (Groq: 8000); pacing keeps 429s from turning answers into fallbacks.
+            await asyncio.sleep(args.pause)
+    passed = sum(row["passed"] for row in rows)
+    summary = {
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+        "seller_id": str(seller_id),
+        "fixture": str(args.fixture),
+        "as_of": args.as_of,
+        "total": len(rows),
+        "passed": passed,
+        "score": round(passed / len(rows), 4) if rows else 0.0,
+        "tool_match_rate": round(sum(row["tool_match"] for row in rows) / len(rows), 4) if rows else 0.0,
+        "rows": rows,
+    }
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUTPUT_DIR / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+    path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\nscore {passed}/{len(rows)} = {summary['score']:.0%}  tool match {summary['tool_match_rate']:.0%}  -> {path}")
+    return summary
+
+
+def main() -> int:
+    cli = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    cli.add_argument("--seller-id", required=True)
+    cli.add_argument("--fixture", default=str(FIXTURE), help="Questions JSON (default: the golden set).")
+    cli.add_argument("--only", help="Comma-separated question ids.")
+    cli.add_argument("--verbose", action="store_true", help="Print failing answers.")
+    cli.add_argument("--as-of", help="Pin today to YYYY-MM-DD (21:00 Asia/Dhaka) so relative periods are reproducible.")
+    cli.add_argument("--pause", type=float, default=0.0, help="Seconds to wait between questions (provider rate limits).")
+    asyncio.run(run(cli.parse_args()))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -3,7 +3,6 @@ export type CopilotLanguage = "auto" | "bn" | "en" | "banglish"
 /** Language the answer text is written in; Banglish is Bangla in Latin script. */
 export type CopilotReplyLanguage = "en" | "bn" | "banglish"
 export type CopilotReplyScript = "bengali" | "latin"
-export type CopilotSourceMode = "current" | "memory" | "both"
 export type CopilotDomain =
   | "PRODUCT_CATALOG"
   | "SALES_REVENUE"
@@ -158,16 +157,14 @@ export type CopilotActionProposal = {
 export type CopilotAskRequest = {
   conversation_id?: string
   question: string
-  product_id?: string | null
-  from_date?: string | null
-  to_date?: string | null
-  domain_filters?: CopilotDomain[]
   language?: CopilotLanguage
-  include_current_data?: boolean
-  include_memory?: boolean
-  memory_source_types?: CopilotMemorySourceType[]
-  top_k?: number
   debug?: boolean
+}
+
+/** Wire body for POST /copilot/ask; filter fields the backend accepts are intentionally not sent. */
+export type CopilotAskPayload = CopilotAskRequest & {
+  include_current_data: boolean
+  include_memory: boolean
 }
 
 export type CopilotAskResponse = {

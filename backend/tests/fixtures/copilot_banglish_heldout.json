@@ -1,0 +1,496 @@
+{
+ "description": "Held-out Copilot set: the user's 5 pasted questions (ho*) and 30 rephrasings never used during development (hr*: new word order, mixed English/Banglish, typos). Expected facts are phrase-neutral and were computed with SQL against the demo seller as of 2026-11-22 (Asia/Dhaka; sales recorded to 2026-11-20). A question with no period is graded on all recorded history. Run with --as-of 2026-11-22.",
+ "questions": [
+  {
+   "id": "ho01_listed",
+   "category": "user",
+   "question": "amar koyta product listed ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "15"
+    }
+   ]
+  },
+  {
+   "id": "ho02_overview",
+   "category": "user",
+   "question": "amar bebsar obostha ki",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "383863.28",
+      "2392878.44"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ho03_sales_record",
+   "category": "user",
+   "question": "amar sales record ta dao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "2392878.44"
+    },
+    {
+     "label": "fact 2",
+     "value": "1146"
+    },
+    {
+     "label": "fact 3",
+     "any_of": [
+      "2333",
+      "2360"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ho04_per_product_units",
+   "category": "user",
+   "question": "per product wise sales unit ar sales record dao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "NORTH STAR HAFSA"
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "283",
+      "284"
+     ]
+    },
+    {
+     "label": "fact 3",
+     "value": "NORTH STAR FLORA"
+    },
+    {
+     "label": "fact 4",
+     "any_of": [
+      "282",
+      "290"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ho05_per_product_sales",
+   "category": "user",
+   "question": "kon product er sale koto bolo",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "NORTH STAR HAFSA"
+    },
+    {
+     "label": "fact 2",
+     "value": "486500.00"
+    },
+    {
+     "label": "fact 3",
+     "value": "NORTH STAR FLORA"
+    },
+    {
+     "label": "fact 4",
+     "value": "325864.00"
+    }
+   ]
+  },
+  {
+   "id": "hr06_month_sales",
+   "category": "sales",
+   "question": "amar bebsar er ei maser sales kotogula?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "383863.28",
+      "181"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hr07_last_seven",
+   "category": "sales",
+   "question": "how much did I sell in the last seven days, bhai?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "93503.00"
+    }
+   ]
+  },
+  {
+   "id": "hr08_october",
+   "category": "sales",
+   "question": "oktober month e total revenue koto chilo",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "613570.52"
+    }
+   ]
+  },
+  {
+   "id": "hr09_yesterday",
+   "category": "sales",
+   "question": "gotokaler sale er hisab dao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no sales",
+      "no sale",
+      "no orders",
+      "no order",
+      "bikri hoy nai",
+      "bikri hoyni",
+      "bikri hoy ni",
+      "kono bikri",
+      "kono sale",
+      "sale hoy nai",
+      "sale hoyni",
+      "kono order",
+      "order ashe nai",
+      "order ase nai",
+      "order ashenai",
+      "not recorded",
+      "record hoy nai"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hr10_week_orders",
+   "category": "sales",
+   "question": "this week a kotogula order hoise",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "43"
+    }
+   ]
+  },
+  {
+   "id": "hr11_nov_first_half",
+   "category": "sales",
+   "question": "november 1 theke 15 porjonto bikri koto",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "290360.28"
+    }
+   ]
+  },
+  {
+   "id": "hr12_best_day",
+   "category": "sales",
+   "question": "amar sobcheye beshi bikri howa din konta chilo?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "2026-07-31",
+      "31 jul",
+      "jul 31",
+      "31 july",
+      "july 31"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hr13_product_count",
+   "category": "product",
+   "question": "kotogula product ache amar dokane",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "15"
+    }
+   ]
+  },
+  {
+   "id": "hr14_most_expensive",
+   "category": "product",
+   "question": "which product is most expensive in my store?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Power XORISE"
+    }
+   ]
+  },
+  {
+   "id": "hr15_cheapest",
+   "category": "product",
+   "question": "sob theke kom dami jinis konta",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "PATAPATA"
+    }
+   ]
+  },
+  {
+   "id": "hr16_total_stock",
+   "category": "stock",
+   "question": "stock e total kotogula unit pore ache",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "726"
+    }
+   ]
+  },
+  {
+   "id": "hr17_stock_out",
+   "category": "stock",
+   "question": "konta stock out, mane ekdom shesh?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "hr18_one_stock",
+   "category": "stock",
+   "question": "Black Casual Shoes For Men er stok koto ache",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "2"
+    }
+   ]
+  },
+  {
+   "id": "hr19_inventory_value",
+   "category": "stock",
+   "question": "inventory r value cost price e koto taka",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "595431.23"
+    }
+   ]
+  },
+  {
+   "id": "hr20_dead_capital",
+   "category": "stock",
+   "question": "dead stok e koto capital atke ase",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "474912.89"
+    }
+   ]
+  },
+  {
+   "id": "hr21_last_stock_in",
+   "category": "stock",
+   "question": "last stock in ta kobe hoisilo",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "2026-11-12",
+      "12 nov",
+      "nov 12",
+      "12 november",
+      "november 12"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "value": "Sandak NIPUN"
+    }
+   ]
+  },
+  {
+   "id": "hr22_top_category",
+   "category": "product",
+   "question": "category onujayi kon ta beshi bikri hoy",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Men's Footwear"
+    }
+   ]
+  },
+  {
+   "id": "hr23_lex_units",
+   "category": "product",
+   "question": "Lex Loafer november e kotogula sell hoise",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "9"
+    }
+   ]
+  },
+  {
+   "id": "hr24_no_sale_30",
+   "category": "product",
+   "question": "kon product gula last 30 day te ekta o bikri hoy nai",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "BUBBLE GUMMERS"
+    },
+    {
+     "label": "fact 2",
+     "value": "Power XORISE"
+    }
+   ]
+  },
+  {
+   "id": "hr25_october_profit",
+   "category": "profit",
+   "question": "october er profit ta bolo, estimated holeo cholbe",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "144764.68"
+    }
+   ]
+  },
+  {
+   "id": "hr26_margin",
+   "category": "profit",
+   "question": "ei month e profit margin percentage koto",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "23.66"
+    }
+   ]
+  },
+  {
+   "id": "hr27_supplier_due",
+   "category": "profit",
+   "question": "supplier der kase amar due koto",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "142574.02"
+    }
+   ]
+  },
+  {
+   "id": "hr28_month_expense",
+   "category": "profit",
+   "question": "ei maser khoroch er total",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "40697.00"
+    }
+   ]
+  },
+  {
+   "id": "hr29_customers",
+   "category": "general",
+   "question": "kotojon alada customer kinse ei mashe",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "141"
+    }
+   ]
+  },
+  {
+   "id": "hr30_repeat",
+   "category": "general",
+   "question": "repeat buyer er percentage ta koto",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "64.79"
+    }
+   ]
+  },
+  {
+   "id": "hr31_district",
+   "category": "general",
+   "question": "kon district e order beshi jay",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Dhaka"
+    }
+   ]
+  },
+  {
+   "id": "hr32_store_rating",
+   "category": "general",
+   "question": "Daraz e amar store rating koto ekhon",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "4.60"
+    }
+   ]
+  },
+  {
+   "id": "hr33_competitors",
+   "category": "competitor",
+   "question": "competitor koyta track hocche ar koyta store",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "89"
+    },
+    {
+     "label": "fact 2",
+     "value": "5"
+    }
+   ]
+  },
+  {
+   "id": "hr34_cancel_week",
+   "category": "sales",
+   "question": "kono order cancel hoise ei week e?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "15",
+      "17970.00"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hr35_returns",
+   "category": "sales",
+   "question": "ei mashe return koyta unit asche ar koto takar",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "4"
+    },
+    {
+     "label": "fact 2",
+     "value": "4248.00"
+    }
+   ]
+  }
+ ]
+}

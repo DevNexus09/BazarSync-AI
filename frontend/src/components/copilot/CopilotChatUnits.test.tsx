@@ -94,3 +94,46 @@ describe("CopilotQuestionInput", () => {
     expect(screen.queryByText(/\/2000/)).toBeNull()
   })
 })
+
+describe("CopilotStageSteps", () => {
+  it("shows one status line that follows the streamed stage in each language", async () => {
+    const { CopilotStageSteps } = await import("@/components/copilot/CopilotStageSteps")
+    const { rerender } = render(<CopilotStageSteps stage={{ stage: "understanding" }} language="en" />)
+    expect(screen.getByRole("status")).toHaveTextContent("Thinking…")
+
+    rerender(<CopilotStageSteps stage={{ stage: "tool", tool: "Revenue summary", status: "SUCCEEDED" }} language="en" />)
+    expect(screen.getByRole("status")).toHaveTextContent("Checking revenue summary…")
+
+    rerender(<CopilotStageSteps stage={{ stage: "writing" }} language="banglish" />)
+    expect(screen.getByRole("status")).toHaveTextContent("Preparing answer…")
+
+    rerender(<CopilotStageSteps stage={null} language="bn" />)
+    expect(screen.getByRole("status")).toHaveTextContent("বিশ্লেষণ করা হচ্ছে…")
+  })
+})
+
+describe("CopilotChatPanel full-page mode", () => {
+  it("switches between side panel and full page", async () => {
+    const { CopilotChatPanel } = await import("@/components/copilot/CopilotChatPanel")
+    const onToggle = vi.fn()
+    const { rerender } = render(
+      <CopilotChatPanel open onClose={() => {}} expanded={false} onToggleExpanded={onToggle}>
+        <p>body</p>
+      </CopilotChatPanel>
+    )
+
+    const toggle = screen.getByRole("button", { name: /full page/i })
+    expect(toggle).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByTestId("copilot-chat-panel")).not.toHaveAttribute("data-expanded")
+    await userEvent.click(toggle)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <CopilotChatPanel open onClose={() => {}} expanded onToggleExpanded={onToggle}>
+        <p>body</p>
+      </CopilotChatPanel>
+    )
+    expect(screen.getByRole("button", { name: /full page/i })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByTestId("copilot-chat-panel")).toHaveAttribute("data-expanded")
+  })
+})

@@ -1,4 +1,4 @@
-"""Provider-neutral JSON completion for the Business Copilot (Groq and Anthropic)."""
+"""Provider-neutral JSON completion for the Business Copilot (Groq, Anthropic, OpenAI and Gemini)."""
 
 from app.ai.llm.base import JsonCompletionRequest, LLMProvider, LLMProviderError, LLMResult
 from app.ai.llm.router import CopilotLLMRouter, LLMAttempt, LLMRoute, LLMRouterError, build_router_from_settings, parse_routes

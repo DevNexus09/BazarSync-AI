@@ -1,0 +1,338 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from decimal import Decimal
+import unittest
+from uuid import uuid4
+
+from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import Session
+
+from app.db.base import Base
+from app.models.business_finance import BusinessExpense, BusinessExpenseStatus, BusinessExpenseType
+from app.models.inventory_stock_in import InventoryStockIn
+from app.models.product import Product, ProductMarketplaceListing, ProductMarketplaceListingStatus
+from app.models.sales_record import SalesRecord, SalesRecordPriceSource, SalesRecordStatus
+from app.models.seller import Seller
+from app.services.copilot.tool_registry import CopilotToolContext, CopilotToolRegistry, ToolExecutionStatus
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(_type, _compiler, **_kwargs) -> str:
+    return "JSON"
+
+
+TABLES = [Seller.__table__, Product.__table__, SalesRecord.__table__, InventoryStockIn.__table__]
+
+
+class RecordsQueryToolTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+        Base.metadata.create_all(self.engine, tables=TABLES)
+        self.db = Session(self.engine)
+        self.seller = Seller(email="seller@example.com", password_hash="hash")
+        self.other = Seller(email="other@example.com", password_hash="hash")
+        self.db.add_all([self.seller, self.other])
+        self.db.flush()
+        self.shoe = self._product("Lex Loafer", self.seller, category="Men's Footwear")
+        self.sandal = self._product("Nipun Sandal", self.seller, category="Women's Footwear")
+        self.foreign = self._product("Other Shoe", self.other, category="Men's Footwear")
+        self.db.add_all([self.shoe, self.sandal, self.foreign])
+        self.db.flush()
+        # 2026-11-01 18:30 UTC is 2026-11-02 00:30 in Dhaka, so it belongs to the 2nd.
+        self.db.add_all(
+            [
+                self._sale(self.shoe, "2026-11-01T04:00:00", 2, Decimal("1874.00")),
+                self._sale(self.sandal, "2026-11-01T10:00:00", 1, Decimal("247.10")),
+                self._sale(self.shoe, "2026-11-01T18:30:00", 1, Decimal("1874.00")),
+                self._sale(self.shoe, "2026-11-02T08:00:00", 1, Decimal("1874.00"), status=SalesRecordStatus.CANCELLED),
+                self._sale(self.foreign, "2026-11-01T05:00:00", 5, Decimal("9999.00")),
+                InventoryStockIn(seller_id=self.seller.id, product_id=self.sandal.id, quantity=60, received_at=_utc("2026-11-12T03:00:00"), unit_cost=Decimal("140.79"), currency="BDT"),
+                InventoryStockIn(seller_id=self.other.id, product_id=self.foreign.id, quantity=999, received_at=_utc("2026-11-12T03:00:00"), unit_cost=Decimal("1.00"), currency="BDT"),
+            ]
+        )
+        self.db.commit()
+        self.registry = CopilotToolRegistry()
+        self.context = CopilotToolContext(seller_id=self.seller.id, db=self.db)
+
+    def tearDown(self) -> None:
+        self.db.close()
+        Base.metadata.drop_all(self.engine, tables=list(reversed(TABLES)))
+        self.engine.dispose()
+
+    def _run(self, **arguments):
+        return self.registry.execute(name="query_business_records", context=self.context, arguments=arguments)
+
+    def test_tool_is_registered_read_only(self):
+        tool = self.registry.get_tool("query_business_records")
+        self.assertTrue(tool.allowed_in_read_only_mode)
+        self.assertNotIn("seller_id", tool.argument_schema.model_fields)
+
+    def test_sum_revenue_by_day_matches_sales_records(self):
+        # 2026-11-01: 2 x 1874.00 + 247.10 = 3995.10. The 18:30 UTC sale is 00:30 on the 2nd in Dhaka. The CANCELLED sale is excluded.
+        result = self._run(entity="sales", aggregate="sum", measure="revenue", group_by="day", from_date="2026-11-01", to_date="2026-11-02", sort="asc")
+
+        self.assertEqual(ToolExecutionStatus.SUCCEEDED, result.status, result.error)
+        self.assertEqual(
+            [{"period": "2026-11-01", "value": "3995.10", "row_count": 2}, {"period": "2026-11-02", "value": "1874.00", "row_count": 1}],
+            result.data["rows"],
+        )
+        self.assertEqual(("money", "BDT", "sales_records", "records_query_v2"), (result.data["measure_unit"], result.data["currency"], result.data["source"], result.data["calculation_version"]))
+        self.assertEqual(3, result.data["row_count"])
+
+    def test_category_filter_is_case_insensitive_and_group_by_product(self):
+        result = self._run(entity="sales", aggregate="sum", measure="units", group_by="product", category="men's footwear", from_date="2026-11-01", to_date="2026-11-30")
+
+        self.assertEqual(1, len(result.data["rows"]))
+        self.assertEqual("Lex Loafer", result.data["rows"][0]["product"]["title"])
+        self.assertEqual("3", result.data["rows"][0]["value"])
+
+    def test_other_seller_rows_excluded(self):
+        sales = self._run(entity="sales", aggregate="count")
+        stock = self._run(entity="stock_ins", aggregate="sum", measure="quantity")
+        listed = self._run(entity="sales", aggregate="list", limit=200)
+
+        self.assertEqual(3, sales.data["rows"][0]["value"])
+        self.assertEqual("60", stock.data["rows"][0]["value"])
+        self.assertNotIn(str(self.foreign.id), str(listed.data))
+
+    def test_other_seller_product_id_is_blocked(self):
+        result = self._run(entity="sales", aggregate="count", product_id=str(self.foreign.id))
+        self.assertEqual(ToolExecutionStatus.BLOCKED, result.status)
+        self.assertEqual("PRODUCT_ACCESS_DENIED", result.error["code"])
+        self.assertEqual({}, {key: value for key, value in result.data.items() if key == "rows"})
+
+    def test_unknown_measure_rejected_as_invalid_arguments(self):
+        for arguments in (
+            {"entity": "sales", "aggregate": "sum", "measure": "profit; drop table"},
+            {"entity": "sales", "aggregate": "sum"},
+            {"entity": "alerts", "aggregate": "avg", "measure": "price"},
+            {"entity": "sales", "marketplace": "Daraz"},
+            {"entity": "sales", "seller_id": str(self.other.id)},
+            {"entity": "invoices"},
+        ):
+            with self.subTest(arguments=arguments):
+                result = self._run(**arguments)
+                self.assertEqual(ToolExecutionStatus.BLOCKED, result.status)
+                self.assertEqual("INVALID_ARGUMENTS", result.error["code"])
+
+    def test_empty_range_returns_observed_zero_with_row_count_0(self):
+        total = self._run(entity="sales", aggregate="sum", measure="revenue", from_date="2026-01-01", to_date="2026-01-31")
+        average = self._run(entity="sales", aggregate="avg", measure="revenue", from_date="2026-01-01", to_date="2026-01-31")
+
+        self.assertEqual(ToolExecutionStatus.SUCCEEDED, total.status)
+        self.assertEqual(0, total.data["row_count"])
+        self.assertEqual([{"value": "0", "row_count": 0}], total.data["rows"])
+        self.assertTrue(any(item.startswith("NO_MATCHING_RECORDS") for item in total.data["missing_data"]))
+        # No observations means no average: unavailable, not zero.
+        self.assertIsNone(average.data["rows"][0]["value"])
+
+    def test_missing_cost_is_unavailable_not_zero(self):
+        self.db.add(InventoryStockIn(seller_id=self.seller.id, product_id=self.shoe.id, quantity=5, received_at=_utc("2026-11-13T03:00:00"), unit_cost=None, currency=None))
+        self.db.commit()
+
+        result = self._run(entity="stock_ins", aggregate="sum", measure="total_cost", product_id=str(self.shoe.id))
+
+        self.assertIsNone(result.data["rows"][0]["value"])
+        self.assertTrue(any(item.startswith("MEASURE_UNAVAILABLE") for item in result.data["missing_data"]))
+
+    def test_mixed_currencies_never_produce_one_money_figure(self):
+        self.db.add(InventoryStockIn(seller_id=self.seller.id, product_id=self.shoe.id, quantity=2, received_at=_utc("2026-11-13T03:00:00"), unit_cost=Decimal("10.00"), currency="USD"))
+        self.db.commit()
+
+        for aggregate in ("sum", "avg", "min", "max"):
+            with self.subTest(aggregate=aggregate):
+                result = self._run(entity="stock_ins", aggregate=aggregate, measure="unit_cost")
+                self.assertIsNone(result.data["rows"][0]["value"])
+                self.assertTrue(any(item.startswith("MIXED_CURRENCY") for item in result.data["missing_data"]))
+                self.assertEqual(["BDT", "USD"], result.data["currency"])
+        # Units are not money, so a quantity total is still exact.
+        self.assertEqual("62", self._run(entity="stock_ins", aggregate="sum", measure="quantity").data["rows"][0]["value"])
+        # Grouping by product keeps each product's single currency usable only when the whole result is one currency.
+        self.assertIsNone(self._run(entity="stock_ins", aggregate="sum", measure="total_cost", group_by="product").data["rows"][0]["value"])
+
+    def test_aggregates_cite_their_source_so_the_answer_model_may_use_them(self):
+        total = self._run(entity="sales", aggregate="count", from_date="2026-11-01", to_date="2026-11-02")
+        empty = self._run(entity="sales", aggregate="count", from_date="2026-01-01", to_date="2026-01-31")
+
+        self.assertEqual(1, len(total.evidence))
+        self.assertEqual("sales_records", total.evidence[0]["source_table"])
+        self.assertIn("2026-11-01", total.evidence[0]["source_id"])
+        self.assertEqual(3, total.evidence[0]["payload"]["row_count"])
+        # An observed zero is a fact ("no sales recorded"), so it is citable too.
+        self.assertEqual(0, empty.evidence[0]["payload"]["row_count"])
+
+    def test_point_in_time_stock_snapshots_cannot_be_summed(self):
+        # Live eval: summing every daily snapshot reported 36544 units instead of 726 on hand.
+        from app.services.copilot.records_query import RecordsQueryArgs
+
+        with self.assertRaises(ValueError):
+            RecordsQueryArgs.model_validate({"entity": "inventory_history", "aggregate": "sum", "measure": "quantity_on_hand"})
+        RecordsQueryArgs.model_validate({"entity": "inventory_history", "aggregate": "max", "measure": "quantity_on_hand"})
+        RecordsQueryArgs.model_validate({"entity": "stock_ins", "aggregate": "sum", "measure": "quantity"})
+
+    def test_limit_truncation_flagged(self):
+        listed = self._run(entity="sales", aggregate="list", limit=2)
+        grouped = self._run(entity="sales", aggregate="count", group_by="day", limit=1)
+
+        self.assertEqual(2, len(listed.data["rows"]))
+        self.assertTrue(listed.data["truncated"])
+        self.assertEqual(3, listed.data["row_count"])
+        self.assertEqual("sales_records", listed.data["rows"][0]["evidence"]["source_table"])
+        self.assertTrue(grouped.data["truncated"])
+        self.assertFalse(self._run(entity="sales", aggregate="list", limit=50).data["truncated"])
+
+    def test_stock_in_list_has_cost_and_product(self):
+        result = self._run(entity="stock_ins", from_date="2026-11-08", to_date="2026-11-14")
+
+        row = result.data["rows"][0]
+        self.assertEqual((60, "140.79", "BDT", "8447.40"), (row["quantity"], row["unit_cost"], row["currency"], row["total_cost"]))
+        self.assertEqual("Nipun Sandal", row["product"]["title"])
+
+    def _product(self, title: str, seller: Seller, *, category: str) -> Product:
+        return Product(seller_id=seller.id, title=title, sku=f"sku-{uuid4().hex[:6]}", category=category, cost_price=Decimal("60.00"), selling_price=Decimal("100.00"), stock_quantity=5, supplier_lead_time=7, minimum_margin=Decimal("10.00"))
+
+    def _sale(self, product: Product, sold_at: str, quantity: int, unit_price: Decimal, *, status=SalesRecordStatus.COMPLETED) -> SalesRecord:
+        return SalesRecord(
+            seller_id=product.seller_id,
+            product_id=product.id,
+            status=status,
+            sold_at=_utc(sold_at),
+            quantity_sold=quantity,
+            unit_price=unit_price,
+            line_total=unit_price * quantity,
+            currency="BDT",
+            price_source=SalesRecordPriceSource.TRANSACTION,
+            returned_units=0,
+            refunded_restocked_units=0,
+            is_test_order=False,
+        )
+
+
+BREAKDOWN_TABLES = [Seller.__table__, Product.__table__, SalesRecord.__table__, BusinessExpense.__table__, ProductMarketplaceListing.__table__]
+
+
+class RecordsQueryBreakdownTests(unittest.TestCase):
+    """Rankings and breakdowns the model needs: weekday, best day, sorted lists, returns, cancellations, expenses, listings."""
+
+    def setUp(self) -> None:
+        self.engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+        Base.metadata.create_all(self.engine, tables=BREAKDOWN_TABLES)
+        self.db = Session(self.engine)
+        self.seller = Seller(email="seller@example.com", password_hash="hash")
+        self.other = Seller(email="other@example.com", password_hash="hash")
+        self.db.add_all([self.seller, self.other])
+        self.db.flush()
+        self.power = _product_row("Power XORISE", self.seller, price="3374.00")
+        self.venus = _product_row("VENUS", self.seller, price="674.00")
+        self.foreign = _product_row("Foreign Max", self.other, price="99999.00")
+        self.db.add_all([self.power, self.venus, self.foreign])
+        self.db.flush()
+        self.db.add_all(
+            [
+                # 06:00 UTC is 12:00 in Dhaka, same calendar day. 2026-11-20 is a Friday, 11-21 Saturday, 11-16 Monday.
+                _sale_row(self.power, "2026-11-20T06:00:00", 2, customer="C1", district="Dhaka"),
+                _sale_row(self.venus, "2026-11-21T06:00:00", 1, customer="C1", district="Dhaka"),
+                _sale_row(self.venus, "2026-11-16T06:00:00", 3, customer="C2", district="Sylhet", returned=1, restocked=1),
+                _sale_row(self.venus, "2026-11-16T08:00:00", 1, customer="C3", district="Khulna", status=SalesRecordStatus.CANCELLED),
+                _sale_row(self.foreign, "2026-11-20T06:00:00", 5, customer="X1", district="Chittagong"),
+                _expense(self.seller, BusinessExpenseType.SUPPLIER_PURCHASE, "500.00", BusinessExpenseStatus.DUE, "Supplier A"),
+                _expense(self.seller, BusinessExpenseType.SUPPLIER_PURCHASE, "300.00", BusinessExpenseStatus.PAID, "Supplier A"),
+                _expense(self.seller, BusinessExpenseType.RENT, "1000.00", BusinessExpenseStatus.DUE, "Landlord"),
+                _expense(self.other, BusinessExpenseType.SUPPLIER_PURCHASE, "9999.00", BusinessExpenseStatus.DUE, "Supplier B"),
+                _listing(self.power, "4.60", 30),
+                _listing(self.venus, "3.90", 12),
+                _listing(self.foreign, "1.00", 2),
+            ]
+        )
+        self.db.commit()
+        self.registry = CopilotToolRegistry()
+        self.context = CopilotToolContext(seller_id=self.seller.id, db=self.db)
+
+    def tearDown(self) -> None:
+        self.db.close()
+        Base.metadata.drop_all(self.engine, tables=list(reversed(BREAKDOWN_TABLES)))
+        self.engine.dispose()
+
+    def _data(self, **arguments) -> dict:
+        result = self.registry.execute(name="query_business_records", context=self.context, arguments=arguments)
+        self.assertEqual(ToolExecutionStatus.SUCCEEDED, result.status, result.error)
+        return result.data
+
+    def test_products_list_sorted_by_selling_price_desc_returns_most_expensive_first(self):
+        rows = self._data(entity="products", measure="selling_price", order_by="measure", sort="desc")["rows"]
+        self.assertEqual(["Power XORISE", "VENUS"], [row["title"] for row in rows])
+
+    def test_products_inventory_value_at_cost(self):
+        # cost 60.00 x stock 5 for each of the seller's two products.
+        rows = self._data(entity="products", aggregate="sum", measure="inventory_value_at_cost")["rows"]
+        self.assertEqual("600.00", rows[0]["value"])
+
+    def test_sales_group_by_weekday_marks_friday_saturday_weekend(self):
+        rows = self._data(entity="sales", aggregate="sum", measure="revenue", group_by="weekday")["rows"]
+        by_day = {row["weekday"]: (row["value"], row["is_weekend"]) for row in rows}
+        self.assertEqual({"Friday": ("6748.00", True), "Saturday": ("674.00", True), "Monday": ("2022.00", False)}, by_day)
+
+    def test_sales_group_by_day_sum_revenue_order_by_measure_desc_gives_best_day(self):
+        rows = self._data(entity="sales", aggregate="sum", measure="revenue", group_by="day", order_by="measure", sort="desc")["rows"]
+        self.assertEqual(("2026-11-20", "6748.00"), (rows[0]["period"], rows[0]["value"]))
+
+    def test_cancelled_sales_status_counts_only_cancelled(self):
+        data = self._data(entity="sales", aggregate="count", sales_status="cancelled")
+        self.assertEqual(1, data["rows"][0]["value"])
+        self.assertEqual(4, self._data(entity="sales", aggregate="count", sales_status="all")["rows"][0]["value"])
+
+    def test_returned_units_sum_this_month(self):
+        units = self._data(entity="sales", aggregate="sum", measure="returned_units", from_date="2026-11-01", to_date="2026-11-22")["rows"][0]["value"]
+        value = self._data(entity="sales", aggregate="sum", measure="returned_value", from_date="2026-11-01", to_date="2026-11-22")["rows"][0]["value"]
+        self.assertEqual(("2", "1348.00"), (units, value))
+
+    def test_expenses_due_supplier_sum(self):
+        data = self._data(entity="expenses", aggregate="sum", measure="amount", expense_type="SUPPLIER_PURCHASE", payment_status="DUE")
+        self.assertEqual("500.00", data["rows"][0]["value"])
+        self.assertEqual("BDT", data["currency"])
+
+    def test_listings_min_rating(self):
+        data = self._data(entity="listings", aggregate="min", measure="rating")
+        self.assertEqual("3.90", data["rows"][0]["value"])
+
+    def test_sales_facts_state_latest_valid_sale_date_for_the_seller(self):
+        # Latest own valid sale is 2026-11-21 (the cancelled one and the other seller's are ignored).
+        data = self._data(entity="sales", aggregate="count", from_date="2026-11-22", to_date="2026-11-22")
+        self.assertEqual(0, data["row_count"])
+        self.assertEqual("2026-11-21", data["latest_recorded_sale_date"])
+        self.assertNotIn("latest_recorded_sale_date", self._data(entity="products", aggregate="count"))
+
+    def test_list_order_by_measure_needs_a_measure(self):
+        result = self.registry.execute(name="query_business_records", context=self.context, arguments={"entity": "products", "order_by": "measure"})
+        self.assertNotEqual(ToolExecutionStatus.SUCCEEDED, result.status)
+
+
+def _product_row(title: str, seller: Seller, *, price: str) -> Product:
+    return Product(seller_id=seller.id, title=title, sku=f"sku-{uuid4().hex[:6]}", category="Shoes", cost_price=Decimal("60.00"), selling_price=Decimal(price), stock_quantity=5, supplier_lead_time=7, minimum_margin=Decimal("10.00"))
+
+
+def _sale_row(product: Product, sold_at: str, quantity: int, *, customer: str, district: str, returned: int = 0, restocked: int = 0, status=SalesRecordStatus.COMPLETED) -> SalesRecord:
+    return SalesRecord(
+        seller_id=product.seller_id, product_id=product.id, status=status, sold_at=_utc(sold_at), quantity_sold=quantity,
+        unit_price=product.selling_price, line_total=product.selling_price * quantity, currency="BDT", price_source=SalesRecordPriceSource.TRANSACTION,
+        returned_units=returned, refunded_restocked_units=restocked, is_test_order=False, customer_reference=customer, delivery_district=district,
+    )
+
+
+def _expense(seller: Seller, kind: BusinessExpenseType, amount: str, status: BusinessExpenseStatus, counterparty: str) -> BusinessExpense:
+    return BusinessExpense(seller_id=seller.id, expense_type=kind, amount=Decimal(amount), currency="BDT", incurred_at=_utc("2026-11-05T06:00:00"), payment_status=status, counterparty=counterparty)
+
+
+def _listing(product: Product, rating: str, reviews: int) -> ProductMarketplaceListing:
+    return ProductMarketplaceListing(seller_id=product.seller_id, product_id=product.id, marketplace="Daraz", listing_status=ProductMarketplaceListingStatus.ACTIVE, rating=Decimal(rating), review_count=reviews)
+
+
+def _utc(value: str) -> datetime:
+    return datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
+
+
+if __name__ == "__main__":
+    unittest.main()

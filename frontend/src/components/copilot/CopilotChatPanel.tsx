@@ -18,8 +18,11 @@ export const CopilotChatPanel = forwardRef<
     title?: string
     subtitle?: string
     actions?: ReactNode
+    /** Full-page mode on wider screens; phones always get a full-screen sheet. */
+    expanded?: boolean
+    onToggleExpanded?: () => void
   }
->(({ open, onClose, children, title, subtitle, actions }, ref) => {
+>(({ open, onClose, children, title, subtitle, actions, expanded = false, onToggleExpanded }, ref) => {
   const panelRef = useRef<HTMLDivElement>(null)
   useImperativeHandle(ref, () => panelRef.current as HTMLDivElement)
 
@@ -59,12 +62,23 @@ export const CopilotChatPanel = forwardRef<
       data-testid="copilot-chat-panel"
       onKeyDown={onKeyDown}
       inert={!open}
+      data-expanded={expanded ? "" : undefined}
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-[80] h-[86dvh] w-screen origin-bottom-right transition duration-200 ease-out motion-reduce:transition-none sm:bottom-6 sm:left-auto sm:right-6 sm:h-[620px] sm:max-h-[calc(100dvh-3rem)] sm:w-[420px] sm:max-w-[calc(100vw-2rem)]",
+        "fixed inset-0 z-[80] h-[100dvh] w-screen origin-bottom-right transition-[opacity,transform,inset,width,height] duration-200 ease-out motion-reduce:transition-none",
+        expanded
+          ? "sm:inset-4 sm:h-auto sm:w-auto"
+          : "sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[640px] sm:max-h-[calc(100dvh-3rem)] sm:w-[440px] sm:max-w-[calc(100vw-2rem)]",
         open ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-3 scale-95 opacity-0"
       )}
     >
-      <CopilotChatShell onClose={onClose} title={title} subtitle={subtitle} actions={actions}>
+      <CopilotChatShell
+        onClose={onClose}
+        title={title}
+        subtitle={subtitle}
+        actions={actions}
+        expanded={expanded}
+        onToggleExpanded={onToggleExpanded}
+      >
         {children}
       </CopilotChatShell>
     </div>

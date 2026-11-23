@@ -1,26 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ChevronDown, History, SquarePen } from "lucide-react"
+import { History, SquarePen } from "lucide-react"
 import { useLocation } from "react-router-dom"
 
 import { CopilotChatPanel } from "@/components/copilot/CopilotChatPanel"
 import { CopilotEmptyState } from "@/components/copilot/CopilotEmptyState"
 import { CopilotErrorState } from "@/components/copilot/CopilotErrorState"
-import { CopilotFilterControls } from "@/components/copilot/CopilotFilterControls"
 import { CopilotFloatingButton } from "@/components/copilot/CopilotFloatingButton"
 import { CopilotMessageList } from "@/components/copilot/CopilotMessageList"
-import { CopilotProductFilter } from "@/components/copilot/CopilotProductFilter"
 import { CopilotQuestionInput } from "@/components/copilot/CopilotQuestionInput"
-import {
-  copilotSourceModes,
-  resolveDateRange,
-} from "@/components/copilot/copilot-filter-utils"
 import { shouldShowCopilotWidget } from "@/components/copilot/copilot-visibility"
 import {
   classifyCopilotError,
   errorText,
   languageOptions,
   resolveUiLanguage,
-  stageText,
   t,
   type CopilotErrorKind,
 } from "@/components/copilot/copilot-i18n"
@@ -31,7 +24,6 @@ import {
   useCopilotFeatures,
   useCopilotFeedback,
 } from "@/hooks/useCopilot"
-import { useProducts } from "@/hooks/use-products"
 import { cn } from "@/lib/utils"
 import type {
   CopilotActionProposal,
@@ -44,8 +36,6 @@ import type {
   CopilotLocalMessage,
   CopilotMissingData,
   CopilotToolUsed,
-  CopilotSourceMode,
-  CopilotDomain,
   CopilotFeedbackRating,
   CopilotLanguage,
   CopilotReplyLanguage,
@@ -309,46 +299,6 @@ const latestConversation = (
         new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
     )[0]
 
-const dateRangeLabels: Record<string, string> = {
-  today: "Today",
-  yesterday: "Yesterday",
-  last_7_days: "Last 7 days",
-  last_30_days: "Last 30 days",
-  this_month: "This month",
-  last_month: "Last month",
-  custom: "Custom range",
-}
-
-const domainLabels: Record<string, string> = {
-  products: "Products",
-  revenue: "Revenue",
-  profit: "Profit",
-  inventory: "Inventory",
-  competitors: "Competitors",
-  pricing: "Pricing",
-  promotions: "Promotions",
-  dead_stock: "Dead Stock",
-  seo: "SEO",
-  alerts: "Alerts",
-  recommendations: "Recommendations",
-  memory: "Memory",
-}
-
-const domainRequestValues: Record<string, CopilotDomain> = {
-  products: "PRODUCT_CATALOG",
-  revenue: "SALES_REVENUE",
-  profit: "PROFIT_MARGIN",
-  inventory: "INVENTORY",
-  competitors: "COMPETITOR",
-  pricing: "PRICING",
-  promotions: "PROMOTION",
-  dead_stock: "DEAD_STOCK",
-  seo: "SEO_VISIBILITY",
-  alerts: "ALERTS",
-  recommendations: "RECOMMENDATIONS",
-  memory: "RAG_MEMORY",
-}
-
 export function CopilotWidget() {
   const location = useLocation()
   const visible = shouldShowCopilotWidget(location.pathname)
@@ -357,12 +307,8 @@ export function CopilotWidget() {
     () => copilotStorage.get() ?? undefined
   )
   const [messages, setMessages] = useState<CopilotLocalMessage[]>([])
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState(() => resolveDateRange("last_7_days"))
-  const [selectedDomains, setSelectedDomains] = useState<string[]>([])
-  const [sourceMode, setSourceMode] = useState<CopilotSourceMode>("both")
-  const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   // After "New chat" the widget must not jump back to the latest stored conversation.
   const [freshChat, setFreshChat] = useState(false)
   const [language, setLanguage] = useState<CopilotLanguage>(() => languagePreference.get())
@@ -376,7 +322,6 @@ export function CopilotWidget() {
   const features = useCopilotFeatures(open && visible)
   const conversations = useCopilotConversations(open && visible)
   const conversation = useCopilotConversation(conversationId, open && visible)
-  const products = useProducts()
   const clearConversation = useCallback(
     (options: { clearMessages?: boolean } = {}) => {
       copilotStorage.remove()
@@ -498,27 +443,15 @@ export function CopilotWidget() {
     )
   }
 
+  // No filters: the backend reads dates, products and scope from the question itself.
   const buildAskRequest = (
     question: string,
     activeConversationId?: string
-  ): CopilotAskRequest => {
-    const domainFilters = selectedDomains
-      .map((domain) => domainRequestValues[domain])
-      .filter((domain): domain is CopilotDomain => Boolean(domain))
-
-    return {
-      conversation_id: activeConversationId,
-      question,
-      product_id: selectedProductId || undefined,
-      domain_filters: domainFilters,
-      from_date: dateRange.fromDate,
-      to_date: dateRange.toDate,
-      language: activeLanguage,
-      include_current_data: sourceMode === "current" || sourceMode === "both",
-      include_memory: sourceMode === "memory" || sourceMode === "both",
-      top_k: 8,
-    }
-  }
+  ): CopilotAskRequest => ({
+    conversation_id: activeConversationId,
+    question,
+    language: activeLanguage,
+  })
 
   const submitQuestion = (question: string) => {
     if (ask.isPending) {
@@ -599,6 +532,11 @@ export function CopilotWidget() {
   }
 
   const openConversation = (id: string) => {
+    // Re-picking the open chat would clear messages without a refetch to restore them.
+    if (id === conversationId) {
+      setHistoryOpen(false)
+      return
+    }
     setFreshChat(false)
     setConversationId(id)
     setMessages([])
@@ -633,18 +571,6 @@ export function CopilotWidget() {
     setLanguage(value)
     languagePreference.set(value)
   }
-
-  const selectedProductTitle =
-    products.data?.find((product) => product.id === selectedProductId)?.title ??
-    (selectedProductId ? "Selected product" : "All products")
-  const activeFilterSummary = [
-    dateRangeLabels[dateRange.key] ?? "Custom range",
-    selectedDomains.length
-      ? selectedDomains.map((domain) => domainLabels[domain] ?? domain).join(", ")
-      : "All domains",
-    copilotSourceModes.find((mode) => mode.value === sourceMode)?.label ?? "Use both",
-    selectedProductTitle,
-  ].join(" · ")
 
   const headerActions = (
     <div className="flex items-center gap-0.5">
@@ -710,6 +636,8 @@ export function CopilotWidget() {
       <CopilotChatPanel
         open={open}
         onClose={close}
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded((current) => !current)}
         title={t(uiLanguage, "title")}
         subtitle={t(uiLanguage, "subtitle")}
         actions={headerActions}
@@ -743,64 +671,20 @@ export function CopilotWidget() {
             )}
           </nav>
         ) : null}
-        <section className="border-b border-border/60 bg-card">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            aria-expanded={filtersExpanded}
-            aria-controls="copilot-filter-content"
-            onClick={() => setFiltersExpanded((current) => !current)}
-          >
-            <span className="text-sm font-semibold text-foreground">Filters</span>
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              {activeFilterSummary}
-            </span>
-            <ChevronDown
-              className={cn(
-                "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                filtersExpanded ? "rotate-180" : ""
-              )}
-              aria-hidden="true"
-            />
-          </button>
-          {filtersExpanded ? (
-            <div
-              id="copilot-filter-content"
-              className="animate-in fade-in slide-in-from-top-1 duration-150"
-            >
-              <CopilotFilterControls
-                dateRange={dateRange}
-                selectedDomains={selectedDomains}
-                sourceMode={sourceMode}
-                onDateRangeChange={setDateRange}
-                onDomainsChange={setSelectedDomains}
-                onSourceModeChange={setSourceMode}
-              />
-              <div className="px-3 py-2">
-                <CopilotProductFilter
-                  value={selectedProductId}
-                  onChange={setSelectedProductId}
-                />
-              </div>
-            </div>
-          ) : null}
-        </section>
         <div data-testid="copilot-message-area" className="flex min-h-0 flex-1 flex-col">
           {messages.length === 0 ? (
-            <div className="flex-1 overflow-y-auto p-3">
-              <CopilotEmptyState
-                onSuggestedQuestion={submitQuestion}
-                disabled={ask.isPending}
-                language={uiLanguage}
-              />
-              {errorBox ? <div className="mt-3">{errorBox}</div> : null}
+            <div className="copilot-scroll flex-1 overflow-y-auto p-3">
+              <div className="copilot-column">
+                <CopilotEmptyState />
+                {errorBox ? <div className="mt-3">{errorBox}</div> : null}
+              </div>
             </div>
           ) : (
             <>
               <CopilotMessageList
                 messages={messages}
                 isLoading={ask.isPending}
-                loadingText={stage ? stageText(stage, uiLanguage) : undefined}
+                stage={stage}
                 onProposalChange={handleProposalChange}
                 language={uiLanguage}
                 actions={{

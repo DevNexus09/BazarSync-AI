@@ -431,5 +431,22 @@ class RagMemoryBackfillServiceTests(unittest.TestCase):
         self.assertEqual(1, invalid.unsupported_count)
 
 
+
+class CopilotHistoryBackfillScopeTests(unittest.TestCase):
+    def test_eval_conversations_are_not_indexed_as_memory(self):
+        from sqlalchemy.dialects import postgresql
+
+        from app.services.rag_memory_backfill_service import EVAL_CONVERSATION_SOURCE, _copilot_history_statement
+
+        seller_id = uuid4()
+        compiled = _copilot_history_statement(seller_id=seller_id, from_date=None, to_date=None).compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
+        sql = str(compiled)
+
+        self.assertEqual("copilot_eval", EVAL_CONVERSATION_SOURCE)
+        self.assertIn("copilot_conversations.metadata_json ->> 'source'", sql)
+        self.assertIn("'copilot_eval'", sql)
+        self.assertIn(f"copilot_messages.seller_id = '{seller_id}'", sql.replace(str(seller_id).replace("-", ""), str(seller_id)))
+
+
 if __name__ == "__main__":
     unittest.main()

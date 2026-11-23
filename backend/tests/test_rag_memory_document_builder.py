@@ -316,6 +316,75 @@ class RagMemoryDocumentBuilderTests(unittest.TestCase):
         self.assertIn("Revenue contribution: BDT 875.5", document.content_text)
         self.assertEqual("875.5", document.metadata_json["revenue"])
 
+    def _stock_in(self, **overrides):
+        seller_id = uuid4()
+        item = product(seller_id=seller_id, title="Sandak NIPUN Rubber Sandal")
+        item.sku = "DEMO-BATA-299085285"
+        values = dict(
+            id=uuid4(),
+            seller_id=seller_id,
+            product_id=item.id,
+            product=item,
+            quantity=60,
+            received_at=datetime(2026, 11, 12, 3, 22, tzinfo=timezone.utc),
+            unit_cost=Decimal("140.79"),
+            currency="BDT",
+            source_reference="PO-17",
+            notes="Supplier: Bata depot",
+            created_at=datetime(2026, 11, 12, 3, 30, tzinfo=timezone.utc),
+        )
+        values.update(overrides)
+        return SimpleNamespace(**values)
+
+    def test_stock_in_document_contains_sku_qty_cost_currency(self):
+        row = self._stock_in()
+
+        document = self.builder.build_from_inventory_lifecycle(row)
+
+        self.assertEqual(RagMemorySourceType.INVENTORY_LIFECYCLE, document.source_type)
+        self.assertEqual("inventory_stock_in", document.source_table)
+        self.assertEqual("stock_in", document.metadata_json["kind"])
+        self.assertTrue(document.content_text.startswith("Sandak NIPUN Rubber Sandal (SKU DEMO-BATA-299085285)."))
+        for expected in ("received 60 units", "2026-11-12", "unit cost 140.79 BDT", "total cost 8447.40 BDT", "PO-17", "Supplier: Bata depot"):
+            self.assertIn(expected, document.content_text)
+        self.assertEqual("140.79", document.metadata_json["unit_cost"])
+        self.assertEqual("BDT", document.metadata_json["currency"])
+
+    def test_stock_in_without_cost_says_unavailable_not_zero(self):
+        document = self.builder.build_from_inventory_lifecycle(self._stock_in(unit_cost=None, currency=None, notes=None, source_reference=None))
+
+        self.assertIn("unit cost unavailable", document.content_text)
+        self.assertNotIn("0.00", document.content_text)
+        self.assertIsNone(document.metadata_json["unit_cost"])
+
+    def test_document_ids_are_deterministic(self):
+        row = self._stock_in()
+
+        first = self.builder.build_from_inventory_lifecycle(row)
+        second = self.builder.build_from_inventory_lifecycle(row)
+
+        # Backfill skips a source whose (source_table, source_id, version) row has the same content hash.
+        self.assertEqual((first.source_table, first.source_id, first.content_hash), (second.source_table, second.source_id, second.content_hash))
+        self.assertEqual(str(row.id), first.source_id)
+
+    def test_product_documents_start_with_title_and_sku(self):
+        seller_id = uuid4()
+        item = product(seller_id=seller_id, title="Lex Loafer")
+        item.sku = "SKU-LEX"
+        sale = SimpleNamespace(
+            id=uuid4(), seller_id=seller_id, product_id=item.id, product=item, sold_at=datetime(2026, 11, 1, tzinfo=timezone.utc),
+            quantity_sold=1, returned_units=0, refunded_restocked_units=0, unit_price=Decimal("1874"), line_total=Decimal("1874"),
+            status="COMPLETED", is_test_order=False,
+        )
+        item.category = "Men's Footwear"
+        item.cost_price = None
+        item.stock_quantity = 3
+        item.created_at = datetime(2026, 7, 1, tzinfo=timezone.utc)
+
+        for document in (self.builder.build_from_sales_record(sale), self.builder.build_from_product_profile(item)):
+            self.assertTrue(document.content_text.startswith("Lex Loafer (SKU SKU-LEX)."), document.content_text)
+        self.assertIn("has SKU SKU-LEX", self.builder.build_from_product_profile(item).content_text)
+
     def test_sales_summary_document_includes_completeness_status(self):
         seller_id = uuid4()
 

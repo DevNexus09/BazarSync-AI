@@ -46,8 +46,10 @@ from app.models.scrape_run import ScrapeRun
 from app.models.stockout_prediction import StockoutPrediction
 from app.models.telegram_connection import SellerTelegramConnection
 from app.models.telegram_snapshot_log import TelegramProductSnapshotLog
+from app.services.copilot.records_query import RecordsQueryArgs, query_business_records, records_tool_description
 from app.services.copilot.business_change_analytics_service import BusinessChangeAnalyticsService
 from app.services.copilot.business_data_catalog import BusinessDataCatalogService
+from app.services.copilot.snapshots import UNHEALTHY_STOCK_CLASSES, latest_per_product
 from app.services.copilot.metric_catalog import MetricCatalogService
 from app.services.copilot.metric_execution_service import MetricExecutionService
 from app.services.copilot.profit_margin_analytics_service import ProfitMarginAnalyticsService
@@ -711,6 +713,7 @@ class CopilotToolRegistry:
         self._register("get_product_profile", ProductProfileArgs, "Return a seller-owned product business profile with latest related signals.", self._get_product_profile, domains=(BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.INVENTORY, BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.COMPETITOR, BusinessDomainKey.PRICING, BusinessDomainKey.DEAD_STOCK, BusinessDomainKey.SEO_VISIBILITY))
         self._register("get_products_missing_setup", ProductsMissingSetupArgs, "List seller-owned products missing required setup data and recommended next actions.", self._get_products_missing_setup, domains=(BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.INVENTORY, BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.SEO_VISIBILITY), metrics=("products_missing_cost_count", "products_missing_fee_policy_count"))
         self._register("run_seller_metric_query", SellerMetricQueryArgs, "Execute one allowlisted catalog metric with backend-owned SQLAlchemy handlers only; raw SQL is never accepted.", self._run_seller_metric_query, domains=(BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.INVENTORY, BusinessDomainKey.COMPETITOR, BusinessDomainKey.DEAD_STOCK, BusinessDomainKey.RECOMMENDATIONS, BusinessDomainKey.ALERTS), metrics=("product_count", "active_product_count", "listed_product_count", "products_missing_cost_count", "products_missing_fee_policy_count", "products_missing_pricing_policy_count", "products_with_stock_count", "products_with_no_sales_count", "products_with_no_valid_imported_sales_count", "gross_revenue", "units_sold", "order_count", "average_order_value", "top_products_by_revenue", "revenue_trend", "previous_period_revenue", "revenue_change", "percentage_revenue_change", "products_with_revenue_decline", "average_selling_price_delta", "estimated_profit", "margin_rate", "products_excluded_from_profit", "current_inventory_value", "low_stock_product_count", "stockout_risk_count", "dead_stock_count", "locked_capital", "competitor_undercut_count", "competitor_price_gap", "pending_recommendation_count", "unresolved_alert_count"))
+        self._register("query_business_records", RecordsQueryArgs, records_tool_description(), self._query_business_records, max_runtime_ms=4000, domains=(BusinessDomainKey.SALES_REVENUE, BusinessDomainKey.INVENTORY, BusinessDomainKey.PRICING, BusinessDomainKey.PROMOTION, BusinessDomainKey.ALERTS, BusinessDomainKey.RECOMMENDATIONS, BusinessDomainKey.COMPETITOR, BusinessDomainKey.PRODUCT_CATALOG, BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.SEO_VISIBILITY))
         self._register("get_revenue_summary", RevenueSummaryArgs, "Return deterministic seller revenue, units, AOV, previous-period comparison, top products, and completeness.", self._get_revenue_summary, domains=(BusinessDomainKey.SALES_REVENUE,), metrics=("gross_revenue", "net_revenue", "units_sold", "order_count", "average_order_value", "previous_period_revenue", "revenue_change", "percentage_revenue_change", "top_products_by_revenue", "products_with_revenue_decline"))
         self._register("get_sales_trends", SalesTrendsArgs, "Return deterministic seller sales trend time series by day, week, or month.", self._get_sales_trends, domains=(BusinessDomainKey.SALES_REVENUE,), metrics=("revenue_trend", "gross_revenue", "units_sold"))
         self._register("get_profit_summary", ProfitSummaryArgs, "Return deterministic estimated profit and margin summary with explicit product exclusions.", self._get_profit_summary, domains=(BusinessDomainKey.PROFIT_MARGIN, BusinessDomainKey.SALES_REVENUE), metrics=("estimated_profit", "margin_rate", "products_excluded_from_profit"))
@@ -766,6 +769,16 @@ class CopilotToolRegistry:
             self._business_catalog.get_domain(domain)
         for metric in metrics:
             self._metric_catalog.get_metric(metric)
+
+    def _query_business_records(self, context: CopilotToolContext, args: dict[str, Any]) -> dict[str, Any]:
+        data_access = self._data_access
+        if data_access is not None and hasattr(data_access, "query_business_records"):
+            payload, missing = data_access.query_business_records(seller_id=context.seller_id, **args)
+            payload["missing_data"] = missing or payload.get("missing_data", [])
+            return payload
+        if context.db is None:
+            raise RuntimeError("query_business_records requires a database session.")
+        return query_business_records(context.db, seller_id=context.seller_id, args=args)
 
     def _get_business_overview(self, context: CopilotToolContext, args: dict[str, Any]) -> dict[str, Any]:
         payload, missing = self._data(context).get_business_overview(
@@ -1699,7 +1712,7 @@ class SqlAlchemyCopilotToolDataAccess:
         if product_id:
             stmt = stmt.where(PromotionPlan.product_id == product_id)
         if status:
-            stmt = stmt.where(PromotionPlan.status == status)
+            stmt = stmt.where(_enum_safe_equals(PromotionPlan.status, status))
         if marketplace:
             stmt = stmt.where(PromotionPlan.marketplace == marketplace)
         stmt = _date_filter(stmt, PromotionPlan.planned_start_at, from_date, to_date)
@@ -1717,7 +1730,7 @@ class SqlAlchemyCopilotToolDataAccess:
         if product_id:
             stmt = stmt.where(PromotionResult.product_id == product_id)
         if status:
-            stmt = stmt.where(PromotionResult.result_status == status)
+            stmt = stmt.where(_enum_safe_equals(PromotionResult.result_status, status))
         if marketplace:
             stmt = stmt.where(PromotionResult.marketplace == marketplace)
         stmt = _date_filter(stmt, PromotionResult.started_at, from_date, to_date)
@@ -1803,16 +1816,23 @@ class SqlAlchemyCopilotToolDataAccess:
         if product_id:
             stmt = stmt.where(DeadStockAssessment.product_id == product_id)
         stmt = _date_filter(stmt, DeadStockAssessment.assessed_at, from_date, to_date)
-        rows = self._db.execute(stmt).scalars().all()
-        estimates = self._db.execute(select(DeadStockCapitalRecoveryEstimate).where(DeadStockCapitalRecoveryEstimate.seller_id == seller_id)).scalars().all()
+        # Assessments and estimates are re-run over time; only each product's latest run describes today.
+        rows = latest_per_product(self._db.execute(stmt).scalars().all(), "assessed_at")
+        unhealthy = {row.product_id for row in rows if _enum_value(row.classification) in UNHEALTHY_STOCK_CLASSES}
+        estimate_stmt = select(DeadStockCapitalRecoveryEstimate).where(DeadStockCapitalRecoveryEstimate.seller_id == seller_id)
+        if product_id:
+            estimate_stmt = estimate_stmt.where(DeadStockCapitalRecoveryEstimate.product_id == product_id)
+        estimates = [item for item in latest_per_product(self._db.execute(estimate_stmt).scalars().all(), "calculated_at") if item.product_id in unhealthy]
         locked_values = [Decimal(item.locked_capital) for item in estimates if item.locked_capital is not None]
         recovery_values = [Decimal(item.gross_recovered_cash) for item in estimates if item.gross_recovered_cash is not None]
         missing = []
-        if not locked_values and rows:
+        if not locked_values and unhealthy:
             missing.append("MISSING_LOCKED_CAPITAL")
         summary = {
             "dead_stock_product_count": sum(1 for row in rows if _enum_value(row.classification) == "DEAD_STOCK"),
             "at_risk_product_count": sum(1 for row in rows if _enum_value(row.classification) == "AT_RISK"),
+            "slow_moving_product_count": sum(1 for row in rows if _enum_value(row.classification) == "SLOW_MOVING"),
+            "locked_capital_scope": "latest assessment per product classified DEAD_STOCK, AT_RISK or SLOW_MOVING",
             "locked_capital": sum(locked_values, Decimal("0")) if locked_values else None,
             "capital_recovery_estimate": sum(recovery_values, Decimal("0")) if recovery_values else None,
             "missing_cost_or_fee_warnings": missing,
@@ -1921,11 +1941,12 @@ class SqlAlchemyCopilotToolDataAccess:
 
     def count_products(self, *, seller_id: UUID, filters: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         missing = self._unsupported_filter_notes(filters)
+        count = self._product_count(seller_id=seller_id, filters=filters)
         return {
-            "count": self._product_count(seller_id=seller_id, filters=filters),
+            "count": count,
             "filters_used": _clean_filter_payload(filters),
             "evidence": [_evidence("products", "seller_scope", {"filters": _clean_filter_payload(filters)})],
-        }, missing
+        } | self._listing_summary(seller_id=seller_id, filters=filters, listed_count=count), missing
 
     def list_products(self, *, seller_id: UUID, filters: dict[str, Any], sort_by: str | None, limit: int, offset: int) -> tuple[dict[str, Any], list[str]]:
         statement = self._product_statement(seller_id=seller_id, filters=filters)
@@ -1952,7 +1973,27 @@ class SqlAlchemyCopilotToolDataAccess:
             "pagination": {"total": total, "limit": limit, "offset": offset, "has_next": offset + limit < total},
             "filters_used": _clean_filter_payload(filters),
             "evidence": [_evidence("products", "seller_scope", {"product_ids": [str(item.id) for item in rows]})],
-        }, self._unsupported_filter_notes(filters, seller_id=seller_id, product_ids=product_ids)
+        } | self._listing_summary(seller_id=seller_id, filters=filters, listed_count=total), self._unsupported_filter_notes(filters, seller_id=seller_id, product_ids=product_ids)
+
+    def _listing_summary(self, *, seller_id: UUID, filters: dict[str, Any], listed_count: int) -> dict[str, Any]:
+        """Sellers say "listed" for products in their account; the filter means an active marketplace listing.
+
+        Without the account total, a seller with products but no listing rows was told they have no products.
+        """
+        if not filters.get("listed"):
+            return {}
+        unlisted_filters = {key: value for key, value in filters.items() if key != "listed"}
+        total = self._product_count(seller_id=seller_id, filters=unlisted_filters)
+        return {
+            "listing_summary": {
+                "total_products_in_account": total,
+                "products_with_active_marketplace_listing": listed_count,
+                "how_to_answer": (
+                    f"Sellers usually mean products in their account: state that they have {total} products first, "
+                    f"then that {listed_count} of them are linked to an active marketplace listing."
+                ),
+            }
+        }
 
     def search_products(self, *, seller_id: UUID, query: str, category: str | None, marketplace: str | None, limit: int) -> tuple[dict[str, Any], list[str]]:
         filters = {"category": category, "marketplace": marketplace}
@@ -2343,12 +2384,30 @@ class SqlAlchemyCopilotToolDataAccess:
         minimum_safe = getattr(analytics, "minimum_safe_price", product.cost_price)
         allowed = price is not None and price >= minimum_safe
         daily_units = getattr(analytics, "daily_sales_rate", None) or Decimal("0")
-        expected_units = Decimal(forecast_horizon_days) * Decimal(daily_units)
+        estimate = self._db.execute(
+            select(DemandElasticityEstimate)
+            .where(DemandElasticityEstimate.seller_id == seller_id, DemandElasticityEstimate.product_id == product_id, DemandElasticityEstimate.elasticity.is_not(None))
+            .order_by(DemandElasticityEstimate.calculated_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        elasticity = Decimal(estimate.elasticity) if estimate is not None and estimate.elasticity is not None else None
+        current_price = Decimal(product.selling_price) if product.selling_price else None
+        units_factor = Decimal("1")
+        if elasticity is not None and current_price and price:
+            # Constant-elasticity demand: units scale by (new price / current price) ** elasticity.
+            units_factor = Decimal(str(float(Decimal(price) / current_price) ** float(elasticity)))
+        expected_units = Decimal(forecast_horizon_days) * Decimal(daily_units) * units_factor
+        fee_rate = Decimal(getattr(analytics, "percentage_fee_rate", None) or 0)
+        fixed_fee = Decimal(getattr(analytics, "fixed_fee_amount", None) or 0)
         expected_revenue = price * expected_units if price is not None else None
-        expected_profit = (price - product.cost_price) * expected_units if price is not None else None
+        # Profit is after marketplace fees on the candidate price, matching MarginGuard's unit economics.
+        expected_profit = (price - product.cost_price - price * fee_rate - fixed_fee) * expected_units if price is not None else None
         return {
             "allowed": bool(allowed),
             "candidate_price": price,
+            "expected_units": expected_units.quantize(Decimal("0.01")),
+            "elasticity_used": elasticity,
+            "demand_model": "constant_elasticity" if elasticity is not None else "flat_units_no_elasticity_estimate",
             "margin_guard": {"minimum_safe_price": minimum_safe, "current_cost": product.cost_price, "safe": bool(allowed)},
             "expected_revenue": expected_revenue if allowed else None,
             "expected_profit": expected_profit if allowed else None,
@@ -2507,7 +2566,7 @@ class SqlAlchemyCopilotToolDataAccess:
             value = filters.get(filter_name)
             column = _model_column(spec.model, column_name)
             if value is not None and column is not None:
-                statement = statement.where(column == value)
+                statement = statement.where(_enum_safe_equals(column, value))
         category = filters.get("category")
         if category and (spec.join_product_for_seller or _model_column(spec.model, spec.product_field) is not None):
             product_column = _model_column(spec.model, spec.product_field)
@@ -2524,11 +2583,11 @@ class SqlAlchemyCopilotToolDataAccess:
         if spec.name == "get_ignored_recommendations":
             status_column = _model_column(spec.model, "recommendation_status")
             if status_column is not None:
-                statement = statement.where(status_column.in_(["DISMISSED", "IGNORED", "REJECTED"]))
+                statement = statement.where(status_column.in_(_existing_statuses(status_column, ["DISMISSED", "IGNORED", "REJECTED"])))
         if spec.name == "get_pending_recommendations":
             status_column = _model_column(spec.model, "recommendation_status")
             if status_column is not None:
-                statement = statement.where(status_column.in_(["OPEN", "PENDING"]))
+                statement = statement.where(status_column.in_(_existing_statuses(status_column, ["OPEN", "PENDING"])))
         if spec.model in {RagMemoryChunk, RagMemoryDocument}:
             deleted_column = _model_column(spec.model, "deleted_at")
             if deleted_column is not None:
@@ -3177,6 +3236,17 @@ def _evidence(source_table: str, source_id: Any, payload: Any = None) -> dict[st
 RESTRICTED_FIELD_FRAGMENTS = ("password", "token", "api_key", "apikey", "cookie", "secret", "stack", "raw_html", "html", "telegram_chat_id", "celery_task_id", "error_message", "delivery_error")
 
 
+def _existing_statuses(column: Any, wanted: list[str]) -> list[str]:
+    """Only the statuses the column's enum defines: PostgreSQL rejects the whole query for any other value."""
+    allowed = getattr(getattr(column, "type", None), "enums", None)
+    return [value for value in wanted if not allowed or value in allowed]
+
+
+def _enum_safe_equals(column: Any, value: Any) -> Any:
+    """``column == value``, except a value outside the column's enum matches no rows instead of failing the query."""
+    return column.in_(_existing_statuses(column, [value.value if isinstance(value, Enum) else str(value)]))
+
+
 def _model_column(model: Any, name: str | None):
     if not name:
         return None
@@ -3202,13 +3272,15 @@ def _source_date_bound(column: Any, value: date, *, end: bool) -> date | datetim
 def _source_row_payload(row: Any, *, spec: SourceToolSpec) -> dict[str, Any]:
     allowed = set(spec.safe_fields)
     payload: dict[str, Any] = {}
-    for column in row.__table__.columns:
-        name = column.name
+    # Read through the mapped attribute: a column named "metadata" is mapped as event_metadata,
+    # and getattr(row, "metadata") would return the SQLAlchemy MetaData object.
+    for attr in inspect(row).mapper.column_attrs:
+        name = attr.columns[0].name
         if allowed and name not in allowed:
             continue
         if _field_is_restricted(name):
             continue
-        payload[name] = _json_safe(getattr(row, name, None))
+        payload[name] = _json_safe(getattr(row, attr.key, None))
     product = getattr(row, "product", None)
     competitor = getattr(row, "competitor", None)
     if product is not None:
@@ -3617,6 +3689,7 @@ def _missing_if_empty(rows: list[Any], message: str) -> list[str]:
 
 def _enum_value(value: Any) -> Any:
     return value.value if hasattr(value, "value") else value
+
 
 
 def _decimal(value: Any) -> Decimal:

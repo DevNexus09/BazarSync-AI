@@ -86,6 +86,7 @@ class MarketStats:
     seller_price_percentile: Decimal | None
     competitor_count: int
     in_stock_competitor_count: int
+    out_of_stock_competitor_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -176,6 +177,7 @@ class PricingAnalyticsService:
             product_age_days=product_age_days,
             competitor_count=market_stats.competitor_count,
             in_stock_competitor_count=market_stats.in_stock_competitor_count,
+            out_of_stock_competitor_count=market_stats.out_of_stock_competitor_count,
             velocity_status=velocity.data_status if velocity else None,
             config=self._config,
         )
@@ -206,6 +208,7 @@ class PricingAnalyticsService:
             "market_stats": {
                 "competitor_count": market_stats.competitor_count,
                 "in_stock_competitor_count": market_stats.in_stock_competitor_count,
+                "out_of_stock_competitor_count": market_stats.out_of_stock_competitor_count,
                 "outlier_policy": "No outliers removed in v1.",
             },
             "demand": {
@@ -424,6 +427,7 @@ def calculate_market_stats(
     valid = [snapshot for snapshot in snapshots if snapshot.price is not None and Decimal(snapshot.price) > 0]
     prices = sorted(Decimal(snapshot.price) for snapshot in valid)
     in_stock = sum(1 for snapshot in valid if snapshot.stock_status == "IN_STOCK")
+    out_of_stock = sum(1 for snapshot in valid if snapshot.stock_status == "OUT_OF_STOCK")
     if not prices:
         return MarketStats(None, None, None, None, None, None, None, None, None, 0, 0)
 
@@ -443,6 +447,7 @@ def calculate_market_stats(
         seller_price_percentile=seller_percentile,
         competitor_count=len(prices),
         in_stock_competitor_count=in_stock,
+        out_of_stock_competitor_count=out_of_stock,
     )
 
 
@@ -489,6 +494,7 @@ def calculate_demand_score(
     product_age_days: int | None,
     competitor_count: int,
     in_stock_competitor_count: int,
+    out_of_stock_competitor_count: int,
     velocity_status: SalesVelocityDataStatus | None,
     config: PricingAnalyticsConfig,
 ) -> DemandScore:
@@ -504,10 +510,11 @@ def calculate_demand_score(
         Decimal("100"),
         (Decimal(recent_net_sales or 0) / config.demand_recent_sales_reference_units) * Decimal("100"),
     )
+    # v2: UNKNOWN stock (scraper default) is not evidence of a stockout; ratio uses known statuses only.
+    known_stock_count = in_stock_competitor_count + out_of_stock_competitor_count
     availability_score = Decimal("50")
-    if competitor_count > 0:
-        out_of_stock_ratio = Decimal(competitor_count - in_stock_competitor_count) / Decimal(competitor_count)
-        availability_score = out_of_stock_ratio * Decimal("100")
+    if known_stock_count > 0:
+        availability_score = Decimal(out_of_stock_competitor_count) / Decimal(known_stock_count) * Decimal("100")
     maturity_score = min(Decimal("100"), (Decimal(product_age_days or 0) / Decimal("30")) * Decimal("100"))
     score = (
         velocity_score * config.demand_velocity_weight
@@ -525,6 +532,9 @@ def calculate_demand_score(
             "velocity_score": str(velocity_score.quantize(SCORE_QUANT, rounding=ROUND_HALF_UP)),
             "recent_sales_score": str(sales_score.quantize(SCORE_QUANT, rounding=ROUND_HALF_UP)),
             "competitor_availability_score": str(availability_score.quantize(SCORE_QUANT, rounding=ROUND_HALF_UP)),
+            "competitor_availability": "known" if known_stock_count > 0 else "unknown",
+            "competitor_stock_known_count": known_stock_count,
+            "competitor_stock_unknown_count": max(0, competitor_count - known_stock_count),
             "product_maturity_score": str(maturity_score.quantize(SCORE_QUANT, rounding=ROUND_HALF_UP)),
             "weights": {
                 "velocity": str(config.demand_velocity_weight),

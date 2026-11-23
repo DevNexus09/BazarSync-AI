@@ -1,0 +1,1490 @@
+{
+ "description": "100 generic Banglish seller questions. Expected facts are phrase-neutral (numbers, product, category and store names; any_of covers Banglish and English wording and ISO or written dates) and were checked against the demo seller's database as of 2026-11-22 (Asia/Dhaka; sales recorded to 2026-11-20). A question with no period is graded on all recorded history. Run with --as-of 2026-11-22.",
+ "questions": [
+  {
+   "id": "bn001_sales",
+   "category": "sales",
+   "question": "Ei mashe amar total sales koto hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "383863.28"
+    }
+   ]
+  },
+  {
+   "id": "bn002_sales",
+   "category": "sales",
+   "question": "Gotokal koto taka bikri hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no sales",
+      "no sale",
+      "no orders",
+      "no order",
+      "bikri hoy nai",
+      "bikri hoyni",
+      "bikri hoy ni",
+      "kono bikri",
+      "kono sale",
+      "sale hoy nai",
+      "sale hoyni",
+      "kono order",
+      "order ashe nai",
+      "order ase nai",
+      "order ashenai",
+      "not recorded",
+      "record hoy nai"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn003_sales",
+   "category": "sales",
+   "question": "Last 7 din e amar revenue koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "93503.00"
+    }
+   ]
+  },
+  {
+   "id": "bn004_sales",
+   "category": "sales",
+   "question": "October mashe amar mot bikri koto chilo?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "613570.52"
+    }
+   ]
+  },
+  {
+   "id": "bn005_sales",
+   "category": "sales",
+   "question": "November er prothom 15 dine koto taka sale hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "290360.28"
+    }
+   ]
+  },
+  {
+   "id": "bn006_sales",
+   "category": "sales",
+   "question": "Ajke kono order ashse?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no sales",
+      "no sale",
+      "no orders",
+      "no order",
+      "bikri hoy nai",
+      "bikri hoyni",
+      "bikri hoy ni",
+      "kono bikri",
+      "kono sale",
+      "sale hoy nai",
+      "sale hoyni",
+      "kono order",
+      "order ashe nai",
+      "order ase nai",
+      "order ashenai",
+      "not recorded",
+      "record hoy nai"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn007_sales",
+   "category": "sales",
+   "question": "Ei shoptahe koyta order paisi?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "43"
+    }
+   ]
+  },
+  {
+   "id": "bn008_sales",
+   "category": "sales",
+   "question": "October e total koyta order chilo?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "298"
+    }
+   ]
+  },
+  {
+   "id": "bn009_sales",
+   "category": "sales",
+   "question": "Ei mashe koto unit product bikri korsi?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "397",
+      "401"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn010_sales",
+   "category": "sales",
+   "question": "Amar average order value koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "2088.03"
+    }
+   ]
+  },
+  {
+   "id": "bn011_sales",
+   "category": "sales",
+   "question": "Gotomash er tulonay ei mashe sales barse na komse?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "6.76"
+    },
+    {
+     "label": "fact 2",
+     "value": "411685.32"
+    },
+    {
+     "label": "fact 3",
+     "value": "383863.28"
+    }
+   ]
+  },
+  {
+   "id": "bn012_sales",
+   "category": "sales",
+   "question": "October theke November e revenue koto percent change hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "37.44",
+      "6.76"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn013_sales",
+   "category": "sales",
+   "question": "Kon din sobcheye beshi bikri hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "2026-07-31",
+      "31 jul",
+      "jul 31",
+      "31 july",
+      "july 31"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn014_sales",
+   "category": "sales",
+   "question": "Amar weekend e beshi sale hoy naki weekday te?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "weekend"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn015_sales",
+   "category": "sales",
+   "question": "Last 30 din er daily average sales koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "18732.23",
+      "20070.25"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn016_sales",
+   "category": "sales",
+   "question": "Amar sales trend ta kemon jacche?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "down",
+      "decline",
+      "declin",
+      "falling",
+      "fell",
+      "drop",
+      "lower",
+      "komse",
+      "komche",
+      "kome",
+      "kom hoise",
+      "kom hocche",
+      "kommse"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn017_sales",
+   "category": "sales",
+   "question": "Ei bochor e ekhon porjonto total revenue koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "2392878.44"
+    }
+   ]
+  },
+  {
+   "id": "bn018_sales",
+   "category": "sales",
+   "question": "Gotokal er cheye ajke sales beshi na kom?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "same",
+      "shoman",
+      "soman",
+      "both zero",
+      "duitai 0",
+      "no sales",
+      "kono bikri",
+      "kono sale",
+      "no change"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn019_sales",
+   "category": "sales",
+   "question": "Last week e koto taka er order cancel hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no cancel",
+      "no order was cancel",
+      "no orders were cancel",
+      "none were cancel",
+      "cancel hoy nai",
+      "cancel hoyni",
+      "cancel hoy ni",
+      "kono cancel",
+      "kono order cancel",
+      "cancelled orders: 0",
+      "0 cancel"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn020_sales",
+   "category": "sales",
+   "question": "Kono return ba refund hoise ei mashe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "4",
+      "4248.00"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn021_product",
+   "category": "product",
+   "question": "Amar best selling product konta?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "NORTH STAR HAFSA",
+      "NORTH STAR FLORA"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn022_product",
+   "category": "product",
+   "question": "October e top 5 product kon gula revenue onujayi?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "NORTH STAR HAFSA"
+    },
+    {
+     "label": "fact 2",
+     "value": "COMFIT MOTION V-2"
+    },
+    {
+     "label": "fact 3",
+     "value": "NORTH STAR FLORA"
+    },
+    {
+     "label": "fact 4",
+     "value": "Black Casual Shoes For Men"
+    },
+    {
+     "label": "fact 5",
+     "value": "Black Casual Slip-On"
+    }
+   ]
+  },
+  {
+   "id": "bn023_product",
+   "category": "product",
+   "question": "Kon product sobcheye kom bikri hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "BUBBLE GUMMERS"
+    }
+   ]
+  },
+  {
+   "id": "bn024_product",
+   "category": "product",
+   "question": "Kon product gula ekdom bikri hoy nai last 30 din e?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "BUBBLE GUMMERS"
+    },
+    {
+     "label": "fact 2",
+     "value": "Power XORISE"
+    }
+   ]
+  },
+  {
+   "id": "bn025_product",
+   "category": "product",
+   "question": "Lex Loafer in Brown for Men koyta bikri hoise November e?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "9"
+    }
+   ]
+  },
+  {
+   "id": "bn026_product",
+   "category": "product",
+   "question": "Black Casual Shoes For Men er dam koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "974"
+    }
+   ]
+  },
+  {
+   "id": "bn027_product",
+   "category": "product",
+   "question": "Amar mot koyta product ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "15"
+    }
+   ]
+  },
+  {
+   "id": "bn028_product",
+   "category": "product",
+   "question": "Kon category te sobcheye beshi bikri hoy?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Men's Footwear"
+    }
+   ]
+  },
+  {
+   "id": "bn029_product",
+   "category": "product",
+   "question": "Men's Footwear category theke October e koto revenue aise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "235260.96"
+    }
+   ]
+  },
+  {
+   "id": "bn030_product",
+   "category": "product",
+   "question": "Amar sob category er list dao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Children's Footwear"
+    },
+    {
+     "label": "fact 2",
+     "value": "Men's Footwear"
+    },
+    {
+     "label": "fact 3",
+     "value": "Women's Footwear"
+    },
+    {
+     "label": "fact 4",
+     "value": "Other"
+    }
+   ]
+  },
+  {
+   "id": "bn031_product",
+   "category": "product",
+   "question": "Kon product er margin sobcheye beshi?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "PATAPATA",
+      "Power XORISE"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn032_product",
+   "category": "product",
+   "question": "Sobcheye dami product konta amar?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Power XORISE"
+    }
+   ]
+  },
+  {
+   "id": "bn033_product",
+   "category": "product",
+   "question": "Sobcheye sosta product konta?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "PATAPATA"
+    }
+   ]
+  },
+  {
+   "id": "bn034_product",
+   "category": "product",
+   "question": "Kon product er rating kom ba review kharap?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "bn035_product",
+   "category": "product",
+   "question": "Amar kon product gula Daraz e listed ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "15"
+    },
+    {
+     "label": "fact 2",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "bn036_stock",
+   "category": "stock",
+   "question": "Amar total stock koto unit ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "726"
+    }
+   ]
+  },
+  {
+   "id": "bn037_stock",
+   "category": "stock",
+   "question": "Kon kon product stock out hoye gese?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "bn038_stock",
+   "category": "stock",
+   "question": "Kon product er stock prai shesh, low stock ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    },
+    {
+     "label": "fact 2",
+     "value": "Black Casual Shoes For Men"
+    }
+   ]
+  },
+  {
+   "id": "bn039_stock",
+   "category": "stock",
+   "question": "Black Casual Shoes For Men er stock koto baki ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "2"
+    }
+   ]
+  },
+  {
+   "id": "bn040_stock",
+   "category": "stock",
+   "question": "SKU DEMO-BATA-541167043 er stock koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "26"
+    }
+   ]
+  },
+  {
+   "id": "bn041_stock",
+   "category": "stock",
+   "question": "Amar inventory er total value koto taka?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "595431.23"
+    }
+   ]
+  },
+  {
+   "id": "bn042_stock",
+   "category": "stock",
+   "question": "Kon product reorder kora dorkar ekhon?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Black Casual Shoes For Men"
+    },
+    {
+     "label": "fact 2",
+     "value": "Sandak NIPUN"
+    }
+   ]
+  },
+  {
+   "id": "bn043_stock",
+   "category": "stock",
+   "question": "Ei shoptahe koto stock in hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no stock",
+      "not received",
+      "no new stock",
+      "kono stock in",
+      "stock in hoy nai",
+      "stock in hoyni",
+      "stock ashe nai",
+      "stock ase nai",
+      "receive hoy nai"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "2026-11-12",
+      "12 nov",
+      "nov 12",
+      "12 november",
+      "november 12"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn044_stock",
+   "category": "stock",
+   "question": "Last stock in kobe korsi ar ki ki product?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "2026-11-12",
+      "12 nov",
+      "nov 12",
+      "12 november",
+      "november 12"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "value": "Sandak NIPUN"
+    }
+   ]
+  },
+  {
+   "id": "bn045_stock",
+   "category": "stock",
+   "question": "Sandak NIPUN er stock kinte unit cost koto porse?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "140.79"
+    }
+   ]
+  },
+  {
+   "id": "bn046_stock",
+   "category": "stock",
+   "question": "Amar stock koto din cholbe current sales e?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "32",
+      "33",
+      "35"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn047_stock",
+   "category": "stock",
+   "question": "Kon product er stock beshi pore ache, bikri hocche na?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "BUBBLE GUMMERS"
+    },
+    {
+     "label": "fact 2",
+     "value": "Power XORISE"
+    }
+   ]
+  },
+  {
+   "id": "bn048_stock",
+   "category": "stock",
+   "question": "Dead stock e koto taka atke ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "474912.89"
+    }
+   ]
+  },
+  {
+   "id": "bn049_stock",
+   "category": "stock",
+   "question": "Koyta product dead stock hoye gese?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "1"
+    }
+   ]
+  },
+  {
+   "id": "bn050_stock",
+   "category": "stock",
+   "question": "Dead stock gula ki korle bikri hobe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "VENUS"
+    },
+    {
+     "label": "fact 2",
+     "value": "bundle"
+    }
+   ]
+  },
+  {
+   "id": "bn051_price",
+   "category": "price",
+   "question": "Lex Loafer er dam koto rakha uchit?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "1874"
+    }
+   ]
+  },
+  {
+   "id": "bn052_price",
+   "category": "price",
+   "question": "Kon product er dam komano dorkar?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no product needs a price cut",
+      "no price cut",
+      "dam komano dorkar nai",
+      "dam komanor dorkar nai",
+      "komano lagbe na",
+      "komanor proyojon nai",
+      "increase",
+      "barano",
+      "barate"
+     ]
+    },
+    {
+     "label": "fact 2",
+     "value": "1071"
+    }
+   ]
+  },
+  {
+   "id": "bn053_price",
+   "category": "price",
+   "question": "Recently kon product er dam change hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "COMFIT MOTION V-2"
+    },
+    {
+     "label": "fact 2",
+     "value": "BUBBLE GUMMERS"
+    },
+    {
+     "label": "fact 3",
+     "value": "NORTH STAR HAFSA"
+    }
+   ]
+  },
+  {
+   "id": "bn054_price",
+   "category": "price",
+   "question": "BUBBLE GUMMERS PLAYMAX er last price change ki chilo?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "964.26"
+    },
+    {
+     "label": "fact 2",
+     "value": "974"
+    }
+   ]
+  },
+  {
+   "id": "bn055_price",
+   "category": "price",
+   "question": "Dam 10% barale amar revenue e ki effect porbe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "simulat",
+      "elasticity",
+      "which product",
+      "kon product",
+      "product ta",
+      "per product",
+      "estimate"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn056_price",
+   "category": "price",
+   "question": "Kon product e discount dile beshi bikri hobe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "MERRELS"
+    }
+   ]
+  },
+  {
+   "id": "bn057_price",
+   "category": "price",
+   "question": "Amar product er dam competitor der cheye beshi naki kom?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "15"
+    }
+   ]
+  },
+  {
+   "id": "bn058_price",
+   "category": "price",
+   "question": "Kon product e loss hocche, cost er niche bikri hocche?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no product is selling at a loss",
+      "not selling at a loss",
+      "no loss",
+      "loss e bikri hocche na",
+      "kono product loss",
+      "loss nai",
+      "loss hocche na",
+      "above cost",
+      "cost er upore"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn059_price",
+   "category": "price",
+   "question": "Amar pricing policy ki set kora ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "12"
+    },
+    {
+     "label": "fact 2",
+     "value": "10"
+    },
+    {
+     "label": "fact 3",
+     "value": "15"
+    },
+    {
+     "label": "fact 4",
+     "value": "20"
+    }
+   ]
+  },
+  {
+   "id": "bn060_price",
+   "category": "price",
+   "question": "Daraz commission ar fee kete amar profit koto thake?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "580758.60"
+    }
+   ]
+  },
+  {
+   "id": "bn061_competitor",
+   "category": "competitor",
+   "question": "Ami koyjon competitor track kortesi?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "89"
+    }
+   ]
+  },
+  {
+   "id": "bn062_competitor",
+   "category": "competitor",
+   "question": "Competitor ra koybar amar product er cheye kom dame bikri korse?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "136"
+    }
+   ]
+  },
+  {
+   "id": "bn063_competitor",
+   "category": "competitor",
+   "question": "Kon competitor sobcheye aggressive dam komacche?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Demo Synthetic Store 1"
+    }
+   ]
+  },
+  {
+   "id": "bn064_competitor",
+   "category": "competitor",
+   "question": "Amar main competitor ke?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Demo Synthetic Store 1"
+    }
+   ]
+  },
+  {
+   "id": "bn065_competitor",
+   "category": "competitor",
+   "question": "Competitor der latest price change gula dekhao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Demo Synthetic Store 1"
+    },
+    {
+     "label": "fact 2",
+     "value": "20.99"
+    }
+   ]
+  },
+  {
+   "id": "bn066_competitor",
+   "category": "competitor",
+   "question": "Market e kono notun opportunity ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "45"
+    }
+   ]
+  },
+  {
+   "id": "bn067_competitor",
+   "category": "competitor",
+   "question": "Kon product er market demand barse?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "VENUS"
+    }
+   ]
+  },
+  {
+   "id": "bn068_competitor",
+   "category": "competitor",
+   "question": "Amar product ranking Daraz search e kemon?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "20.5"
+    },
+    {
+     "label": "fact 2",
+     "value": "COMFIT MOTION V-2"
+    }
+   ]
+  },
+  {
+   "id": "bn069_competitor",
+   "category": "competitor",
+   "question": "Competitor der stock shesh hoye gese emon kono product ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no competitor",
+      "none of your competitors",
+      "not out of stock",
+      "in stock",
+      "stock shesh nai",
+      "stock shesh hoy nai",
+      "kono competitor er stock shesh",
+      "stock ache",
+      "out of stock right now: 0",
+      "no product"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn070_competitor",
+   "category": "competitor",
+   "question": "Kon category te competition kom?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Children's Footwear"
+    }
+   ]
+  },
+  {
+   "id": "bn071_profit",
+   "category": "profit",
+   "question": "October e amar estimated profit koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "144764.68"
+    }
+   ]
+  },
+  {
+   "id": "bn072_profit",
+   "category": "profit",
+   "question": "Ei mashe amar profit margin koto percent?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "23.66"
+    }
+   ]
+  },
+  {
+   "id": "bn073_profit",
+   "category": "profit",
+   "question": "Kon product theke sobcheye beshi profit hoy?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "NORTH STAR HAFSA"
+    }
+   ]
+  },
+  {
+   "id": "bn074_profit",
+   "category": "profit",
+   "question": "Amar mot khoroch koto hoise ei mashe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "40697.00"
+    }
+   ]
+  },
+  {
+   "id": "bn075_profit",
+   "category": "profit",
+   "question": "Advertising e koto taka khoroch korsi?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "51312.00"
+    }
+   ]
+  },
+  {
+   "id": "bn076_profit",
+   "category": "profit",
+   "question": "Shipping cost e koto jacche?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "78260.00"
+    }
+   ]
+  },
+  {
+   "id": "bn077_profit",
+   "category": "profit",
+   "question": "Ami ki loss e achi naki profit e?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "in profit",
+      "profitable",
+      "profit e",
+      "profit a",
+      "lav e",
+      "labh",
+      "making a profit",
+      "profit hocche",
+      "profit korchen",
+      "profit korsen"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn078_profit",
+   "category": "profit",
+   "question": "Gotomash er cheye profit barse?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "90830.95"
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "106579.80",
+      "144764.68"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn079_profit",
+   "category": "profit",
+   "question": "Amar cash flow kemon?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "171822.02"
+    }
+   ]
+  },
+  {
+   "id": "bn080_profit",
+   "category": "profit",
+   "question": "Supplier ke koto taka dite hobe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "142574.02"
+    }
+   ]
+  },
+  {
+   "id": "bn081_promo",
+   "category": "promo",
+   "question": "Amar kono active promotion ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "PATAPATA"
+    },
+    {
+     "label": "fact 2",
+     "any_of": [
+      "schedul",
+      "2026-11-23",
+      "23 nov",
+      "nov 23",
+      "23 november",
+      "november 23"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn082_promo",
+   "category": "promo",
+   "question": "Koyta promotion complete hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "3"
+    }
+   ]
+  },
+  {
+   "id": "bn083_promo",
+   "category": "promo",
+   "question": "Last promotion e koto bikri hoise?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "B. FIRST LEGO"
+    },
+    {
+     "label": "fact 2",
+     "value": "22"
+    }
+   ]
+  },
+  {
+   "id": "bn084_promo",
+   "category": "promo",
+   "question": "Eid er jonno ki offer deya uchit?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "VENUS"
+    },
+    {
+     "label": "fact 2",
+     "value": "bundle"
+    }
+   ]
+  },
+  {
+   "id": "bn085_promo",
+   "category": "promo",
+   "question": "Flash sale e join kora uchit hobe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "bn086_alert",
+   "category": "alert",
+   "question": "Amar kono unresolved alert ache?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "no unresolved",
+      "0 unresolved",
+      "no alert",
+      "no open alert",
+      "kono unresolved",
+      "kono alert",
+      "alert nai",
+      "alert nei",
+      "0 ta"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn087_alert",
+   "category": "alert",
+   "question": "Ajke amar ki ki kaj kora dorkar?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "bn088_alert",
+   "category": "alert",
+   "question": "Business e kono risk dekhte paccho?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    },
+    {
+     "label": "fact 2",
+     "value": "474912.89"
+    }
+   ]
+  },
+  {
+   "id": "bn089_alert",
+   "category": "alert",
+   "question": "Amar recommendation gula ki ki?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Black Casual Slip-On"
+    },
+    {
+     "label": "fact 2",
+     "value": "1071"
+    }
+   ]
+  },
+  {
+   "id": "bn090_alert",
+   "category": "alert",
+   "question": "Kon recommendation ami acknowledge korini?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "14",
+      "13"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn091_general",
+   "category": "general",
+   "question": "Amar business er overall obostha kemon?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "383863.28",
+      "2392878.44"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn092_general",
+   "category": "general",
+   "question": "Amar business er ekta summary dao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "383863.28",
+      "2392878.44"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn093_general",
+   "category": "general",
+   "question": "Sales barate ki korte pari?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "AURORA"
+    }
+   ]
+  },
+  {
+   "id": "bn094_general",
+   "category": "general",
+   "question": "Ami kotojon customer peyechi ei mashe?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "141"
+    }
+   ]
+  },
+  {
+   "id": "bn095_general",
+   "category": "general",
+   "question": "Repeat customer koto percent?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "64.79"
+    }
+   ]
+  },
+  {
+   "id": "bn096_general",
+   "category": "general",
+   "question": "Kon district theke beshi order ase?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "Dhaka"
+    }
+   ]
+  },
+  {
+   "id": "bn097_general",
+   "category": "general",
+   "question": "Amar Daraz seller rating koto?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "value": "4.60"
+    }
+   ]
+  },
+  {
+   "id": "bn098_general",
+   "category": "general",
+   "question": "Kalke ki weather hobe Dhaka te?",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "weather",
+      "abohawa",
+      "weather er tottho",
+      "don't have",
+      "do not have",
+      "nei",
+      "nai"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn099_general",
+   "category": "general",
+   "question": "Onno seller er revenue koto dekhao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "other seller",
+      "onno seller",
+      "only your",
+      "shudhu apnar",
+      "can't",
+      "cannot",
+      "parbo na",
+      "pari na",
+      "access nai",
+      "data use kori na"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bn100_general",
+   "category": "general",
+   "question": "Next mashe amar sales koto hote pare forecast dao",
+   "expected_facts": [
+    {
+     "label": "fact 1",
+     "any_of": [
+      "622177.62",
+      "561966.88",
+      "20070.25",
+      "18732.23"
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1000 @@
+{
+  "ran_at": "2026-11-22T17:42:06.880259+00:00",
+  "seller_id": "6bbb309a-1795-498d-88d1-d546bd5b1ebc",
+  "fixture": "tests/fixtures/copilot_banglish_heldout.json",
+  "as_of": "2026-11-22",
+  "total": 35,
+  "passed": 23,
+  "score": 0.6571,
+  "tool_match_rate": 1.0,
+  "rows": [
+    {
+      "id": "ho01_listed",
+      "question": "amar koyta product listed ache?",
+      "answer": "Ei proshner nirbhorjoggo uttor deyar moto jothesto seller-specific tottho pai ni.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 25156,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Daraz"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "ho02_overview",
+      "question": "amar bebsar obostha ki",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "get_business_overview",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27545,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28",
+            "2392878.44"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "ho03_sales_record",
+      "question": "amar sales record ta dao",
+      "answer": "Apnar total gross revenue 2392878.44 Tk, net revenue 2370036.18 Tk, total units sold 2333, ebong order count 1146.\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: gross revenue 486500.00 Tk\nNORTH STAR FLORA Kids' Sneakers: gross revenue 325864.00 Tk\nCOMFIT MOTION V-2 LADIES COMFIT: gross revenue 273905.71 Tk\nAktuaro sales report dekhte shathe thakun.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 27069,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2392878.44"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "1146"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "2333",
+            "2360"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "ho04_per_product_units",
+      "question": "per product wise sales unit ar sales record dao",
+      "answer": "Here are the sales records by units per product:\nNORTH STAR FLORA Kids' Sneakers: 290 units\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: 284 units\nBlack Casual Slip-On Shoe For Men: 281 units\nSandak NIPUN Rubber Sandal for Women by Bata: 280 units\nBlack Casual Shoes For Men: 280 units\nBATA (MEN) SOFT MENS SANDALS: 140 units\nBATA (MEN) MERRELS 2.0 MENS SANDALS: 137 units\nPATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: 130 units\nBata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: 129 units\nB. FIRST LEGO SCHOOL SPORTS: 128 units\nCOMFIT MOTION V-2 LADIES COMFIT: 124 units\nLex Loafer in Brown for Men: 64 units\nPower XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: 51 units\nBata Comfit AURORA Slip-On Sandal for Women: 38 units\nBUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: 4 units\nReview inventory levels for top-selling products to avoid stockouts.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 15165,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "283",
+            "284"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "NORTH STAR FLORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "282",
+            "290"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "ho05_per_product_sales",
+      "question": "kon product er sale koto bolo",
+      "answer": "Apnar product gulo er sales ekhane dewa holo:\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: BDT 486500.00\nNORTH STAR FLORA Kids' Sneakers: BDT 325864.00\nCOMFIT MOTION V-2 LADIES COMFIT: BDT 273905.71\nBlack Casual Slip-On Shoe For Men: BDT 267285.08\nBlack Casual Shoes For Men: BDT 266613.02\nPower XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: BDT 163976.40\nLex Loafer in Brown for Men: BDT 117031.30\nBATA (MEN) MERRELS 2.0 MENS SANDALS: BDT 97085.38\nB. FIRST LEGO SCHOOL SPORTS: BDT 90291.95\nBATA (MEN) SOFT MENS SANDALS: BDT 82278.64\nBata VENUS Women's Slip-on Flat Sandal Fashion Footwear Casual Loafers: BDT 78574.92\nSandak NIPUN Rubber Sandal for Women by Bata: BDT 67596.49\nBata Comfit AURORA Slip-On Sandal for Women: BDT 55747.81\nPATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP: BDT 16368.10\nBUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER: BDT 3759.64\nBaki product gulo er sales report check kore nin.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 21870,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "NORTH STAR HAFSA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "486500.00"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 3",
+          "expected": [
+            "NORTH STAR FLORA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 4",
+          "expected": [
+            "325864.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr06_month_sales",
+      "question": "amar bebsar er ei maser sales kotogula?",
+      "answer": "Apnar ei maser total sales 397 units ebong order count 181, jar gross revenue BDT 383863.28.\nEktibar sales summary report ta check kore nibe.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 24295,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "383863.28"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr07_last_seven",
+      "question": "how much did I sell in the last seven days, bhai?",
+      "answer": "In the last seven days, your gross revenue was 93503.00 BDT, net revenue was 89255.00 BDT, total units sold were 85 across 43 orders, and top product:\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: gross revenue 19250.00 BDT\nReview your sales records to monitor top products closely.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 24977,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "93503.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr08_october",
+      "question": "oktober month e total revenue koto chilo",
+      "answer": "Oktober month e total gross revenue chilo BDT 613570.52. Net revenue chilo BDT 608373.62. Total 625 units bikri hoyeche 298 order e. Pichler month er cheye revenue 7.03% barheche. Top product NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER er revenue chilo BDT 127470.00. Aj-i revenue summary ta dashboard e dekhun.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7408,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "613570.52"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr09_yesterday",
+      "question": "gotokaler sale er hisab dao",
+      "answer": "Apnar data theke (shob recorded history):\n- Ei somoye kono sale pawa jay nai, kintu sales history confirm kora jay nai",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5079,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "no sales",
+            "no sale",
+            "no orders",
+            "no order",
+            "bikri hoy nai",
+            "bikri hoyni",
+            "bikri hoy ni",
+            "kono bikri",
+            "kono sale",
+            "sale hoy nai",
+            "sale hoyni",
+            "kono order",
+            "order ashe nai",
+            "order ase nai",
+            "order ashenai",
+            "not recorded",
+            "record hoy nai"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "2026-11-20",
+            "20 nov",
+            "nov 20",
+            "20 november",
+            "november 20"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr10_week_orders",
+      "question": "this week a kotogula order hoise",
+      "answer": "This week there are 43 units of sales recorded.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4901,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "43"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr11_nov_first_half",
+      "question": "november 1 theke 15 porjonto bikri koto",
+      "answer": "November 1 theke 15 porjonto apnar gross revenue BDT 290360.28 ebong net revenue BDT 290360.28. Total units sold chilo 312 ebong order count chilo 138.\nTop products by revenue:\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: revenue BDT 59150.00\nNORTH STAR FLORA Kids' Sneakers: revenue BDT 41055.00\nCOMFIT MOTION V-2 LADIES COMFIT: revenue BDT 35759.10\nAnek beshi product er details dekhte sales report check kore nin.",
+      "tools": [
+        "get_revenue_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6170,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "290360.28"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr12_best_day",
+      "question": "amar sobcheye beshi bikri howa din konta chilo?",
+      "answer": "Amar sobcheye beshi bikri howa din chilo 2026-07-31, jekhane total revenue chilo BDT 33676.44.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9417,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2026-07-31",
+            "31 jul",
+            "jul 31",
+            "31 july",
+            "july 31"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "33676.44"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr13_product_count",
+      "question": "kotogula product ache amar dokane",
+      "answer": "Apnar dokane 15 ta product ache.",
+      "tools": [
+        "count_products",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 10313,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr14_most_expensive",
+      "question": "which product is most expensive in my store?",
+      "answer": "The most expensive product in your store is:\nPower XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: BDT 3374.00",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6777,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "3374"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr15_cheapest",
+      "question": "sob theke kom dami jinis konta",
+      "answer": "Sob theke kom dami product ti holo PATAPATA NEPTUNE THONGS CHILDREN FLIP FLOP, jar selling price BDT 134.00.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5967,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "PATAPATA"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "134"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr16_total_stock",
+      "question": "stock e total kotogula unit pore ache",
+      "answer": "Apnar stock e total 726 units product pore ache.\nEkhan theke product gulor stock status check kore nin.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7438,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "726"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr17_stock_out",
+      "question": "konta stock out, mane ekdom shesh?",
+      "answer": "Apnar data theke (shob recorded history):\n- Bata Comfit AURORA Slip-On Sandal for Women: 0\n- Black Casual Shoes For Men: 2\n- BATA (MEN) SOFT MENS SANDALS: 7\n- NORTH STAR FLORA Kids' Sneakers: 9\n- Sandak NIPUN Rubber Sandal for Women by Bata: 10\n- COMFIT MOTION V-2 LADIES COMFIT: 20\n- NORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: 26\n- BATA (MEN) MERRELS 2.0 MENS SANDALS: 34",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4551,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "AURORA"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr18_one_stock",
+      "question": "Black Casual Shoes For Men er stok koto ache",
+      "answer": "Black Casual Shoes For Men er current stock 2 ti.\nAj-i restock plan ta dekhe nin.",
+      "tools": [
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4435,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr19_inventory_value",
+      "question": "inventory r value cost price e koto taka",
+      "answer": "Apnar data theke (shob recorded history):\n- inventory value at cost: 595431.23\n- cost price: 11513.09",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 11396,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "595431.23"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr20_dead_capital",
+      "question": "dead stok e koto capital atke ase",
+      "answer": "Apnar dead stock a product gulo te je poriman capital atke ache, tar talika niche dewa holo:\nBlack Casual Shoes For Men: BDT 594.14\nPower XORISE+100 RN EROS Lace-Up Performance Sneaker for Men: BDT 146836.48\nNORTH STAR FLORA Kids' Sneakers: BDT 5635.00\nB. FIRST LEGO SCHOOL SPORTS: BDT 35794.71\nAji capital recovery summary check kore nin.",
+      "tools": [
+        "get_capital_recovery_summary",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6979,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "474912.89"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr21_last_stock_in",
+      "question": "last stock in ta kobe hoisilo",
+      "answer": "Apnar data theke (shob recorded history):\n- Sandak NIPUN Rubber Sandal for Women by Bata",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5359,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "2026-11-12",
+            "12 nov",
+            "nov 12",
+            "12 november",
+            "november 12"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Sandak NIPUN"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr22_top_category",
+      "question": "category onujayi kon ta beshi bikri hoy",
+      "answer": "Category onujayi shobcheye beshi bikri howa product gulo niche dewa holo:\nNORTH STAR HAFSA LADIES CANVAS F.TIME LADIES SNEAKER: gross revenue BDT 486500.00\nNORTH STAR FLORA Kids' Sneakers: gross revenue BDT 325864.00\nCOMFIT MOTION V-2 LADIES COMFIT: gross revenue BDT 273905.71\nAponar category gular performance check kore nin.",
+      "tools": [
+        "run_seller_metric_query",
+        "run_seller_metric_query",
+        "get_revenue_summary",
+        "get_sales_trends",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 9787,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Men's Footwear"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "994269.82"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr23_lex_units",
+      "question": "Lex Loafer november e kotogula sell hoise",
+      "answer": "Apnar data theke (2026-11-01 theke 2026-11-22):\n- units: 9",
+      "tools": [
+        "query_business_records",
+        "get_product_profile",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4769,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "9"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "16116.40"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr24_no_sale_30",
+      "question": "kon product gula last 30 day te ekta o bikri hoy nai",
+      "answer": "Apnar data theke (2026-10-24 theke 2026-11-22):\n- BUBBLE GUMMERS PLAYMAX C. CLOSED SNEAKER\n- Power XORISE+100 RN EROS Lace-Up Performance Sneaker for Men",
+      "tools": [
+        "get_products_with_no_sales",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5141,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "BUBBLE GUMMERS"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "Power XORISE"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr25_october_profit",
+      "question": "october er profit ta bolo, estimated holeo cholbe",
+      "answer": "October er estimated profit holo BDT 144764.68.",
+      "tools": [
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5362,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "144764.68"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr26_margin",
+      "question": "ei month e profit margin percentage koto",
+      "answer": "Apnar data theke (shob recorded history):\n- gross revenue: 383863.28\n- estimated profit: 90830.95\n- margin rate: 0.24",
+      "tools": [
+        "get_profit_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4754,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "23.66"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr27_supplier_due",
+      "question": "supplier der kase amar due koto",
+      "answer": "Apnar supplier der kase total due BDT 142574.02. Aj-i payment records gulo check kore nin.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 5422,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "142574.02"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr28_month_expense",
+      "question": "ei maser khoroch er total",
+      "answer": "Ei mase apnar total khoroch BDT 40697.00. Aj-i expense records gulo check kore nin.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4937,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "40697.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr29_customers",
+      "question": "kotojon alada customer kinse ei mashe",
+      "answer": "Apnar data theke (2026-11-01 theke 2026-11-22):\n- DRZ-BUYER-0000: 9\n- DRZ-BUYER-0029: 4\n- DRZ-BUYER-0060: 3\n- DRZ-BUYER-0137: 3\n- DRZ-BUYER-0015: 3\n- DRZ-BUYER-0435: 3\n- DRZ-BUYER-0001: 3\n- DRZ-BUYER-0141: 2",
+      "tools": [
+        "query_business_records",
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 6500,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "141"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr30_repeat",
+      "question": "repeat buyer er percentage ta koto",
+      "answer": "Apnar data te ekhono porishkar uttor pai ni.",
+      "tools": [
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7985,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "64.79"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr31_district",
+      "question": "kon district e order beshi jay",
+      "answer": "Sobercheye beshi order gulo Dhaka district e geche.\nDhaka: 858 units\nChattogram: 373 units\nGazipur: 268 units\nNarayanganj: 181 units\nSylhet: 159 units\nRajshahi: 152 units\nKhulna: 146 units\nCumilla: 121 units\nRangpur: 56 units\nBarishal: 46 units\nApnar district-wise sales er data gulo dekhe nin.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7269,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "Dhaka"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "412"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr32_store_rating",
+      "question": "Daraz e amar store rating koto ekhon",
+      "answer": "Daraz e apnar current store rating 4.60 ebong rating count 1284.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4780,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "4.60"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr33_competitors",
+      "question": "competitor koyta track hocche ar koyta store",
+      "answer": "Apnar 89 ti competitor track hocche.",
+      "tools": [
+        "get_competitor_summary",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 4520,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "89"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "5"
+          ],
+          "found": false
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr34_cancel_week",
+      "question": "kono order cancel hoise ei week e?",
+      "answer": "Ji, ei week e 15 ta order cancel hoise. Cancel howa order gulo check kore dekhe nin ki somossa chilo.",
+      "tools": [
+        "query_business_records",
+        "retrieve_business_memory"
+      ],
+      "error": null,
+      "latency_ms": 7246,
+      "passed": false,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "17970.00"
+          ],
+          "found": false
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "15"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    },
+    {
+      "id": "hr35_returns",
+      "question": "ei mashe return koyta unit asche ar koto takar",
+      "answer": "Ei mashe (2026-11-01 theke 2026-11-22) total 4 unit return asheche, ar return er total value BDT 4248.00.",
+      "tools": [
+        "query_business_records"
+      ],
+      "error": null,
+      "latency_ms": 5466,
+      "passed": true,
+      "facts": [
+        {
+          "label": "fact 1",
+          "expected": [
+            "4"
+          ],
+          "found": true
+        },
+        {
+          "label": "fact 2",
+          "expected": [
+            "4248.00"
+          ],
+          "found": true
+        }
+      ],
+      "forbidden_found": [],
+      "tool_match": true
+    }
+  ]
+}

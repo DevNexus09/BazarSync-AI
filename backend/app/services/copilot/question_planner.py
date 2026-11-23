@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 import re
 from typing import Any, Protocol
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.config import settings
 from app.services.copilot.business_data_catalog import BusinessDataCatalogService
-from app.services.copilot.date_range_parser import CopilotDateRangeParser, ParsedDateRange
+from app.services.copilot.date_range_parser import CopilotDateRangeParser, ParsedDateRange, default_period
 from app.services.copilot.entity_resolver import CopilotEntityResolver, EntityResolutionResult, ResolvedProductEntity
 from app.services.copilot.safety_rules import apply_strict_safety
 from app.services.copilot.intent_classifier import CopilotIntent, CopilotIntentResult
@@ -519,6 +520,8 @@ class CopilotQuestionPlanner:
         inherited_context_allowed = _should_use_context(normalized, context)
         context_date_range = _context_date_range(context) if inherited_context_allowed and not from_date and not to_date else None
         date_range = date_result.date_range or _date_range_from_hint(classification_hint) or context_date_range
+        # One stated window for every dated tool and metric, so their facts never disagree.
+        date_range = date_range or default_period(self._date_range_parser.today())
         entities = self._entity_resolver.resolve(seller_id=seller_id, question=question, product_id=product_id)
         if inherited_context_allowed:
             entities = _merge_context_entities(entities, context)
@@ -1046,7 +1049,7 @@ def _context_date_range(context: CopilotPlanningContext) -> ParsedDateRange | No
         to_date = date.fromisoformat(str(value.get("to_date")))
     except (TypeError, ValueError):
         return None
-    if from_date > to_date:
+    if from_date > to_date or value.get("defaulted"):
         return None
     return ParsedDateRange(from_date, to_date, str(value.get("source_text") or "conversation context"))
 
@@ -1235,7 +1238,7 @@ def _args_for_tool(tool_name: str, question: str, product_id: UUID | None, date_
         return _dated_args(None, date_range, category, marketplace) | {"limit": 10}
     if tool_name == "get_products_with_no_sales":
         payload = {"limit": 10, "offset": 0} | _category_marketplace(category, marketplace)
-        if date_range:
+        if date_range and not date_range.defaulted:
             payload["since_date"] = date_range.from_date.isoformat()
         return payload
     if tool_name == "get_competitor_threats":
@@ -1260,7 +1263,7 @@ def _args_for_tool(tool_name: str, question: str, product_id: UUID | None, date_
 
 
 def _dated_args(product_id: UUID | None, date_range: ParsedDateRange | None, category: str | None, marketplace: str | None) -> dict[str, Any]:
-    selected = date_range or ParsedDateRange(_today_utc(), _today_utc(), "today")
+    selected = date_range or default_period(datetime.now(ZoneInfo("Asia/Dhaka")).date())
     payload = {"from_date": selected.from_date.isoformat(), "to_date": selected.to_date.isoformat()} | _category_marketplace(category, marketplace)
     if product_id:
         payload["product_id"] = str(product_id)
@@ -1271,7 +1274,7 @@ def _optional_dated_args(product_id: UUID | None, date_range: ParsedDateRange | 
     payload: dict[str, Any] = {}
     if product_id:
         payload["product_id"] = str(product_id)
-    if date_range:
+    if date_range and not date_range.defaulted:
         payload["from_date"] = date_range.from_date.isoformat()
         payload["to_date"] = date_range.to_date.isoformat()
     return payload
@@ -1298,7 +1301,7 @@ def _memory_args(question: str, product_id: UUID | None, date_range: ParsedDateR
         payload["product_id"] = str(product_id)
     if memory_source_types:
         payload["source_types"] = [source_type.value for source_type in memory_source_types]
-    if date_range:
+    if date_range and not date_range.defaulted:
         payload["from_date"] = date_range.from_date.isoformat()
         payload["to_date"] = date_range.to_date.isoformat()
     return payload
@@ -1453,10 +1456,6 @@ def _safe_products(value: Any) -> list[dict[str, Any]]:
             }
         )
     return products
-
-
-def _today_utc() -> date:
-    return datetime.now(timezone.utc).date()
 
 
 def _json_safe(value: Any) -> Any:

@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 import anthropic
+import httpx
 import httpx2
 
 from app.ai.groq_client import GroqConfigurationError, GroqTimeoutError
@@ -23,6 +24,7 @@ from app.ai.llm import (
 from app.ai.llm import router as router_module
 from app.ai.llm.anthropic_provider import AnthropicProvider
 from app.ai.llm.groq_provider import GroqProvider
+from app.ai.llm.openai_compat_provider import OpenAICompatProvider
 from app.services.copilot.hybrid_answer_engine import CopilotHybridAnswerEngine, answer_json_schema
 from app.services.copilot.intent_classifier import CopilotIntentClassifier
 from app.services.copilot.orchestrator import CopilotOrchestrator
@@ -288,7 +290,7 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual([], parse_routes("groq", default_groq_model=None))
         with self.assertRaises(ValueError):
-            parse_routes("openai:gpt-5", default_groq_model=None)
+            parse_routes("mistral:large", default_groq_model=None)
 
     def test_build_router_from_settings_only_creates_configured_providers(self):
         settings = SimpleNamespace(
@@ -310,6 +312,163 @@ class RouterTests(unittest.IsolatedAsyncioTestCase):
 
         groq_only = build_router_from_settings(SimpleNamespace(**{**vars(settings), "copilot_llm_answer_routes_bn": "", "copilot_llm_answer_routes_banglish": ""}), timeout_seconds=15)
         self.assertEqual({"groq"}, set(groq_only.providers))
+
+
+class OpenAICompatRouteTests(unittest.IsolatedAsyncioTestCase):
+    def test_parse_routes_accepts_openai_and_gemini(self):
+        self.assertEqual(
+            [LLMRoute("openai", "openai/gpt-4.1"), LLMRoute("gemini", "gemini-2.5-flash"), LLMRoute("groq", "openai/gpt-oss-120b")],
+            parse_routes("openai:openai/gpt-4.1, gemini:gemini-2.5-flash, groq:openai/gpt-oss-120b", default_groq_model=None),
+        )
+        # A bare openai/gemini route has no safe default model, so it is dropped like a bare groq without a model.
+        self.assertEqual([], parse_routes("openai,gemini", default_groq_model=None))
+
+    async def test_router_falls_back_on_rate_limit(self):
+        openai_provider = _ScriptedProvider("openai", {"gpt": LLMProviderError("429", code="RATE_LIMITED", provider="openai")})
+        gemini_provider = _ScriptedProvider("gemini", {"flash": "from gemini"})
+        router = CopilotLLMRouter(
+            providers={"openai": openai_provider, "gemini": gemini_provider},
+            default_routes=[LLMRoute("openai", "gpt"), LLMRoute("gemini", "flash")],
+        )
+
+        result, attempts = await router.complete_json(REQUEST)
+
+        self.assertEqual({"answer": "from gemini"}, result.content)
+        self.assertEqual([("openai:gpt", "FAILED", "RATE_LIMITED"), ("gemini:flash", "SUCCEEDED", None)], [(a.route, a.status, a.code) for a in attempts])
+
+    async def test_failed_routes_are_logged_with_their_code(self):
+        router = CopilotLLMRouter(
+            providers={"gemini": _ScriptedProvider("gemini", {"flash": LLMProviderError("busy", code="HTTP_503", provider="gemini")}), "groq": _ScriptedProvider("groq", {"llama": "ok"})},
+            default_routes=[LLMRoute("gemini", "flash"), LLMRoute("groq", "llama")],
+        )
+
+        with self.assertLogs("app.ai.llm.router", level="WARNING") as logs:
+            await router.complete_json(REQUEST)
+
+        self.assertTrue(any("gemini:flash" in line and "HTTP_503" in line for line in logs.output))
+
+    def test_router_skips_provider_without_api_key(self):
+        settings = SimpleNamespace(
+            copilot_groq_model="llama-default",
+            copilot_llm_answer_routes="openai:gpt-4.1,gemini:gemini-2.5-flash,groq",
+            copilot_llm_answer_routes_en="",
+            copilot_llm_answer_routes_bn="",
+            copilot_llm_answer_routes_banglish="",
+            copilot_anthropic_effort="low",
+            copilot_anthropic_max_tokens=16000,
+            openai_base_url="https://api.openai.com/v1",
+            gemini_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        )
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "", "GEMINI_API_KEY": "test-gemini-key"}):
+            router = build_router_from_settings(settings, timeout_seconds=15)
+
+        self.assertEqual({"gemini", "groq"}, set(router.providers))
+        self.assertEqual(["gemini:gemini-2.5-flash", "groq:llama-default"], [route.label for route in router.routes_for("en")])
+        self.assertEqual("https://generativelanguage.googleapis.com/v1beta/openai", router.providers["gemini"].base_url)
+
+    def test_openrouter_route_keeps_free_suffix_in_model(self):
+        settings = SimpleNamespace(
+            copilot_groq_model=None,
+            copilot_llm_answer_routes="openrouter:google/gemma-4-31b-it:free",
+            copilot_llm_answer_routes_en="",
+            copilot_llm_answer_routes_bn="",
+            copilot_llm_answer_routes_banglish="",
+            copilot_anthropic_effort="low",
+            copilot_anthropic_max_tokens=16000,
+            openai_base_url="https://api.openai.com/v1",
+            gemini_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+            openrouter_base_url="https://openrouter.ai/api/v1",
+        )
+        with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-openrouter-key"}):
+            router = build_router_from_settings(settings, timeout_seconds=15)
+
+        self.assertEqual(["openrouter:google/gemma-4-31b-it:free"], [route.label for route in router.routes_for("en")])
+        self.assertEqual("https://openrouter.ai/api/v1", router.providers["openrouter"].base_url)
+
+
+def _compat(handler) -> OpenAICompatProvider:
+    return OpenAICompatProvider(
+        name="openai",
+        base_url="https://api.example.test/v1/",
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+
+
+class OpenAICompatProviderTests(unittest.IsolatedAsyncioTestCase):
+    async def test_openai_compat_parses_json_content(self):
+        seen = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(
+                200,
+                json={"model": "gpt-4.1-2025", "choices": [{"message": {"content": '{"a":1}'}}], "usage": {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13}},
+            )
+
+        result = await _compat(handler).complete_json(REQUEST, model="gpt-4.1", timeout_s=5)
+
+        self.assertEqual({"a": 1}, result.content)
+        self.assertEqual(("openai", "gpt-4.1-2025"), (result.provider, result.model))
+        self.assertEqual({"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13}, result.usage)
+        self.assertEqual("https://api.example.test/v1/chat/completions", str(seen[0].url))
+        self.assertEqual("Bearer test-key", seen[0].headers["authorization"])
+        body = json.loads(seen[0].content)
+        # A strict schema is sent as json_schema so every required answer field comes back.
+        self.assertEqual({"type": "json_schema", "json_schema": {"name": "copilot_response", "schema": dict(REQUEST.json_schema), "strict": True}}, body["response_format"])
+        self.assertEqual("gpt-4.1", body["model"])
+        self.assertEqual(1000, body["max_tokens"])
+        self.assertEqual(0.1, body["temperature"])
+        # JSON mode needs the word "JSON" and the expected shape in the prompt.
+        self.assertIn("JSON", body["messages"][0]["content"])
+        self.assertIn('"answer"', body["messages"][0]["content"])
+
+    async def test_openai_compat_uses_json_object_without_a_schema(self):
+        seen = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(json.loads(request.content))
+            return httpx.Response(200, json={"choices": [{"message": {"content": '{"done": true}'}}]})
+
+        loose = JsonCompletionRequest(messages=REQUEST.messages, max_tokens=100, schema_hint={"done": True})
+        await _compat(handler).complete_json(loose, model="m", timeout_s=5)
+
+        self.assertEqual({"type": "json_object"}, seen[0]["response_format"])
+
+    async def test_openai_compat_maps_429_to_rate_limited(self):
+        provider = _compat(lambda request: httpx.Response(429, json={"error": {"message": "quota"}}))
+        with self.assertRaises(LLMProviderError) as raised:
+            await provider.complete_json(REQUEST, model="gpt-4.1", timeout_s=5)
+        self.assertEqual("RATE_LIMITED", raised.exception.code)
+        self.assertTrue(raised.exception.retryable)
+
+    async def test_openai_compat_maps_auth_server_and_bad_json(self):
+        cases = [
+            (httpx.Response(401, json={}), "AUTH", False),
+            (httpx.Response(503, json={}), "HTTP_503", True),
+            (httpx.Response(200, json={"choices": [{"message": {"content": "not json"}}]}), "INVALID_JSON", True),
+            (httpx.Response(200, json={"choices": [{"message": {"content": "[1, 2]"}}]}), "INVALID_JSON", True),
+            (httpx.Response(200, json={"choices": []}), "INVALID_JSON", True),
+        ]
+        for response, code, retryable in cases:
+            with self.subTest(code=code):
+                with self.assertRaises(LLMProviderError) as raised:
+                    await _compat(lambda request, r=response: r).complete_json(REQUEST, model="m", timeout_s=5)
+                self.assertEqual(code, raised.exception.code)
+                self.assertEqual(retryable, raised.exception.retryable)
+                self.assertNotIn("test-key", str(raised.exception))
+
+    async def test_openai_compat_maps_timeout(self):
+        def handler(request):
+            raise httpx.ReadTimeout("slow", request=request)
+
+        with self.assertRaises(LLMProviderError) as raised:
+            await _compat(handler).complete_json(REQUEST, model="m", timeout_s=5)
+        self.assertEqual("TIMEOUT", raised.exception.code)
+
+    def test_missing_api_key_is_rejected(self):
+        with self.assertRaises(ValueError):
+            OpenAICompatProvider(name="openai", base_url="https://api.example.test/v1", api_key="")
 
 
 class _RecordingRouter:
@@ -428,7 +587,7 @@ class OrchestratorRouterFlagTests(unittest.TestCase):
 
     def test_misconfigured_route_falls_back_to_legacy_engine(self):
         with self.assertLogs("app.services.copilot.orchestrator", level="ERROR"):
-            orchestrator = self._orchestrator(copilot_llm_router_enabled=True, copilot_llm_answer_routes="openai:gpt-5")
+            orchestrator = self._orchestrator(copilot_llm_router_enabled=True, copilot_llm_answer_routes="mistral:large")
         self.assertIsNone(orchestrator._hybrid_answer_engine._llm_router)
 
 

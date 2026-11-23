@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from decimal import Decimal, InvalidOperation
+import re
+from typing import Any, Iterable
 
+from app.services.copilot.context_builder import is_zero_sales, zero_sales_proven
 from app.services.copilot.intent_classifier import CopilotIntent, CopilotIntentResult
 from app.services.copilot.tool_registry import ToolExecutionResult, ToolExecutionStatus
 
@@ -10,7 +13,6 @@ from app.services.copilot.tool_registry import ToolExecutionResult, ToolExecutio
 NO_CONTEXT_ANSWER_EN = "I could not find enough seller-specific history to answer this reliably."
 NO_CONTEXT_ANSWER_BN = "এই প্রশ্নের নির্ভরযোগ্য উত্তর দেওয়ার মতো পর্যাপ্ত seller-specific তথ্য পাইনি।"
 NO_CONTEXT_ANSWER_BANGLISH = "Ei proshner nirbhorjoggo uttor deyar moto jothesto seller-specific tottho pai ni."
-NO_CONTEXT_MISSING_LABEL_BANGLISH = "Missing data"
 NO_CONTEXT_NEXT_STEP_BANGLISH = "Seller data refresh kore abar jiggesh korun."
 
 
@@ -45,151 +47,48 @@ class CopilotBuiltAnswer:
         }
 
 
-ANSWER_STRUCTURE_BY_INTENT: dict[CopilotIntent, list[str]] = {
-    CopilotIntent.RESTOCK_ADVICE: [
-        "Quick recommendation",
-        "Products to restock",
-        "Why now",
-        "Risk level",
-        "Suggested quantity",
-        "Missing data",
-        "Next steps",
-    ],
-    CopilotIntent.REVENUE_DIAGNOSIS: [
-        "Financial summary",
-        "Main likely causes",
-        "Evidence",
-        "Product-level impact",
-        "Competitor, pricing, inventory, and promotion factors",
-        "Confidence",
-        "What to do next",
-    ],
-    CopilotIntent.COMPETITOR_THREAT_ANALYSIS: [
-        "Competitors hurting you most",
-        "Affected products",
-        "Evidence",
-        "Price gap or stock advantage",
-        "Recommended response",
-        "Safety notes",
-    ],
-    CopilotIntent.TODAY_ACTIONS: [
-        "Top 3 actions",
-        "Expected impact",
-        "Urgency",
-        "Confidence",
-        "Evidence",
-        "What not to do yet",
-    ],
-    CopilotIntent.PRICING_ADVICE: [
-        "Recommended pricing decision",
-        "Margin safety",
-        "Expected impact",
-        "Blocked reasons",
-        "Required missing setup",
-    ],
-    CopilotIntent.ACTION_REQUEST_PRICE_CHANGE: [
-        "Recommended pricing decision",
-        "Margin safety",
-        "Expected impact",
-        "Blocked reasons",
-        "Required missing setup",
-    ],
-    CopilotIntent.PROMOTION_ADVICE: [
-        "Promotion recommendation",
-        "Product/category",
-        "Why this promotion",
-        "Safety checks",
-        "Expected impact",
-        "Missing data",
-    ],
-    CopilotIntent.ACTION_REQUEST_PROMOTION: [
-        "Promotion recommendation",
-        "Product/category",
-        "Why this promotion",
-        "Safety checks",
-        "Expected impact",
-        "Missing data",
-    ],
-    CopilotIntent.DEAD_STOCK_RECOVERY: [
-        "Dead/at-risk products",
-        "Locked capital",
-        "Recovery action",
-        "Expected recovery range",
-        "Missing data",
-    ],
-    CopilotIntent.SEO_ADVICE: [
-        "Listing issues",
-        "Suggested improvements",
-        "Evidence",
-        "Priority",
-        "Missing visibility data",
-    ],
-    CopilotIntent.BUSINESS_MEMORY_SEARCH: [
-        "Business memory",
-        "Evidence",
-        "Missing data",
-        "Next steps",
-    ],
-    CopilotIntent.GENERAL_HELP: [
-        "Business overview",
-        "Products",
-        "Evidence",
-        "Missing data",
-        "Next steps",
-    ],
-    CopilotIntent.UNKNOWN: [
-        "Business overview",
-        "Products",
-        "Evidence",
-        "Missing data",
-        "Next steps",
-    ],
+# Lead sentence per intent; the answer is this line, one line per product, and at most one next step.
+LEAD_BY_INTENT: dict[CopilotIntent, tuple[str, str]] = {
+    CopilotIntent.RESTOCK_ADVICE: ("These products need restocking:", "এই পণ্যগুলো রিস্টক করা দরকার:"),
+    CopilotIntent.REVENUE_DIAGNOSIS: ("Here is what changed in your sales:", "আপনার বিক্রিতে যা বদলেছে:"),
+    CopilotIntent.COMPETITOR_THREAT_ANALYSIS: ("These products face the most competitor pressure:", "এই পণ্যগুলোতে কম্পিটিটরের চাপ সবচেয়ে বেশি:"),
+    CopilotIntent.TODAY_ACTIONS: ("Do these first today:", "আজ আগে এগুলো করুন:"),
+    CopilotIntent.PRICING_ADVICE: ("Here is the pricing suggestion:", "দামের পরামর্শ:"),
+    CopilotIntent.ACTION_REQUEST_PRICE_CHANGE: ("Here is the pricing suggestion:", "দামের পরামর্শ:"),
+    CopilotIntent.PROMOTION_ADVICE: ("These products are good for a promotion:", "এই পণ্যগুলো প্রমোশনের জন্য ভালো:"),
+    CopilotIntent.ACTION_REQUEST_PROMOTION: ("These products are good for a promotion:", "এই পণ্যগুলো প্রমোশনের জন্য ভালো:"),
+    CopilotIntent.DEAD_STOCK_RECOVERY: ("These products are stuck in stock:", "এই পণ্যগুলো স্টকে আটকে আছে:"),
+    CopilotIntent.SEO_ADVICE: ("These listings need improvement:", "এই লিস্টিংগুলো উন্নত করা দরকার:"),
+    CopilotIntent.BUSINESS_MEMORY_SEARCH: ("Here is what your business history shows:", "আপনার ব্যবসার ইতিহাসে যা পাওয়া গেছে:"),
 }
+DEFAULT_LEAD = ("Here is your business summary:", "আপনার ব্যবসার সারাংশ:")
+NOTHING_FOUND = ("I could not find a clear answer in your data yet.", "আপনার ডেটায় এখনো পরিষ্কার উত্তর পাইনি।")
+MAX_LIST_LINES = 8
 
-BN_SECTION_LABELS = {
-    "Quick recommendation": "দ্রুত পরামর্শ",
-    "Products to restock": "যে পণ্য রিস্টক করা দরকার",
-    "Why now": "এখন কেন",
-    "Risk level": "ঝুঁকি",
-    "Suggested quantity": "প্রস্তাবিত পরিমাণ",
-    "Missing data": "যে তথ্য নেই",
-    "Next steps": "পরের ধাপ",
-    "Main likely causes": "সম্ভাব্য প্রধান কারণ",
-    "Evidence": "প্রমাণ",
-    "Product-level impact": "পণ্যভিত্তিক প্রভাব",
-    "Competitor, pricing, inventory, and promotion factors": "কম্পিটিটর, দাম, ইনভেন্টরি ও প্রমোশন ফ্যাক্টর",
-    "Confidence": "কনফিডেন্স",
-    "What to do next": "এখন কী করবেন",
-    "Competitors hurting you most": "যে কম্পিটিটর সবচেয়ে বেশি চাপ দিচ্ছে",
-    "Affected products": "প্রভাবিত পণ্য",
-    "Price gap or stock advantage": "দামের পার্থক্য বা স্টক সুবিধা",
-    "Recommended response": "প্রস্তাবিত প্রতিক্রিয়া",
-    "Safety notes": "সেফটি নোট",
-    "Top 3 actions": "আজকের সেরা ৩ কাজ",
-    "Expected impact": "সম্ভাব্য প্রভাব",
-    "Urgency": "জরুরি মাত্রা",
-    "What not to do yet": "এখন যা করবেন না",
-    "Recommended pricing decision": "দামের সিদ্ধান্ত",
-    "Margin safety": "মার্জিন সেফটি",
-    "Blocked reasons": "যে কারণে ব্লক হতে পারে",
-    "Required missing setup": "যে সেটআপ/তথ্য দরকার",
-    "Promotion recommendation": "প্রমোশন পরামর্শ",
-    "Product/category": "পণ্য/ক্যাটাগরি",
-    "Why this promotion": "এই প্রমোশন কেন",
-    "Safety checks": "সেফটি চেক",
-    "Dead/at-risk products": "ডেড/ঝুঁকিতে থাকা পণ্য",
-    "Locked capital": "আটকে থাকা মূলধন",
-    "Recovery action": "রিকভারি অ্যাকশন",
-    "Expected recovery range": "সম্ভাব্য রিকভারি রেঞ্জ",
-    "Listing issues": "লিস্টিং সমস্যা",
-    "Suggested improvements": "উন্নতির পরামর্শ",
-    "Priority": "প্রায়োরিটি",
-    "Missing visibility data": "যে visibility data নেই",
-    "Business overview": "ব্যবসার সারাংশ",
-    "Business memory": "ব্যবসার মেমরি",
-    "Products": "পণ্য",
-    "Financial summary": "আর্থিক সারাংশ",
-}
+OVERVIEW_TOOLS = ("get_business_overview",)
+FINANCIAL_TOOLS = ("get_revenue_summary", "get_profit_summary", "explain_revenue_change_deterministic")
+MEMORY_TOOLS = ("retrieve_business_memory", "search_business_memory")
+
+# Ordered: the first field present on a row is that product's key number.
+PRODUCT_KEY_FIELDS: tuple[tuple[str, str | None], ...] = (
+    ("reorder_quantity", "reorder"),
+    ("suggested_quantity", "reorder"),
+    ("locked_capital", "locked capital"),
+    ("recommended_price", "price"),
+    ("price_gap", "price gap"),
+    ("action_type", None),
+    ("recommended_action", None),
+    ("recovery_action", None),
+    ("promotion_type", None),
+    ("suggested_improvement", None),
+    ("issue", None),
+    ("missing_setup_fields", "missing"),
+    ("units_sold", "sold"),
+    ("stock_quantity", "stock"),
+    ("current_stock", "stock"),
+    ("risk_level", "risk"),
+    ("urgency", "urgency"),
+)
 
 
 class CopilotAnswerBuilder:
@@ -202,18 +101,23 @@ class CopilotAnswerBuilder:
         missing_data: list[str],
         action_proposal: dict[str, Any] | None = None,
         reply_language: str | None = None,
+        primary_tools: set[str] | frozenset[str] = frozenset(),
+        period: dict[str, Any] | None = None,
     ) -> CopilotBuiltAnswer:
+        """Deterministic answer from tool facts, used when no model answer is available or valid.
+
+        With ``primary_tools`` or ``period`` (the hybrid engine passes both), lines come only from the
+        tools that answer the question, under a header in the reply language that names the period.
+        """
         language = classification.language
+        lang = reply_language if reply_language in {"en", "bn", "banglish"} else language
         rows_by_tool = _rows_by_tool(tool_results)
         evidence = evidence or _collect_evidence(tool_results)
         missing_data = _dedupe(missing_data + _collect_missing(tool_results))
         if not evidence and not any(rows_by_tool.values()) and reply_language == "banglish":
-            answer = NO_CONTEXT_ANSWER_BANGLISH
-            if missing_data:
-                answer = f"{answer}\n\n{NO_CONTEXT_MISSING_LABEL_BANGLISH}\n- " + "\n- ".join(missing_data)
             return CopilotBuiltAnswer(
-                answer=answer,
-                summary=answer.splitlines()[0],
+                answer=NO_CONTEXT_ANSWER_BANGLISH,
+                summary=NO_CONTEXT_ANSWER_BANGLISH,
                 confidence="NO_CONTEXT",
                 language="bn",
                 evidence=[],
@@ -224,11 +128,9 @@ class CopilotAnswerBuilder:
             )
         if not evidence and not any(rows_by_tool.values()):
             answer = NO_CONTEXT_ANSWER_BN if language == "bn" else NO_CONTEXT_ANSWER_EN
-            if missing_data:
-                answer = f"{answer}\n\n{_section('Missing data', language)}\n- " + "\n- ".join(missing_data)
             return CopilotBuiltAnswer(
                 answer=answer,
-                summary=answer.splitlines()[0],
+                summary=answer,
                 confidence="NO_CONTEXT",
                 language=language,
                 evidence=[],
@@ -237,80 +139,149 @@ class CopilotAnswerBuilder:
                 action_proposal=action_proposal,
             )
 
-        sections = list(ANSWER_STRUCTURE_BY_INTENT.get(classification.intent) or ["Answer", "Evidence", "Missing data", "Next steps"])
-        if evidence and "Evidence" not in sections:
-            insert_at = max(1, len(sections) - 2)
-            sections.insert(insert_at, "Evidence")
-        confidence = _confidence(tool_results=tool_results, evidence=evidence, missing_data=missing_data)
-        answer_parts = [self._section_text(section, language, rows_by_tool, evidence, missing_data, confidence) for section in sections]
-        answer_parts.append(_non_execution_note(language))
-        answer = "\n\n".join(part for part in answer_parts if part)
+        if primary_tools or period is not None:
+            answering = [result for result in tool_results if not primary_tools or result.tool_name in primary_tools]
+            with_memory = classification.intent == CopilotIntent.BUSINESS_MEMORY_SEARCH or bool(set(primary_tools) & set(MEMORY_TOOLS))
+            lines = _dedupe(_fact_lines(answering, period=period, lang=lang, with_memory=with_memory))[:MAX_LIST_LINES]
+            # The intent's next step only fits when its own tool answered; Banglish has no Latin-script step text.
+            own_tool = PRIMARY_TOOL_BY_INTENT.get(classification.intent)
+            next_step = _next_step(classification.intent, language) if lines and lang != "banglish" and own_tool in {result.tool_name for result in answering} else None
+            lead = _header(lang, period) if lines else _by_lang(NOTHING_FOUND_BY_LANG, lang)
+        else:
+            lines = _answer_lines(classification.intent, rows_by_tool, lang=lang)
+            next_step = _next_step(classification.intent, language) if lines and lang != "banglish" else None
+            lead = HEADER["banglish"] + ":" if lang == "banglish" and lines else _text(*(LEAD_BY_INTENT.get(classification.intent, DEFAULT_LEAD) if lines else NOTHING_FOUND), language)
+        answer = "\n".join([lead, *(f"- {line}" for line in lines)])
+        if next_step:
+            answer = f"{answer}\n\n{next_step}"
         return CopilotBuiltAnswer(
             answer=answer,
-            summary=_summary_for_intent(classification.intent, language),
-            confidence=confidence,
+            summary=lead,
+            confidence=_confidence(tool_results=tool_results, evidence=evidence, missing_data=missing_data),
             language=language,
             evidence=evidence,
             missing_data=missing_data,
-            recommended_next_steps=_next_steps(classification.intent, language),
+            recommended_next_steps=[next_step] if next_step else [],
             action_proposal=action_proposal,
         )
 
-    def expected_sections(self, intent: CopilotIntent, *, language: str = "en") -> list[str]:
-        return [_section(section, language) for section in ANSWER_STRUCTURE_BY_INTENT.get(intent, ["Answer", "Evidence", "Missing data", "Next steps"])]
 
-    def _section_text(
-        self,
-        section: str,
-        language: str,
-        rows_by_tool: dict[str, list[dict[str, Any]]],
-        evidence: list[dict[str, Any]],
-        missing_data: list[str],
-        confidence: str,
-    ) -> str:
-        label = _section(section, language)
-        if section in {"Quick recommendation", "Main likely causes", "Recommended pricing decision", "Promotion recommendation"}:
-            return f"{label}\n{_recommendation_line(rows_by_tool, language)}"
-        if section == "Business overview":
-            return f"{label}\n{_business_overview_lines(rows_by_tool, language)}"
-        if section == "Business memory":
-            return f"{label}\n{_memory_lines(rows_by_tool, language)}"
-        if section == "Financial summary":
-            return f"{label}\n{_financial_summary_lines(rows_by_tool, language)}"
-        if section == "Products":
-            return f"{label}\n{_product_lines(rows_by_tool, language)}"
-        if section in {"Products to restock", "Affected products", "Product/category", "Dead/at-risk products"}:
-            return f"{label}\n{_bullet_products(rows_by_tool, language)}"
-        if section in {"Why now", "Competitor, pricing, inventory, and promotion factors", "Why this promotion"}:
-            return f"{label}\n{_factor_lines(rows_by_tool, language)}"
-        if section in {"Risk level", "Urgency", "Priority"}:
-            return f"{label}\n{_field_lines(rows_by_tool, ('risk_level', 'urgency', 'priority'), language)}"
-        if section == "Suggested quantity":
-            return f"{label}\n{_field_lines(rows_by_tool, ('reorder_quantity', 'suggested_quantity'), language)}"
-        if section in {"Evidence", "Price gap or stock advantage"}:
-            return f"{label}\n{_evidence_lines(evidence, language)}"
-        if section in {"Expected impact", "Expected recovery range", "Locked capital"}:
-            return f"{label}\n{_field_lines(rows_by_tool, ('expected_impact', 'potential_recovery_range', 'locked_capital'), language)}"
-        if section in {"Confidence"}:
-            return f"{label}\n- {confidence}"
-        if section in {"What to do next", "Next steps", "Recommended response"}:
-            return f"{label}\n" + "\n".join(f"- {item}" for item in _next_steps_for_rows(rows_by_tool, language))
-        if section in {"Safety notes", "Safety checks", "What not to do yet", "Margin safety"}:
-            return f"{label}\n- {_non_execution_sentence(language)}\n- {_text('Do not override MarginGuard or missing-data warnings.', 'MarginGuard বা missing-data warning override করবেন না।', language)}"
-        if section in {"Blocked reasons", "Required missing setup", "Missing data", "Missing visibility data"}:
-            return f"{label}\n{_missing_lines(missing_data, language)}"
-        if section in {"Listing issues", "Suggested improvements"}:
-            keys = ("issue",) if section == "Listing issues" else ("suggested_improvement",)
-            return f"{label}\n{_field_lines(rows_by_tool, keys, language)}"
-        if section == "Top 3 actions":
-            return f"{label}\n{_top_actions(rows_by_tool, language)}"
-        return f"{label}\n{_recommendation_line(rows_by_tool, language)}"
+# Revenue/overview figures only answer "how is my business / sales" questions, not restock or pricing ones.
+SUMMARY_INTENTS = {CopilotIntent.REVENUE_DIAGNOSIS, CopilotIntent.GENERAL_HELP, CopilotIntent.UNKNOWN}
+# When this tool returned rows, its products alone answer the question; other tools' products are context.
+PRIMARY_TOOL_BY_INTENT: dict[CopilotIntent, str] = {
+    CopilotIntent.RESTOCK_ADVICE: "get_restock_recommendations",
+    CopilotIntent.COMPETITOR_THREAT_ANALYSIS: "get_competitor_threats",
+    CopilotIntent.TODAY_ACTIONS: "get_today_actions",
+    CopilotIntent.PRICING_ADVICE: "get_pricing_recommendations",
+    CopilotIntent.ACTION_REQUEST_PRICE_CHANGE: "get_pricing_recommendations",
+    CopilotIntent.PROMOTION_ADVICE: "get_promotion_recommendations",
+    CopilotIntent.ACTION_REQUEST_PROMOTION: "get_promotion_recommendations",
+    CopilotIntent.DEAD_STOCK_RECOVERY: "get_dead_stock_recovery",
+    CopilotIntent.SEO_ADVICE: "get_seo_opportunities",
+}
+
+
+HEADER = {"en": "From your data", "bn": "আপনার ডেটা থেকে", "banglish": "Apnar data theke"}
+PERIOD_JOIN = {"en": "to", "bn": "থেকে", "banglish": "theke"}
+ALL_HISTORY = {"en": "all recorded history", "bn": "সব রেকর্ড করা ইতিহাস", "banglish": "shob recorded history"}
+NOTHING_FOUND_BY_LANG = {"en": NOTHING_FOUND[0], "bn": NOTHING_FOUND[1], "banglish": "Apnar data te ekhono porishkar uttor pai ni."}
+NO_SALES_PROVEN = {
+    "en": "No sales recorded for this period; last recorded sale: {date}",
+    "bn": "এই সময়ে কোনো বিক্রি রেকর্ড হয়নি; সর্বশেষ বিক্রি: {date}",
+    "banglish": "Ei somoye kono sale record hoy nai; shesh recorded sale: {date}",
+}
+NO_SALES_UNCONFIRMED = {
+    "en": "No sales found for this period, but the sales history could not be confirmed",
+    "bn": "এই সময়ে কোনো বিক্রি পাওয়া যায়নি, তবে বিক্রির ইতিহাস নিশ্চিত করা যায়নি",
+    "banglish": "Ei somoye kono sale pawa jay nai, kintu sales history confirm kora jay nai",
+}
+# Group and list rows carry these alongside their label; they are not part of it.
+RECORD_META = {"value", "row_count", "evidence", "id", "is_weekend"}
+
+
+def _by_lang(texts: dict[str, str], lang: str) -> str:
+    return texts.get(lang, texts["en"])
+
+
+def _header(lang: str, period: dict[str, Any] | None) -> str:
+    header = _by_lang(HEADER, lang)
+    if not period:
+        return f"{header}:"
+    if period.get("defaulted"):
+        return f"{header} ({_by_lang(ALL_HISTORY, lang)}):"
+    return f"{header} ({period['from_date']} {_by_lang(PERIOD_JOIN, lang)} {period['to_date']}):"
+
+
+def _fact_lines(results: list[ToolExecutionResult], *, period: dict[str, Any] | None, lang: str, with_memory: bool) -> list[str]:
+    """Lines from every kind of answering tool; memory snippets only when memory answers the question."""
+    rows_by_tool = _rows_by_tool(results)
+    lines = [*_financial_lines(rows_by_tool, period=period, lang=lang), *_overview_lines(rows_by_tool)]
+    for result in results:
+        data = result.data if isinstance(result.data, dict) else {}
+        if result.tool_name == "query_business_records":
+            lines.extend(_records_lines(data, period=period, lang=lang))
+        elif result.tool_name == "get_product_profile" and isinstance(data.get("product"), dict):
+            lines.append(_profile_line(data["product"]))
+        elif isinstance(data.get("count"), int) and not isinstance(data.get("count"), bool):
+            # count_* tools return one top-level figure and no rows.
+            lines.append(f"{_label(result.tool_name.removeprefix('count_'))}: {data['count']}")
+    others = {name: rows for name, rows in rows_by_tool.items() if name not in {"query_business_records", "get_product_profile"}}
+    return [*lines, *_product_lines(others), *(_memory_lines(rows_by_tool) if with_memory else [])]
+
+
+def _no_sales_line(tool_name: str, data: dict[str, Any], *, period: dict[str, Any] | None, lang: str) -> str:
+    if zero_sales_proven(tool_name, data, period):
+        return _by_lang(NO_SALES_PROVEN, lang).format(date=data["latest_recorded_sale_date"])
+    return _by_lang(NO_SALES_UNCONFIRMED, lang)
+
+
+def _records_lines(data: dict[str, Any], *, period: dict[str, Any] | None, lang: str) -> list[str]:
+    if is_zero_sales("query_business_records", data):
+        return [_no_sales_line("query_business_records", data, period=period, lang=lang)]
+    measure = data.get("measure")
+    lines: list[str] = []
+    for row in (data.get("rows") or [])[:MAX_LIST_LINES]:
+        if not isinstance(row, dict):
+            continue
+        if data.get("aggregate") == "list":
+            title = _product_title(row) or row.get("title") or row.get("id")
+            value = row.get(measure) if measure else None
+            lines.append(f"{title}: {_safe_value(value)}" if value is not None else str(title))
+            continue
+        label = ", ".join(_product_title({"product": value}) or _safe_value(value) for key, value in row.items() if key not in RECORD_META and value not in (None, ""))
+        lines.append(f"{label or _label(str(measure or data.get('aggregate') or 'value'))}: {_safe_value(row.get('value'))}")
+    return lines
+
+
+def _profile_line(product: dict[str, Any]) -> str:
+    parts = [f"{label} {_safe_value(product[key])}" for key, label in (("current_stock", "stock"), ("selling_price", "price")) if product.get(key) is not None]
+    name = str(product.get("name") or product.get("title") or "Product")
+    return f"{name}: {', '.join(parts)}" if parts else name
+
+
+def _answer_lines(intent: CopilotIntent, rows_by_tool: dict[str, list[dict[str, Any]]], *, lang: str = "en") -> list[str]:
+    if intent == CopilotIntent.BUSINESS_MEMORY_SEARCH:
+        lines = _memory_lines(rows_by_tool)
+    else:
+        primary = PRIMARY_TOOL_BY_INTENT.get(intent)
+        product_rows = {primary: rows_by_tool[primary]} if primary and rows_by_tool.get(primary) else rows_by_tool
+        lines = _product_lines(product_rows)
+        if intent in SUMMARY_INTENTS:
+            lines = [*_financial_lines(rows_by_tool, period=None, lang=lang), *_overview_lines(rows_by_tool), *lines]
+    limit = 3 if intent == CopilotIntent.TODAY_ACTIONS else MAX_LIST_LINES
+    return _dedupe(lines)[:limit]
 
 
 def _rows_by_tool(tool_results: list[ToolExecutionResult]) -> dict[str, list[dict[str, Any]]]:
     output: dict[str, list[dict[str, Any]]] = {}
     for result in tool_results:
         rows = _extract_rows(result.data)
+        if result.tool_name in FINANCIAL_TOOLS and isinstance(result.data, dict) and any(
+            result.data.get(key) is not None for key in ("gross_revenue", "estimated_profit", "revenue_change", "revenue_delta")
+        ):
+            # Period totals live at the top level; nested per-product rows must not stand in for them.
+            rows = [result.data]
         output[result.tool_name] = rows
     return output
 
@@ -340,30 +311,10 @@ def _extract_rows(value: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _recommendation_line(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    first = _first_row(rows_by_tool)
-    if not first:
-        return _text("No clear recommendation yet because evidence is limited.", "Evidence কম, তাই এখনো পরিষ্কার recommendation নেই।", language)
-    product = _product_title(first)
-    action = first.get("action_type") or first.get("recommended_action") or first.get("promotion_type") or first.get("recovery_action")
-    if product and action:
-        return f"- {_text('Start with', 'আগে দেখুন', language)} {product}: {action}."
-    if product:
-        return f"- {_text('Start with', 'আগে দেখুন', language)} {product}."
-    return f"- {_text('Use the top cited evidence before acting.', 'কোনো action নেওয়ার আগে cited evidence দেখুন।', language)}"
-
-
-def _business_overview_lines(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    overview_rows = rows_by_tool.get("get_business_overview") or []
-    overview = overview_rows[0] if overview_rows else None
-    if not overview:
-        return _text("- No business overview data was returned.", "- Business overview data পাওয়া যায়নি।", language)
+def _overview_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
     keys = (
         "total_products",
         "products_with_stock",
-        "products_missing_cost",
-        "products_missing_fee_policy",
-        "products_missing_pricing_policy",
         "products_with_inventory_risk",
         "products_with_dead_stock_risk",
         "total_revenue",
@@ -371,185 +322,116 @@ def _business_overview_lines(rows_by_tool: dict[str, list[dict[str, Any]]], lang
         "active_alerts",
         "pending_recommendations",
     )
-    lines = []
-    for key in keys:
-        if key in overview and overview[key] is not None:
-            lines.append(f"- {key.replace('_', ' ')} = {_safe_value(overview[key])}")
-    return "\n".join(lines) if lines else _text("- Overview fields are unavailable.", "- Overview field পাওয়া যায়নি।", language)
+    lines: list[str] = []
+    for tool_name in OVERVIEW_TOOLS:
+        for row in (rows_by_tool.get(tool_name) or [])[:1]:
+            lines.extend(f"{_label(key)}: {_safe_value(row[key])}" for key in keys if row.get(key) is not None)
+    return lines
 
 
-def _financial_summary_lines(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
+def _financial_lines(rows_by_tool: dict[str, list[dict[str, Any]]], *, period: dict[str, Any] | None, lang: str) -> list[str]:
+    keys = (
+        "gross_revenue",
+        "net_revenue",
+        "previous_period_revenue",
+        "revenue_change",
+        "percentage_change",
+        "revenue_delta",
+        "units_sold",
+        "units_sold_delta",
+        "order_count",
+        "average_order_value",
+        "estimated_profit",
+        "margin_rate",
+    )
+    lines: list[str] = []
+    for tool_name in FINANCIAL_TOOLS:
+        for row in (rows_by_tool.get(tool_name) or [])[:1]:
+            if row.get("order_count") == 0 and not row.get("units_sold") or _is_zero(row.get("gross_revenue")) and not row.get("units_sold"):
+                # Observed zero: no zero figures; "no sales recorded" only when the history is shown to exist.
+                lines.append(_no_sales_line(tool_name, row, period=period, lang=lang))
+                continue
+            repeats_gross = row.get("net_revenue") == row.get("gross_revenue")
+            lines.extend(
+                f"{_label(key)}: {_safe_value(row[key])}"
+                for key in keys
+                if row.get(key) is not None and not (key == "net_revenue" and repeats_gross)
+            )
+    return lines
+
+
+def _is_zero(value: Any) -> bool:
+    try:
+        return value is not None and Decimal(str(value)) == 0
+    except (ArithmeticError, ValueError):
+        return False
+
+
+def _memory_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
     lines = []
-    for tool_name in ("get_revenue_summary", "get_profit_summary", "explain_revenue_change_deterministic"):
-        rows = rows_by_tool.get(tool_name) or []
-        row = rows[0] if rows else None
-        if not row:
+    for tool_name in MEMORY_TOOLS:
+        for row in (rows_by_tool.get(tool_name) or [])[:5]:
+            title = row.get("title")
+            detail = row.get("summary") or row.get("chunk_text")
+            if title or detail:
+                lines.append(": ".join(_safe_value(part) for part in (title, detail) if part))
+    return lines
+
+
+def _product_lines(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[str]:
+    """One line per product (duplicates across tools merged): title plus its key number."""
+    details: dict[str, str | None] = {}
+    skip = {*OVERVIEW_TOOLS, *FINANCIAL_TOOLS, *MEMORY_TOOLS}
+    for tool_name, rows in rows_by_tool.items():
+        if tool_name in skip:
             continue
-        for key in (
-            "gross_revenue",
-            "net_revenue",
-            "units_sold",
-            "order_count",
-            "average_order_value",
-            "previous_period_revenue",
-            "revenue_change",
-            "percentage_change",
-            "estimated_profit",
-            "margin_rate",
-            "revenue_delta",
-            "units_sold_delta",
-            "average_selling_price_delta",
-        ):
-            if key in row and row[key] is not None:
-                lines.append(f"- {key.replace('_', ' ')} = {_safe_value(row[key])}")
-        if row.get("revenue_is_estimated"):
-            lines.append(f"- {_text('Revenue is estimated because transaction unit price is missing for some records.', 'কিছু record-এ transaction unit price নেই, তাই revenue estimated।', language)}")
-        if row.get("profit_label") == "PARTIAL":
-            lines.append(f"- {_text('Profit is partial because some products were excluded.', 'কিছু product বাদ পড়েছে, তাই profit partial।', language)}")
-    return "\n".join(lines[:12]) if lines else _text("- Financial figures are unavailable from tools.", "- Tool থেকে financial figure পাওয়া যায়নি।", language)
+        for row in rows:
+            title = _product_title(row)
+            if not title:
+                continue
+            if details.get(title) is None:
+                details[title] = _key_detail(row)
+    return [f"{title}: {detail}" if detail else title for title, detail in details.items()]
 
 
-def _memory_lines(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    rows = rows_by_tool.get("retrieve_business_memory") or rows_by_tool.get("search_business_memory") or []
-    if not rows:
-        return _text("- No relevant business memory was returned.", "- প্রাসঙ্গিক business memory পাওয়া যায়নি।", language)
-    lines = []
-    for row in rows[:5]:
-        title = row.get("title") or row.get("source_type") or row.get("id") or _text("Memory", "মেমরি", language)
-        detail = row.get("summary") or row.get("chunk_text") or row.get("event_time")
-        lines.append(f"- {title}" + (f": {_safe_value(detail)}" if detail else ""))
-    return "\n".join(lines)
+def _key_detail(row: dict[str, Any]) -> str | None:
+    product: dict[str, Any] = row["product"] if isinstance(row.get("product"), dict) else {}
+    for key, label in PRODUCT_KEY_FIELDS:
+        value = row.get(key, product.get(key))
+        if value in (None, "", [], {}):
+            continue
+        value_text = _humanize(_safe_value(value))
+        return f"{label} {value_text}" if label else value_text
+    return None
 
 
-def _product_lines(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    rows = []
-    for tool_name in ("get_product_profile", "list_products", "search_products", "get_products_missing_setup", "count_products"):
-        rows.extend(rows_by_tool.get(tool_name) or [])
-    if not rows:
-        return _text("- No product data was returned.", "- Product data পাওয়া যায়নি।", language)
-    lines = []
-    for row in rows[:8]:
-        product = row.get("product") if isinstance(row.get("product"), dict) else row
-        title = product.get("name") or product.get("title") or product.get("id") or _text("Product", "পণ্য", language)
-        details = []
-        for key in ("stock_quantity", "current_stock", "selling_price", "cost_price", "category", "count"):
-            if key in product and product[key] not in (None, "", [], {}):
-                details.append(f"{key.replace('_', ' ')}: {_safe_value(product[key])}")
-            elif key in row and row[key] not in (None, "", [], {}):
-                details.append(f"{key.replace('_', ' ')}: {_safe_value(row[key])}")
-        missing = row.get("missing_setup_fields") or product.get("missing_setup_data")
-        if missing:
-            details.append(f"missing: {_safe_value(missing)}")
-        lines.append(f"- {title}" + (f" ({'; '.join(details[:3])})" if details else ""))
-    return "\n".join(lines)
-
-
-def _bullet_products(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    rows = _all_rows(rows_by_tool)[:5]
-    if not rows:
-        return _text("- No product-specific evidence found.", "- পণ্যভিত্তিক evidence পাওয়া যায়নি।", language)
-    lines = []
-    for row in rows:
-        product = _product_title(row) or _text("Unknown product", "অজানা পণ্য", language)
-        detail = row.get("risk_level") or row.get("classification") or row.get("recommended_action") or row.get("issue")
-        lines.append(f"- {product}" + (f": {detail}" if detail else ""))
-    return "\n".join(lines)
-
-
-def _factor_lines(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    factors = []
-    if rows_by_tool.get("get_inventory_risks"):
-        factors.append(_text("Inventory risk is present.", "Inventory risk আছে।", language))
-    if rows_by_tool.get("get_competitor_threats"):
-        factors.append(_text("Competitor pressure is present.", "Competitor pressure আছে।", language))
-    if rows_by_tool.get("get_pricing_recommendations"):
-        factors.append(_text("Pricing recommendations exist; check MarginGuard.", "Pricing recommendation আছে; MarginGuard দেখুন।", language))
-    if rows_by_tool.get("get_promotion_recommendations"):
-        factors.append(_text("Promotion signals exist, but campaign creation is not automatic.", "Promotion signal আছে, কিন্তু campaign automatic তৈরি হবে না।", language))
-    return "\n".join(f"- {item}" for item in factors) if factors else _text("- Not enough factor data.", "- Factor data পর্যাপ্ত নয়।", language)
-
-
-def _field_lines(rows_by_tool: dict[str, list[dict[str, Any]]], keys: tuple[str, ...], language: str) -> str:
-    lines = []
-    for row in _all_rows(rows_by_tool):
-        product = _product_title(row)
-        for key in keys:
-            if key in row and row[key] not in (None, "", [], {}):
-                prefix = f"{product}: " if product else ""
-                lines.append(f"- {prefix}{key.replace('_', ' ')} = {_safe_value(row[key])}")
-                break
-        if len(lines) >= 5:
-            break
-    return "\n".join(lines) if lines else _text("- Data not available from tools.", "- Tool output-এ এই data নেই।", language)
-
-
-def _top_actions(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> str:
-    rows = rows_by_tool.get("get_today_actions") or _all_rows(rows_by_tool)
-    if not rows:
-        return _text("- No prioritized actions found.", "- Prioritized action পাওয়া যায়নি।", language)
-    lines = []
-    for index, row in enumerate(rows[:3], start=1):
-        product = _product_title(row)
-        action = row.get("action_type") or row.get("recommended_action") or row.get("recovery_action") or row.get("promotion_type") or _text("Review", "রিভিউ", language)
-        lines.append(f"{index}. {action}" + (f" - {product}" if product else ""))
-    return "\n".join(lines)
-
-
-def _evidence_lines(evidence: list[dict[str, Any]], language: str) -> str:
-    if not evidence:
-        return _text("- No evidence IDs available.", "- Evidence ID পাওয়া যায়নি।", language)
-    return "\n".join(f"- {item.get('evidence_id')} ({item.get('source_type')})" for item in evidence[:8])
-
-
-def _missing_lines(missing_data: list[str], language: str) -> str:
-    if not missing_data:
-        return _text("- No major missing data reported.", "- বড় কোনো missing data report হয়নি।", language)
-    return "\n".join(f"- {item}" for item in missing_data[:8])
-
-
-def _next_steps_for_rows(rows_by_tool: dict[str, list[dict[str, Any]]], language: str) -> list[str]:
-    if rows_by_tool.get("get_restock_recommendations"):
-        return [_text("Review reorder quantities and supplier lead time.", "Reorder quantity ও supplier lead time যাচাই করুন।", language)]
-    if rows_by_tool.get("get_pricing_recommendations"):
-        return [_text("Review MarginGuard before approving any price proposal.", "Price proposal approve করার আগে MarginGuard দেখুন।", language)]
-    if rows_by_tool.get("get_competitor_threats"):
-        return [_text("Compare competitor price, stock, and ranking before responding.", "Response দেওয়ার আগে competitor price, stock ও ranking মিলিয়ে দেখুন।", language)]
-    return [_text("Review cited evidence and ask a narrower follow-up.", "Cited evidence দেখে আরও নির্দিষ্ট follow-up করুন।", language)]
-
-
-def _next_steps(intent: CopilotIntent, language: str) -> list[str]:
+def _next_step(intent: CopilotIntent, language: str) -> str | None:
     if intent == CopilotIntent.RESTOCK_ADVICE:
-        return [_text("Confirm supplier lead time.", "Supplier lead time নিশ্চিত করুন।", language), _text("Review reorder quantity before ordering.", "Order করার আগে reorder quantity যাচাই করুন।", language)]
+        return _text("Check supplier lead time, then place the order.", "Supplier lead time দেখে order দিন।", language)
     if intent in {CopilotIntent.PRICING_ADVICE, CopilotIntent.ACTION_REQUEST_PRICE_CHANGE}:
-        return [_text("Check MarginGuard and approve manually if you choose to proceed.", "MarginGuard দেখে proceed করলে manually approve করুন।", language)]
-    if intent in {CopilotIntent.PROMOTION_ADVICE, CopilotIntent.ACTION_REQUEST_PROMOTION}:
-        return [_text("Validate margin safety before creating a campaign.", "Campaign করার আগে margin safety যাচাই করুন।", language)]
-    return [_text("Review cited evidence before taking action.", "Action নেওয়ার আগে cited evidence দেখুন।", language)]
-
-
-def _summary_for_intent(intent: CopilotIntent, language: str) -> str:
-    label = intent.value.replace("_", " ").title()
-    return _text(f"{label} answer built from seller evidence.", f"{label} উত্তর seller evidence থেকে তৈরি।", language)
-
-
-def _first_row(rows_by_tool: dict[str, list[dict[str, Any]]]) -> dict[str, Any] | None:
-    rows = _all_rows(rows_by_tool)
-    return rows[0] if rows else None
-
-
-def _all_rows(rows_by_tool: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for value in rows_by_tool.values():
-        rows.extend(value)
-    return rows
+        return _text("Approve the price change yourself if it looks right.", "ঠিক মনে হলে দামের পরিবর্তন নিজে approve করুন।", language)
+    if intent == CopilotIntent.COMPETITOR_THREAT_ANALYSIS:
+        return _text("Compare the competitor price before you respond.", "উত্তর দেওয়ার আগে কম্পিটিটরের দাম মিলিয়ে দেখুন।", language)
+    if intent == CopilotIntent.DEAD_STOCK_RECOVERY:
+        return _text("Start with the product holding the most stock.", "যে পণ্যে সবচেয়ে বেশি স্টক আটকে আছে, সেটা দিয়ে শুরু করুন।", language)
+    return None
 
 
 def _product_title(row: dict[str, Any]) -> str | None:
     for key in ("product", "affected_product"):
         product = row.get(key)
-        if isinstance(product, dict) and product.get("title"):
-            return str(product["title"])
+        if isinstance(product, dict) and (product.get("title") or product.get("name")):
+            return str(product.get("title") or product.get("name"))
     return None
+
+
+def _label(key: str) -> str:
+    return key.replace("_", " ")
+
+
+def _humanize(value: str) -> str:
+    """Enum codes such as PRICE_LOWER read as "price lower"."""
+    return value.replace("_", " ").lower() if value.isupper() else value
 
 
 def _collect_evidence(tool_results: list[ToolExecutionResult]) -> list[dict[str, Any]]:
@@ -578,24 +460,15 @@ def _confidence(*, tool_results: list[ToolExecutionResult], evidence: list[dict[
     return "LOW"
 
 
-def _non_execution_note(language: str) -> str:
-    return f"{_section('Safety notes', language)}\n- {_non_execution_sentence(language)}"
-
-
-def _non_execution_sentence(language: str) -> str:
-    return _text("Recommendations do not execute automatically.", "এই recommendation গুলো automatic execute হবে না।", language)
-
-
-def _section(label: str, language: str) -> str:
-    display = BN_SECTION_LABELS.get(label, label) if language == "bn" else label
-    return f"**{display}**"
-
-
 def _text(en: str, bn: str, language: str) -> str:
     return bn if language == "bn" else en
 
 
 def _safe_value(value: Any) -> str:
+    if isinstance(value, (str, int, float, Decimal)) and not isinstance(value, bool):
+        number = _two_places(value)
+        if number is not None:
+            return number
     if isinstance(value, dict):
         return ", ".join(f"{key}: {subvalue}" for key, subvalue in value.items() if subvalue not in (None, "", [], {})) or "available"
     if isinstance(value, list):
@@ -616,3 +489,56 @@ def _normalize_evidence(item: Any, index: int) -> dict[str, Any]:
         "title": str(item.get("title") or item.get("source_table") or "Evidence"),
         "event_time": item.get("event_time"),
     }
+
+
+# Internal lines that must never reach the seller, even with a value ("Confidence: HIGH").
+_INTERNAL_LINE = re.compile(
+    r"^(confidence( level)?|evidence( ids?)?|sources?|tools?( used)?|tool status|data freshness|freshness( warnings?)?|"
+    r"missing data|missing visibility data|required missing setup|blocked reasons|safety notes?|safety checks?)\b\s*:?",
+    re.IGNORECASE,
+)
+# Section labels: dropped when alone, stripped when they prefix content ("Next step: ...").
+_SECTION_LABEL = re.compile(
+    r"^(answer|summary|direct answer|risk( level)?|urgency|priority|next steps?|what to do next|"
+    r"recommendation|recommended response|expected impact)\s*(:|$)",
+    re.IGNORECASE,
+)
+_INTERNAL_TOKEN = re.compile(r"\b(SUCCEEDED|FAILED|TIMED_OUT|NO_CONTEXT|evidence_id|ev-\d+)\b")
+
+
+def clean_answer_text(answer: str, *, evidence_ids: Iterable[str] = ()) -> str:
+    """Drop section headers, confidence/evidence/tool-status lines and repeated lines from a model answer."""
+    ids = [item for item in evidence_ids if item]
+    kept: list[str] = []
+    seen: set[str] = set()
+    for raw in answer.splitlines():
+        line = raw.strip()
+        if not line:
+            if kept and kept[-1]:
+                kept.append("")
+            continue
+        bare = line.lstrip("#>*-• \t").replace("**", "").strip()
+        if _INTERNAL_LINE.match(bare) or _INTERNAL_TOKEN.search(line) or any(item in line for item in ids):
+            continue
+        label = _SECTION_LABEL.match(bare)
+        if label:
+            bare = bare[label.end():].strip()
+            if not bare:
+                continue
+            line = bare
+        if bare.casefold() in seen:
+            continue
+        seen.add(bare.casefold())
+        kept.append(line)
+    return "\n".join(kept).strip()
+
+
+def _two_places(value: str | int | float | Decimal) -> str | None:
+    """6142.50000000 reads as 6142.50; whole numbers and non-numbers are left alone."""
+    try:
+        number = Decimal(str(value))
+    except InvalidOperation:
+        return None
+    if not number.is_finite() or number.as_tuple().exponent >= -2:  # type: ignore[operator]
+        return None
+    return str(number.quantize(Decimal("0.01")))

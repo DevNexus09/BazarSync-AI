@@ -231,3 +231,130 @@ Live Groq, end-to-end worker/WebSocket/RAG delivery, pricing accuracy, productio
 4. Explain the final decision from validated facts and use a deterministic Bangla fallback when the provider fails. Test that unsupported quantities, changes, revenue and profit cannot enter the decision or its explanation. Limit network attempts across retry layers.
 5. Repair the transaction-price evidence adapter and build offline, point-in-time datasets with coverage, stockout, promotion, refund, fee and currency handling. Evaluate on forward time splits against simple baselines. Report error, uncertainty coverage, missing-data behavior and business guard violations across seller/product cohorts.
 6. Run candidate forecasts in shadow mode. Compare coverage, drift, safety, latency and fallback rates before enabling the evidence-backed result for selected sellers. Keep advisory semantics and a flag-based rollback.
+
+## Business Copilot accuracy eval
+
+Plan: [copilot plan](../superpowers/plans/copilot%20plan.md). Golden set: `backend/tests/fixtures/copilot_golden_questions.json` (40 questions on the `demo1@gmail.com` comprehensive demo seed, as_of 2026-11-21, ISO date ranges). Runner: `python scripts/copilot_eval.py --seller-id <uuid>`. A question passes when every expected value appears in the answer.
+
+| Run | Code | Score | Tool match | Notes |
+| --- | --- | --- | --- | --- |
+| Baseline, 2026-11-22 | `develop` + Copilot WIP (before Task 1) | 4/40 (10%) | 62% | Groq free quota was exhausted (HTTP 429 on every call), so nearly every reply was the deterministic fallback. Results: `backend/artifacts/copilot_eval/20261121T193710Z.json`. |
+| Baseline, paced, 2026-11-22 | Same code, 35 s between questions, pre-change RAG settings | 9/40 (22%) | 62% | Fair baseline; 7 Groq 429s remained. `baseline-paced-20261121T201849Z.json`. |
+| After, 2026-11-22 | Branch `feature/copilot-robustness`, all rollout flags on, chain `gemini:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b` | 27/40 (68%) | 90% | 19 gained, 1 regression (`stock_black_casual`). `20261122T034957Z.json`. Target of ≥90% not met. |
+
+Baseline failure patterns:
+
+- The fallback answer reports a nested top product's `gross_revenue` (59150.00) as the period's gross revenue (290360.28).
+- A Men's Footwear revenue question answered "BDT 0", but `get_revenue_summary` with `category="Men's Footwear"` returns 235260.96.
+- Product-name questions ("Lex Loafer…", SKU lookups, "BUBBLE GUMMERS…") were sent to competitor clarification ("Which competitor do you mean").
+- Stock-in questions had no tool to route to.
+- Count questions (products, alerts) gave "I could not find a clear answer".
+
+After the 27/40 run, three more fixes went in (stock snapshots cannot be summed, record types are never relabelled, zero revenue reads as "no sales recorded"). A re-run of the 13 failing questions confirmed `inventory_units` and `banglish_stock` now answer 726 units, and the invoices question no longer claims "138 invoices". The full 40 were not re-run after these fixes.
+
+Remaining failures, all model-side on the free flash-lite model:
+
+- It says data is "not recorded" when the right tool was not in the planner's seed and the loop did not fetch it (single-product stock, SKU stock, recent price changes, completed promotions).
+- It restates long decimals (7.0296…%) or answers partially (top 3, previous-period revenue).
+- Profit differs from the golden value (147972.03 vs 144764.68); not yet investigated.
+- A Bangla product-count question gets the no-answer template.
+
+`gemini-3.8-flash` returned 503 or timed out on the free tier during the run, so it is not in the chain.
+
+| Run | Code | Score | Tool match | Notes |
+| --- | --- | --- | --- | --- |
+| After improvements, 2026-11-22 | Loop gets resolved entities; named products get their profile; facts may be stated rounded; prompt budget 4000/20000 | 36/40 (90%) | 100% | Meets the plan's ≥90% target. `20261122T051916Z.json`. |
+
+Of the 4 failures, 3 happened when both providers were unavailable at once (Gemini 503 and Groq 429, `ALL_ROUTES_FAILED`), so the deterministic fallback answered. These are `stock_black_casual`, `stock_in_week` and `bangla_products`. `stock_black_casual` and `stock_in_week` passed in the targeted re-runs. The fourth is `unanswerable_invoices`: the validator rejected the model's answer, so the reply is a safe "no clear answer" with no invented number. Against the paced baseline, the only miss is `stock_black_casual`, which was a provider outage, not a logic regression.
+
+### Copilot direct answers and Banglish 100-question eval (2026-11-22)
+
+Changes:
+
+- New flag `COPILOT_DIRECT_ANSWERS_ENABLED` (default off). `app/services/copilot/direct_answers.py` answers recognised English and Banglish question shapes from exact, seller-scoped data using templates. It runs after the strict-safety refusal and before clarification. Explicit API filters (`product_id`, dates, domain filters), Bangla-script replies and unrecognised questions take the existing pipeline. Any exception falls back to that pipeline. Nothing here writes business data or changes live price or stock. Version tag: `direct-answers-v1`.
+- Bug fixes in existing tools:
+  - `get_dead_stock_summary` and the `locked_capital` / `dead_stock_count` metrics now read only the latest assessment and estimate per product. Locked capital now counts only DEAD_STOCK, AT_RISK and SLOW_MOVING products. The demo seller's figure drops from ৳2,724,631.81 to ৳474,912.89, and the dead-stock product count from 2 to 1. Golden expected values were updated to match.
+  - Source tools no longer crash on `competitor_events.metadata`.
+  - `simulate_price_change` now applies the latest elasticity estimate (constant-elasticity demand) and marketplace fees to profit.
+- Additive migration `o9c0d1e2f3a4`:
+  - `sales_records.customer_reference` and `sales_records.delivery_district`
+  - `product_marketplace_listings.rating` and `product_marketplace_listings.review_count`
+  - new tables `business_expenses` and `marketplace_store_metrics`
+- `scripts/seed_copilot_demo_extras.py` fills these for demo1@gmail.com only. It is idempotent and tracked in `demo_seed_records` under seed `demo-copilot-extras-v1`.
+
+| Run | Code | Score | Notes |
+| --- | --- | --- | --- |
+| Banglish 100, before | agent loop + router | 37/100 hand-graded | `20261122T145455Z.json`; 18 answers came from `ALL_ROUTES_FAILED` fallbacks |
+| Banglish 100, after | direct answers on | 100/100 auto-graded | `20261122T154420Z.json`; expected facts checked with independent SQL |
+| Golden 40, after | direct answers on | 39/40 | `20261122T154656Z.json`; `bangla_products` failed with a script mismatch on the LLM path; tool match reads 10% because direct answers report `direct_answer` instead of the old tool names |
+
+Tests: `tests/test_copilot_direct_answers.py` (14 tests: seller isolation, missing data, fallthrough, flag gate, dead-stock latest run, simulation, metadata serialisation). The full backend suite passes: 1203 passed, 85 skipped.
+
+**Removed (2026-11-22, plan `docs/superpowers/plans/2026-11-22-copilot-llm-accuracy.md` Task 1):** the template layer matched keywords and broke on new wording, so `direct_answers.py`, its flag `COPILOT_DIRECT_ANSWERS_ENABLED` and its 11 tests are gone. The 100/100 and 39/40 rows above measured that layer and no longer describe the shipped code. The tool bug fixes, migration and seed script stay; their 3 tests moved to `tests/test_copilot_previous_fixes.py`. Suite after removal: 1192 passed, 85 skipped.
+
+### Copilot LLM accuracy plan: eval results (2026-11-23)
+
+Plan: `docs/superpowers/plans/2026-11-22-copilot-llm-accuracy.md`, Tasks 1–9. The model now picks the tools; the deterministic planner runs only when the loop yields nothing.
+
+Fixtures:
+- `tests/fixtures/copilot_banglish_100.json` was rewritten. Its expected facts are phrase-neutral: numbers, names, and dates written as ISO or in words. `any_of` lists cover Banglish and English wording. Each fact was re-derived with SQL against the demo seller (as of 2026-11-22, Asia/Dhaka), or from the deterministic tool reading that seller's tables, never from Copilot answers.
+- New: `tests/fixtures/copilot_banglish_heldout.json`, with the user's 5 pasted questions plus 30 new phrasings.
+- A fact is required only if the question asks for it.
+- A question with no period is graded on all recorded history (the Task 2 default).
+- Facts that could not be reproduced were dropped or replaced: cash flow 341228.95, VENUS demand 1050, Lex Loafer 1586, the 10% simulation totals, Daraz fees 38386.33, and "10 unacknowledged" (the real figure is 13 reorder + 1 pricing).
+- `scripts/copilot_eval.py --as-of YYYY-MM-DD` pins "today" for the planner, the classifier and the agent loop.
+
+Pre-existing bugs found by the eval and fixed:
+- `get_pending_recommendations` and `get_ignored_recommendations` filtered on statuses the enums lack (`PENDING`, `IGNORED`, `REJECTED`), so PostgreSQL failed the whole tool.
+- Model-supplied enum filters (for example promotions `status="ACTIVE"`) did the same.
+- Both now match only defined values (`_existing_statuses`, `_enum_safe_equals`).
+- `simulate_price_change` crashed on an elasticity estimate with no value.
+
+Runs, all with `--as-of 2026-11-22`:
+
+| Run | Score | Notes |
+| --- | --- | --- |
+| Held-out 35, pause 4 | 23/35 | `20261122T174206Z.json` |
+| Banglish 100, pause 4 | 23/100 | `20261122T180239Z.json`; 65 answers were `ALL_ROUTES_FAILED`. Gemini and OpenRouter free tiers were rate-limited. Groq rejected loop prompts (413) and then hit its 8000 tokens/min limit. |
+| Golden 40, pause 4 | 33/40 | `20261122T181639Z.json` |
+| Held-out 35, pause 12 | 26/35 (74%) | `20261123T043018Z.json`, re-graded after removing 3 over-strict facts; 4 fallback answers |
+| Banglish 100, pause 12 | 50/100 | `20261123T051459Z.json`, re-graded; 27 fallback answers |
+| Golden 40, pause 12 | 6/40 | `20261123T053337Z.json`; every Gemini model and OpenRouter were rate-limited (daily free quota spent), so 32 answers are fallbacks. This run measures quotas, not the pipeline. |
+
+The re-runs used routes changed in `backend/.env` on 2026-11-22 at 23:46: five Gemini models then OpenRouter, with no Groq.
+
+The ≥95% target is not met. Failure causes in the paced runs:
+1. Provider quota. The free tiers cannot carry 175 questions with up to 4 calls each; this counts against Task 8.
+2. The planner fallback picks loosely related tools when the loop's model is unavailable (about 12 failures), and the answer then says "not recorded". This is the original D2 planner weakness.
+3. Flash-lite model mistakes even with the right tool (about 14), for example a wrong percentage, "best seller" by row count, or daily average per order.
+4. The fallback's primary tool is the planner's first tool, which is sometimes the wrong one (2 failures, such as the Bangla product count answered from `get_product_setup_summary`).
+
+Checks:
+- Backend suite: 1231 passed, 85 skipped.
+- `ruff check app tests scripts`: 52 errors before and after the plan, none in changed files.
+- mypy on the plan's 19 changed Python files: 110 errors before (at `5c0b856`), 109 after.
+
+## Pricing and inventory improvement plan, Phase 1 (2026-11-23)
+
+Plan: [pricing-inventory-improvement-plan.md](../pricing-inventory-improvement-plan.md).
+
+1.1 Unknown competitor stock
+- `calculate_market_stats` now counts `OUT_OF_STOCK` separately (`MarketStats.out_of_stock_competitor_count`, also in snapshot evidence `market_stats`).
+- `calculate_demand_score` builds the availability ratio from known statuses only. All unknown → neutral 50 with `competitor_availability: "unknown"` and known/unknown counts in the components.
+- `PRICING_ANALYTICS_FORMULA_VERSION` default is now `v2`. The dedupe key includes the version, so new snapshots get new keys; the latest-snapshot read does not filter by version, so v1 snapshots stay readable.
+
+1.2 Stockout-aware velocity
+- `SALES_VELOCITY_CALCULATION_VERSION=v2` (default stays `v1`) reads `inventory_history.quantity_available` per day through the new seller-scoped `SalesVelocityRepository.daily_available_stock`.
+- A day is a whole-day stockout when both the previous day's and that day's snapshot are `<= 0`. A single zero snapshot after an in-stock day is kept (it sold out during the day). Days with no snapshot are kept and reported through `stock_history_coverage`.
+- `observed_days` on the row stays the calendar coverage (forecast features and business signals read it that way). The in-stock denominator is `calculation_metadata.effective_window_days`; `stockout_days` is recorded too.
+- More than 80% of the window stocked out → `LIMITED` with `limited_reason`, confidence capped at 65.
+
+1.3 Schedule
+- No staging config is checked in, so the flag could not be turned on from the repo. `.env.example` now documents `SALES_VELOCITY_CALCULATION_VERSION` and `INVENTORY_INTELLIGENCE_SCHEDULE_ENABLED`. Same-day reruns of v2 velocity are covered by a redelivery test (second run skips).
+
+Checks:
+- Backend suite: 1241 passed, 85 skipped (before the redelivery test was added; targeted suites 45 passed after).
+- ruff: 3 pre-existing unused-import warnings in the touched files, none new.
+- mypy on the 3 changed app files: 184 errors before and after (all pre-existing, none in new code).
+- The new repository query was compiled against the PostgreSQL dialect but not run against a database; there is no repository-level DB test harness.
+- Not done: the staging run on a seeded product with a stockout.

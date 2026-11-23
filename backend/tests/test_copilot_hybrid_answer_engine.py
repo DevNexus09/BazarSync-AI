@@ -85,6 +85,59 @@ class CopilotHybridAnswerEngineTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("250.00", result.payload["answer"])
 
+    async def test_no_sales_claim_accepted_when_revenue_summary_for_period_is_zero(self):
+        zero_day = {
+            "gross_revenue": "0", "order_count": 0, "units_sold": 0,
+            "filters_used": {"from_date": "2026-07-04", "to_date": "2026-07-04"},
+            "latest_recorded_sale_date": "2026-07-02",
+        }
+        result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "get_revenue_summary:1"), [_tool("get_revenue_summary", zero_day)])
+
+        self.assertTrue(result.context.has_reliable_no_sales_evidence)
+        self.assertEqual("No sales were recorded yesterday.", result.payload["answer"])
+
+        without_date = {key: value for key, value in zero_day.items() if key != "latest_recorded_sale_date"}
+        other_period = {**zero_day, "filters_used": {"from_date": "2026-06-01", "to_date": "2026-06-30"}}
+        for data in (without_date, other_period):
+            result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "get_revenue_summary:1"), [_tool("get_revenue_summary", data)])
+            self.assertFalse(result.context.has_reliable_no_sales_evidence)
+
+    async def test_no_sales_claim_still_rejected_without_any_sales_lookup(self):
+        result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "count_products:1"), [_tool("count_products", {"count": 12})])
+
+        self.assertFalse(result.context.has_reliable_no_sales_evidence)
+        self.assertNotEqual("No sales were recorded yesterday.", result.payload["answer"])
+
+    async def test_overview_revenue_claim_accepted(self):
+        result = await self._answer("Give me my business overview", _payload("Revenue is 250.00.", "get_business_overview:1"), [_tool("get_business_overview", {"gross_revenue": "250.00"})])
+
+        self.assertTrue(result.context.has_financial_evidence)
+        self.assertEqual("Revenue is 250.00.", result.payload["answer"])
+
+    async def test_records_sales_zero_rows_backs_no_sales_and_financial_claims(self):
+        records = {"entity": "sales", "aggregate": "count", "rows": [], "row_count": 0, "filters": {"from_date": "2026-07-04", "to_date": "2026-07-04"}, "latest_recorded_sale_date": "2026-07-02"}
+        result = await self._answer("Gotokal kono sales hoise?", _payload("No sales were recorded yesterday.", "query_business_records:1"), [_tool("query_business_records", records)])
+
+        self.assertTrue(result.context.has_reliable_no_sales_evidence)
+        self.assertTrue(result.context.has_financial_evidence)
+
+    async def test_fallback_answers_only_from_primary_tools(self):
+        async def down(messages, **kwargs):
+            raise RuntimeError("model down")
+
+        question = "Last 7 din e amar revenue koto?"
+        classification, plan = self._classification_plan(question)
+        tools = [_tool("get_inventory_risks", {"risks": [{"product": {"title": "Unrelated Risky Shoe"}, "risk_level": "HIGH"}]}), _tool("get_revenue_summary", {"gross_revenue": "250.00", "order_count": 3, "units_sold": 4})]
+
+        result = await CopilotHybridAnswerEngine(groq_json=down, model="test-model", timeout_seconds=1).answer(
+            question=question, classification=classification, plan=plan, tool_results=tools, missing_data=[], request_id="req-test", primary_tools={"get_revenue_summary"},
+        )
+
+        self.assertEqual(frozenset({"get_revenue_summary"}), result.context.primary_tools)
+        self.assertIn("250.00", result.payload["answer"])
+        self.assertNotIn("Unrelated Risky Shoe", result.payload["answer"])
+        self.assertIn(result.context.resolved_period["from_date"], result.payload["answer"])
+
     async def test_historical_question_uses_rag(self):
         result = await self._answer(
             "What happened last time?",
@@ -229,5 +282,86 @@ def _payload(answer: str, evidence_id: str, *, language: str = "en") -> dict:
     }
 
 
+class PromptSizeTests(unittest.TestCase):
+    """Groq's on_demand tier rejects requests over 8000 tokens/minute, so unbounded prompt lists must stay capped."""
+
+    def test_evidence_is_capped_and_empty_fields_dropped(self):
+        from app.services.copilot.context_builder import PROMPT_EVIDENCE_LIMIT, _prompt_evidence
+
+        evidence = [{"evidence_id": f"sales_records:{index}", "snippet": None, "url": ""} for index in range(300)]
+
+        trimmed = _prompt_evidence(evidence)
+
+        self.assertEqual(PROMPT_EVIDENCE_LIMIT, len(trimmed))
+        self.assertEqual({"evidence_id": "sales_records:0"}, trimmed[0])
+
+    def test_freshness_is_reduced_to_distinct_domain_status_pairs(self):
+        from app.services.copilot.context_builder import _prompt_freshness
+
+        freshness = [{"domain": "SALES_REVENUE", "status": "MISSING", "message": f"tool {index} freshness is missing."} for index in range(20)]
+
+        self.assertEqual([{"domain": "SALES_REVENUE", "status": "MISSING"}], _prompt_freshness(freshness))
+
+    def test_primary_tool_never_omitted_when_secondary_tools_fill_budget(self):
+        from app.services.copilot.context_builder import _json_size, budget_facts
+
+        def fact(chars: int) -> dict:
+            rows = [{"value": "x" * 80} for _ in range(chars // 94)]
+            return {"rows": rows}
+
+        primary = fact(9000)
+        facts = {"get_sales_trends": fact(8000), "get_inventory_risks": fact(8000), "get_competitor_threats": fact(8000), "query_business_records": primary}
+        self.assertGreater(_json_size(primary), 8500)
+
+        fitted, truncated = budget_facts(facts, tool_chars=4000, total_chars=20000, primary={"query_business_records"})
+
+        self.assertEqual(primary, fitted["query_business_records"])
+        self.assertNotIn("query_business_records", truncated)
+        self.assertTrue(set(truncated) & {"get_sales_trends", "get_inventory_risks", "get_competitor_threats"})
+        self.assertEqual(list(facts), list(fitted))  # key order unchanged
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class MissingFactsPromptTests(unittest.TestCase):
+    def test_system_prompt_names_what_is_not_recorded_and_the_closest_data(self):
+        from types import SimpleNamespace
+
+        from app.services.copilot.hybrid_answer_engine import _prompt_from_context
+
+        context = SimpleNamespace(to_prompt_payload=lambda: {"facts": {}}, reply_language=None, conversation=None)
+        system = _prompt_from_context(context)[0]["content"]
+
+        self.assertIn("say exactly what is not recorded", system)
+        self.assertIn("closest available data", system)
+        self.assertIn("NO_MATCHING_RECORDS", system)
+        # Live eval: "You issued 138 invoices" restated orders as invoices.
+        self.assertIn("Never present one kind of record as another", system)
+        self.assertIn("only when no supplied fact covers it", system)
+
+
+class RepeatedToolFactsTests(unittest.TestCase):
+    def test_a_second_call_to_the_same_tool_keeps_its_own_facts(self):
+        from app.services.copilot.context_builder import _facts_by_tool
+
+        first = _tool("query_business_records", {"entity": "stock_ins", "rows": [{"quantity": 40}]})
+        second = _tool("query_business_records", {"entity": "sales", "rows": [{"value": 138}]})
+
+        facts = _facts_by_tool([first, second])
+
+        self.assertEqual(["query_business_records", "query_business_records#2"], list(facts))
+        self.assertEqual("stock_ins", facts["query_business_records"]["entity"])
+        self.assertEqual("sales", facts["query_business_records#2"]["entity"])
+
+
+class RoundedFactNumberTests(unittest.TestCase):
+    def test_long_decimal_facts_may_be_stated_rounded(self):
+        from app.services.copilot.context_builder import _numbers_from_payload
+
+        allowed = _numbers_from_payload({"percentage_change": "7.029649509550046737014016080", "estimated_profit": "144764.67800000", "price": "1874.00"})
+
+        self.assertTrue({"7.03", "7.0", "144764.68", "144764.7", "1874.00"} <= allowed)
+        self.assertNotIn("7", allowed)
+        self.assertNotIn("144765", allowed)

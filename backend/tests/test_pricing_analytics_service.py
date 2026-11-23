@@ -133,6 +133,7 @@ class PricingAnalyticsServiceTests(unittest.TestCase):
             product_age_days=30,
             competitor_count=3,
             in_stock_competitor_count=2,
+            out_of_stock_competitor_count=1,
             velocity_status=None,
             config=_config(),
         )
@@ -147,6 +148,7 @@ class PricingAnalyticsServiceTests(unittest.TestCase):
             product_age_days=365,
             competitor_count=2,
             in_stock_competitor_count=0,
+            out_of_stock_competitor_count=2,
             velocity_status=SalesVelocityDataStatus.SUFFICIENT,
             config=_config(),
         )
@@ -160,11 +162,46 @@ class PricingAnalyticsServiceTests(unittest.TestCase):
             product_age_days=5,
             competitor_count=0,
             in_stock_competitor_count=0,
+            out_of_stock_competitor_count=0,
             velocity_status=SalesVelocityDataStatus.LIMITED,
             config=_config(),
         )
 
         self.assertEqual(PricingAnalyticsDataStatus.LIMITED, demand.status)
+
+    def test_all_unknown_competitor_stock_is_neutral(self) -> None:
+        demand = _demand(competitor_count=4, in_stock=0, out_of_stock=0)
+
+        self.assertEqual("50.00", demand.components["competitor_availability_score"])
+        self.assertEqual("unknown", demand.components["competitor_availability"])
+        self.assertEqual(4, demand.components["competitor_stock_unknown_count"])
+
+    def test_mixed_known_and_unknown_stock_uses_known_only(self) -> None:
+        # 1 in stock, 1 out of stock, 2 unknown -> 1/2 out of stock, not 3/4.
+        demand = _demand(competitor_count=4, in_stock=1, out_of_stock=1)
+
+        self.assertEqual("50.00", demand.components["competitor_availability_score"])
+        self.assertEqual("known", demand.components["competitor_availability"])
+
+    def test_regression_unknown_stock_no_longer_inflates_demand(self) -> None:
+        # v1 counted UNKNOWN as out of stock: 3 unknown + 1 in stock scored 75.
+        demand = _demand(competitor_count=4, in_stock=1, out_of_stock=0)
+
+        self.assertEqual("0.00", demand.components["competitor_availability_score"])
+
+    def test_market_stats_counts_unknown_stock_separately(self) -> None:
+        stats = calculate_market_stats(
+            snapshots=[
+                _snapshot(uuid4(), "100.00", "IN_STOCK"),
+                _snapshot(uuid4(), "110.00", "OUT_OF_STOCK"),
+                _snapshot(uuid4(), "120.00", "UNKNOWN"),
+            ],
+            rankings={},
+            seller_price=Decimal("100.00"),
+        )
+
+        self.assertEqual(1, stats.in_stock_competitor_count)
+        self.assertEqual(1, stats.out_of_stock_competitor_count)
 
     def test_confidence_calculation(self) -> None:
         confidence = calculate_confidence(
@@ -294,3 +331,16 @@ def _config() -> PricingAnalyticsConfig:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _demand(*, competitor_count: int, in_stock: int, out_of_stock: int):
+    return calculate_demand_score(
+        daily_sales_rate=Decimal("1.00"),
+        recent_net_sales=10,
+        product_age_days=30,
+        competitor_count=competitor_count,
+        in_stock_competitor_count=in_stock,
+        out_of_stock_competitor_count=out_of_stock,
+        velocity_status=SalesVelocityDataStatus.SUFFICIENT,
+        config=_config(),
+    )

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.alert import Alert
 from app.models.alert_delivery_log import AlertDeliveryLog
 from app.models.competitor_event import CompetitorEvent
-from app.models.copilot import CopilotMessage
+from app.models.copilot import CopilotConversation, CopilotMessage
 from app.models.dead_stock_assessment import DeadStockAssessment
 from app.models.dead_stock_capital_recovery import DeadStockCapitalRecoveryEstimate
 from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryRecommendation
@@ -45,6 +45,9 @@ from app.services.rag_chunking_service import RagChunkingService
 from app.services.rag_memory_document_builder import RagMemoryBuildError, RagMemoryDocumentBuilder
 from app.services.rag_memory_source_registry import get_rag_source_definition, implemented_source_types
 from app.services.rag_observability import increment_metric, log_event
+
+# Conversations created by scripts/copilot_eval.py carry this metadata_json.source.
+EVAL_CONVERSATION_SOURCE = "copilot_eval"
 
 logger = logging.getLogger(__name__)
 
@@ -652,9 +655,7 @@ class RagMemoryBackfillService:
         return result
 
     def _backfill_copilot_history(self, **kwargs) -> RagMemoryBackfillResult:
-        statement = select(CopilotMessage).order_by(CopilotMessage.created_at.asc(), CopilotMessage.id.asc())
-        statement = _scope(statement, CopilotMessage, seller_id=kwargs["seller_id"], product_id=None)
-        statement = _date_range(statement, CopilotMessage.created_at, kwargs["from_date"], kwargs["to_date"])
+        statement = _copilot_history_statement(seller_id=kwargs["seller_id"], from_date=kwargs["from_date"], to_date=kwargs["to_date"])
         return self._process_statement(statement=statement, build=self._builder.build_from_copilot_history, batch_size=kwargs["batch_size"], dry_run=kwargs["dry_run"])
 
     def _build_single_source_document(
@@ -853,6 +854,19 @@ class RagMemoryBackfillService:
             return handlers[source_type]
         except KeyError as exc:
             raise RagMemoryBuildError(f"No adapter implemented for {source_type.value}") from exc
+
+
+def _copilot_history_statement(*, seller_id: UUID | None, from_date: datetime | None, to_date: datetime | None) -> Select:
+    # Offline eval conversations (scripts/copilot_eval.py) are not the seller's history; indexing
+    # them would feed past test answers back to the Copilot as memory.
+    eval_conversations = select(CopilotConversation.id).where(CopilotConversation.metadata_json["source"].astext == EVAL_CONVERSATION_SOURCE)
+    statement = (
+        select(CopilotMessage)
+        .where(CopilotMessage.conversation_id.not_in(eval_conversations))
+        .order_by(CopilotMessage.created_at.asc(), CopilotMessage.id.asc())
+    )
+    statement = _scope(statement, CopilotMessage, seller_id=seller_id, product_id=None)
+    return _date_range(statement, CopilotMessage.created_at, from_date, to_date)
 
 
 def _scope(statement: Select, model, *, seller_id: UUID | None, product_id: UUID | None) -> Select:

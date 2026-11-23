@@ -10,6 +10,7 @@ import logging
 import time
 from typing import Any, Awaitable, Callable, Protocol
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ from app.models.copilot import (
 )
 from app.repositories.copilot_repository import CopilotConversationNotFoundError, CopilotRepository
 from app.services.copilot.action_proposal_service import CopilotActionProposalService
+from app.services.copilot.agent_loop import run_agent_loop
 from app.services.copilot.answer_builder import CopilotAnswerBuilder
 from app.services.copilot.intent_classifier import (
     CopilotIntent,
@@ -215,6 +217,8 @@ class CopilotOrchestrator:
         parallel_tools_enabled: bool | None = None,
         llm_planner_fallback_enabled: bool | None = None,
         tool_session_factory: Callable[[], Session] | None = None,
+        agent_loop_enabled: bool | None = None,
+        always_retrieve_memory: bool | None = None,
     ) -> None:
         if repository is None and db is None:
             raise ValueError("CopilotOrchestrator requires a repository or database session.")
@@ -251,6 +255,8 @@ class CopilotOrchestrator:
             settings.copilot_llm_planner_fallback_enabled if llm_planner_fallback_enabled is None else llm_planner_fallback_enabled
         )
         self._tool_session_factory = tool_session_factory or _default_tool_session_factory
+        self._agent_loop_enabled = settings.copilot_agent_loop_enabled if agent_loop_enabled is None else agent_loop_enabled
+        self._always_retrieve_memory = settings.copilot_always_retrieve_memory if always_retrieve_memory is None else always_retrieve_memory
         self._conversation_memory_enabled = (
             settings.copilot_conversation_memory_enabled if conversation_memory_enabled is None else conversation_memory_enabled
         )
@@ -393,16 +399,36 @@ class CopilotOrchestrator:
                 reply_script=_reply_fields(response_payload, language_profile)[1],
             )
 
-        selected_tools = self._select_tools(
-            request=request,
-            classification=classification,
-            plan=plan,
-            include_memory=request.include_memory,
-            include_current_data=request.include_current_data,
-        )
         tool_started_ms = now_ms()
-        if not selected_tools and self._llm_planner_fallback_enabled:
-            selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
+        # With the loop on, the model picks the tools; the seed is only the named product's profile.
+        model_selects = self._agent_loop_enabled and request.include_current_data and (self._llm_router or self._agent_router()) is not None
+        if model_selects:
+            selected_tools = self._with_named_product_profile([], plan=plan)
+        else:
+            selected_tools = self._select_tools(
+                request=request,
+                classification=classification,
+                plan=plan,
+                include_memory=request.include_memory,
+                include_current_data=request.include_current_data,
+            )
+            if not selected_tools and self._llm_planner_fallback_enabled:
+                selected_tools = await self._llm_suggested_tools(request=request, classification=classification, plan=plan)
+            if self._agent_loop_enabled and request.include_current_data:
+                selected_tools = self._with_named_product_profile(selected_tools, plan=plan)
+        if (
+            self._always_retrieve_memory
+            and request.include_memory
+            and len(selected_tools) < self._max_tool_calls  # memory is optional; it never displaces a planned tool
+            and not any(step.tool_name == "retrieve_business_memory" for step in selected_tools)
+        ):
+            memory_step = PlannedToolCall(
+                tool_name="retrieve_business_memory",
+                args=self._arguments_for_tool(tool_name="retrieve_business_memory", request=request, classification=classification),
+                reason="memory is always retrieved (COPILOT_ALWAYS_RETRIEVE_MEMORY)",
+                required=False,
+            )
+            selected_tools = [*selected_tools, memory_step]
         await emit({"stage": "planning", "tools": [_tool_label(step.tool_name) for step in selected_tools[: self._max_tool_calls]]})
         if self._parallel_tools_enabled:
             tool_results = await self._run_tools_concurrently(
@@ -425,6 +451,20 @@ class CopilotOrchestrator:
             )
             for result in tool_results:
                 await emit(_tool_event(result))
+        primary_tools: set[str] = set()
+        if self._agent_loop_enabled:
+            tool_results, primary_tools = await self._run_agent_loop(
+                request=request,
+                classification=classification,
+                plan=plan,
+                conversation_id=conversation.id,
+                user_message_id=user_message.id,
+                tool_results=tool_results,
+                language_profile=language_profile,
+                started_ms=total_started_ms,
+                emit=emit,
+                planner_fallback=model_selects,
+            )
         tool_duration_ms = elapsed_ms(tool_started_ms)
         await emit({"stage": "writing"})
         missing_data = _collect_missing_data(tool_results)
@@ -439,6 +479,7 @@ class CopilotOrchestrator:
             request_id=request.request_id,
             reply_language=language_profile.reply_language.value if language_profile else None,
             conversation=_conversation_turns(recent_messages, settings.copilot_conversation_memory_turns) if self._conversation_memory_enabled else None,
+            primary_tools=primary_tools,
         )
         groq_duration_ms = elapsed_ms(groq_started_ms)
         response_payload = hybrid_answer.payload
@@ -694,6 +735,108 @@ class CopilotOrchestrator:
                 selected_names.append(tool_name)
         return [PlannedToolCall(tool_name=name, args={}, reason="legacy routing") for name in selected_names[: self._max_tool_calls]]
 
+    def _with_named_product_profile(self, selected_tools: list[PlannedToolCall], *, plan: CopilotQuestionPlan) -> list[PlannedToolCall]:
+        """A question naming one owned product gets that product's profile (stock, price, setup).
+
+        When the plan is full, the last optional step makes room, else the last step: the planner marks
+        every step required and orders broad domain tools last, while this profile answers the question directly.
+        """
+        products = [item for item in (plan.entities.products if getattr(plan, "entities", None) else []) if isinstance(item, dict) and item.get("product_id")]
+        if len(products) != 1 or any(step.tool_name == "get_product_profile" for step in selected_tools):
+            return selected_tools
+        tools = list(selected_tools)
+        if len(tools) >= self._max_tool_calls:
+            optional = [index for index, step in enumerate(tools) if not step.required]
+            del tools[optional[-1] if optional else -1]
+        step = PlannedToolCall(tool_name="get_product_profile", args={"product_id": str(products[0]["product_id"])}, reason="named product profile", required=False)
+        # First, so the answer prompt budget keeps the product's own facts.
+        return [step, *tools]
+
+    async def _run_agent_loop(
+        self,
+        *,
+        request: CopilotOrchestratorRequest,
+        classification: CopilotIntentResult,
+        plan: CopilotQuestionPlan,
+        conversation_id: UUID,
+        user_message_id: UUID,
+        tool_results: list[ToolExecutionResult],
+        language_profile: LanguageProfile | None,
+        started_ms: float,
+        emit: Callable[[dict[str, Any]], Awaitable[None]],
+        planner_fallback: bool = False,
+    ) -> tuple[list[ToolExecutionResult], set[str]]:
+        """Run the loop; return (results, primary tool names: the ones that answer the question).
+
+        With ``planner_fallback`` (the loop chose from an empty seed) and no usable model choice,
+        the planner's first ``copilot_fallback_max_tools`` tools run instead, in planner order.
+        """
+        router = self._llm_router or self._agent_router()
+
+        def budget_s() -> float:
+            # Leave the answer call its own budget inside the overall deadline.
+            return self._overall_timeout_seconds - elapsed_ms(started_ms) / 1000 - self._groq_timeout_seconds
+
+        deadline_s = budget_s()
+        if router is None or deadline_s <= 0:
+            return tool_results, set()
+
+        async def execute(steps: list[PlannedToolCall]) -> list[ToolExecutionResult]:
+            # Worker threads with their own sessions, so the loop deadline can stop waiting on a slow query
+            # without blocking the event loop or sharing the request session with a still-running thread.
+            return await self._run_tools_concurrently(
+                request=request, classification=classification, plan=plan, conversation_id=conversation_id,
+                user_message_id=user_message_id, selected_tools=steps, emit=emit,
+            )
+
+        status: dict[str, Any] = {}
+        results = await run_agent_loop(
+            question=request.question,
+            seeded_results=tool_results,
+            router=router,
+            registry=self._tool_registry,
+            execute=execute,
+            max_iterations=self._max_iterations,
+            max_tool_calls=self._max_tool_calls,
+            deadline_s=deadline_s,
+            today=_today_seller(),
+            reply_language=language_profile.reply_language.value if language_profile else None,
+            request_id=request.request_id,
+            entities=plan.entities.to_dict() if getattr(plan, "entities", None) is not None else None,
+            status=status,
+        )
+        # The model asked for these to answer the question; put them first so the prompt budget keeps them.
+        chosen = results[len(tool_results):]
+        primary = {result.tool_name for result in chosen if result.status == ToolExecutionStatus.SUCCEEDED}
+        seeded = {result.tool_name for result in tool_results if result.status == ToolExecutionStatus.SUCCEEDED and result.tool_name != "retrieve_business_memory"}
+        if primary or not planner_fallback:
+            return [*chosen, *tool_results], primary
+        if status.get("done") and seeded:
+            return [*chosen, *tool_results], seeded  # the model judged the named product's own facts enough
+        ran = {result.tool_name for result in results if result.status == ToolExecutionStatus.SUCCEEDED}
+        steps = [
+            step
+            for step in self._select_tools(request=request, classification=classification, plan=plan, include_memory=request.include_memory, include_current_data=request.include_current_data)
+            if step.tool_name not in ran
+        ][: max(1, settings.copilot_fallback_max_tools)]
+        remaining = budget_s()
+        if not steps or remaining <= 0:
+            return [*chosen, *tool_results], seeded
+        logger.info("copilot_planner_fallback tools=%s request_id=%s", ",".join(step.tool_name for step in steps), request.request_id)
+        fallback = await self._run_tools_concurrently(
+            request=request, classification=classification, plan=plan, conversation_id=conversation_id,
+            user_message_id=user_message_id, selected_tools=steps, emit=emit, deadline_s=remaining,
+        )
+        # The planner lists the question's most specific tool first; that one (and a named product's profile) answers.
+        first = next((result.tool_name for result in fallback if result.status == ToolExecutionStatus.SUCCEEDED and result.tool_name != "retrieve_business_memory"), None)
+        return [*chosen, *fallback, *tool_results], seeded | ({first} if first else set())
+
+    def _agent_router(self) -> CopilotLLMRouter | None:
+        # The loop needs a router even when the answer path still uses the legacy Groq call.
+        if not hasattr(self, "_cached_agent_router"):
+            self._cached_agent_router = self._router_from_settings()
+        return self._cached_agent_router
+
     async def _llm_suggested_tools(
         self,
         *,
@@ -784,6 +927,7 @@ class CopilotOrchestrator:
         user_message_id: UUID,
         selected_tools: list[PlannedToolCall],
         emit: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+        deadline_s: float | None = None,
     ) -> list[ToolExecutionResult]:
         """Run read-only tools in worker threads, each with its own DB session.
 
@@ -793,7 +937,7 @@ class CopilotOrchestrator:
         request's own session, so persistence is identical to the sequential path.
         """
         steps = selected_tools[: self._max_tool_calls]
-        deadline = time.monotonic() + self._overall_timeout_seconds
+        deadline = time.monotonic() + (self._overall_timeout_seconds if deadline_s is None else deadline_s)
         semaphore = asyncio.Semaphore(max(1, settings.copilot_tool_concurrency))
 
         async def run_one(step: PlannedToolCall) -> tuple[PlannedToolCall, dict[str, Any], datetime, datetime, ToolExecutionResult]:
@@ -1335,10 +1479,8 @@ def _apply_source_mode_warnings(
         missing_data.insert(0, warning)
     response_payload["missing_data"] = missing_data
 
-    answer = str(response_payload.get("answer") or "").strip()
-    if answer and warning not in answer:
-        response_payload["answer"] = f"{warning}\n\n{answer}"
-    elif not answer:
+    # The seller sees the warning only when it blocks the answer; otherwise it stays in missing_data.
+    if not str(response_payload.get("answer") or "").strip():
         response_payload["answer"] = warning
 
     summary = str(response_payload.get("summary") or "").strip()
@@ -1474,6 +1616,10 @@ def _search_query_from_question(question: str) -> str:
 def _title_from_question(question: str) -> str:
     clean = " ".join(question.split())
     return clean[:80] or "Copilot conversation"
+
+
+def _today_seller() -> date:
+    return datetime.now(ZoneInfo("Asia/Dhaka")).date()
 
 
 def _today_utc():
