@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import type { RefObject } from "react"
-import { useLocation } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { Bell, Menu, Search } from "lucide-react"
 
 import UserMenu from "@/components/app/user-menu"
@@ -8,7 +8,7 @@ import { TelegramStatusBadge } from "@/components/telegram/telegram-status-badge
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTelegramConnection } from "@/hooks/useTelegramConnection"
-import { appNavItems } from "@/routes/nav-config"
+import { appNavItems, telegramNavItem } from "@/routes/nav-config"
 import type { TelegramConnectionState } from "@/types/telegram"
 
 type AppHeaderProps = {
@@ -35,7 +35,9 @@ export default function AppHeader({
 
   const activeItem = useMemo(
     () =>
-      appNavItems.find((item) => location.pathname.startsWith(item.path)) ??
+      [...appNavItems, telegramNavItem].find((item) =>
+        location.pathname.startsWith(item.path)
+      ) ??
       appNavItems[0],
     [location.pathname]
   )
@@ -77,10 +79,14 @@ export default function AppHeader({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="hidden items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground lg:flex">
-                <span className="font-semibold text-foreground">Telegram</span>
+              <Link
+                to={telegramNavItem.path}
+                title="Open Telegram alerts"
+                className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="hidden font-semibold text-foreground sm:inline">Telegram</span>
                 <TelegramStatusBadge state={telegramState} />
-              </div>
+              </Link>
               <Button variant="ghost" size="icon" aria-label="Notifications">
                 <Bell className="size-4" />
               </Button>

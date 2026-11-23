@@ -56,6 +56,11 @@ class ProductInventoryIntelligenceResponse(BaseModel):
     as_of_date: date | None
     last_updated_at: datetime | None
     metadata: dict[str, Any] | None = None
+    reorder_recommendation_id: UUID | None = None
+    recommendation_status: ReorderRecommendationStatus | None = None
+    supplier_lead_time_defaulted: bool | None = None
+    safety_stock_units: int | None = None
+    safety_stock_service_level: Decimal | None = None
 
 
 class InventoryIntelligenceListItem(BaseModel):
@@ -74,6 +79,9 @@ class InventoryIntelligenceListItem(BaseModel):
     calculation_version: str | None
     as_of_date: date | None
     last_updated_at: datetime | None
+    reorder_recommendation_id: UUID | None = None
+    supplier_lead_time_days: int | None = None
+    supplier_lead_time_defaulted: bool | None = None
 
 
 class InventoryIntelligencePageResponse(BaseModel):

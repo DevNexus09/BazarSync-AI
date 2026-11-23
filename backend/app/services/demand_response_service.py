@@ -165,7 +165,8 @@ class DemandResponseService:
         central = baseline * Decimal(str(exp(float(estimate.elasticity) * log(float(ratio)))))
         cap = baseline * self._config.max_forecast_multiplier
         central = min(max(Decimal("0"), central), cap)
-        uncertainty = Decimal("0.35") if estimate.method == DemandEstimationMethod.HISTORICAL_ELASTICITY else Decimal("0.60")
+        learned = {DemandEstimationMethod.HISTORICAL_ELASTICITY, DemandEstimationMethod.POOLED_CATEGORY}
+        uncertainty = Decimal("0.35") if estimate.method in learned else Decimal("0.60")
         lower = max(Decimal("0"), central * (Decimal("1") - uncertainty))
         upper = min(cap, central * (Decimal("1") + uncertainty))
         assumptions["forecast_cap"] = str(cap.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP))
@@ -200,6 +201,30 @@ class DemandResponseService:
         ).scalar_one_or_none()
         if product is None:
             return self._fallback_or_insufficient(clean=[], rejected=[], reasons=["product_not_found"])
+        if settings.demand_response_pooling_enabled:
+            # Local import: the pooled service imports this module.
+            from app.services.pooled_elasticity_service import latest_pooled_estimate
+
+            pooled = latest_pooled_estimate(self._db, seller_id=seller_id, product_id=product_id, as_of_date=as_of_date)
+            if pooled is not None and pooled.elasticity is not None:
+                return DemandElasticityResult(
+                    method=pooled.estimation_method,
+                    elasticity=pooled.elasticity,
+                    sample_count=pooled.sample_count,
+                    baseline_units=pooled.baseline_units,
+                    observation_start=pooled.observation_start,
+                    observation_end=pooled.observation_end,
+                    price_range=None,
+                    quality_metrics=pooled.quality_metrics or {},
+                    confidence=pooled.confidence,
+                    data_status=pooled.data_status,
+                    calculation_version=pooled.calculation_version,
+                    evidence={
+                        "formula": "category-pooled ln(units) on ln(price) with product, weekday and promotion effects",
+                        "controls": ["product_fixed_effect", "weekday", "promotion"],
+                        "estimate_id": str(pooled.id),
+                    },
+                )
         observations = self._load_observations_from_sales_records(
             seller_id=seller_id,
             product_id=product_id,

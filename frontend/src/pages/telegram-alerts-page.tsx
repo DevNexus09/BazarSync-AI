@@ -1,11 +1,12 @@
 import { useState } from "react"
 
 import { PageHeader } from "@/components/common/page-header"
+import { KpiTile } from "@/components/ui/kpi-tile"
 import { TelegramConnectCard } from "@/components/telegram/telegram-connect-card"
 import { TelegramInstructionsModal } from "@/components/telegram/telegram-instructions-modal"
-import { TelegramStatusBadge } from "@/components/telegram/telegram-status-badge"
 import { TelegramAlertHistory } from "@/components/telegram/telegram-alert-history"
 import { ProductSnapshotCard } from "@/components/telegram/product-snapshot-card"
+import { TestAlertButton } from "@/components/telegram/test-alert-button"
 import { useTelegramConnection } from "@/hooks/useTelegramConnection"
 import { useTelegramAlerts } from "@/hooks/useTelegramAlerts"
 import type { TelegramConnectionState } from "@/types/telegram"
@@ -39,136 +40,76 @@ export default function TelegramAlertsPage() {
   const botUsername =
     status.data?.botUsername ?? connectToken.data?.botUsername ?? "@bazarsync_bot"
 
-  const healthLabel =
-    health.isLoading
-      ? "Checking bot health..."
-      : health.isError || health.data?.status !== "ok"
-        ? "Bot offline"
-        : "Bot online"
+  const healthLabel = health.isLoading
+    ? "Checking..."
+    : health.isError || health.data?.status !== "ok"
+      ? "Offline"
+      : "Online"
 
-  const urgencyFeed = alerts.alerts.slice(0, 4)
+  const lastAlertSentAt = status.data?.lastAlertSentAt
+
+  const handleConnect = () => {
+    connectToken.mutate()
+    setInstructionsOpen(true)
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Telegram Alerts"
-        description="BazarSync AI bot control center and alert delivery monitoring."
+        description="Receive BazarSync AI alerts in Telegram and check that every one was delivered."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <TelegramConnectCard
-              status={status.data}
-              state={connectionState}
-              isConnecting={connectToken.isPending}
-              isDisconnecting={disconnect.isPending}
-              errorMessage={status.isError ? getErrorMessage(status.error) : null}
-              onConnect={() => connectToken.mutate()}
-              onDisconnect={() => disconnect.mutate()}
-              onShowInstructions={() => setInstructionsOpen(true)}
-            />
-            <div className="glass-panel p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Telegram status
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    BazarSync AI bot connectivity and health.
-                  </p>
-                </div>
-                <TelegramStatusBadge state={connectionState} />
-              </div>
-              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                <div className="flex items-center justify-between">
-                  <span>Bot name</span>
-                  <span className="font-semibold text-foreground">
-                    BazarSync AI
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Bot username</span>
-                  <span className="font-semibold text-foreground">
-                    {botUsername}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Health</span>
-                  <span className="font-semibold text-foreground">
-                    {healthLabel}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Connected since</span>
-                  <span className="font-semibold text-foreground">
-                    {status.data?.connectedAt
-                      ? new Date(status.data.connectedAt).toLocaleString()
-                      : "Not connected"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <TelegramConnectCard
+        status={status.data}
+        state={connectionState}
+        isConnecting={connectToken.isPending}
+        isDisconnecting={disconnect.isPending}
+        errorMessage={status.isError ? getErrorMessage(status.error) : null}
+        onConnect={handleConnect}
+        onDisconnect={() => disconnect.mutate()}
+        onShowInstructions={() => setInstructionsOpen(true)}
+      />
 
-          <div className="grid gap-6">
-            <div className="glass-panel p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Urgency alerts feed
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Critical alerts prioritized for rapid action.
-                  </p>
-                </div>
-                <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase text-muted-foreground">
-                  Live
-                </span>
-              </div>
-              <div className="mt-4 space-y-3">
-                {urgencyFeed.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                    No urgent alerts yet. Signals will surface here as they arrive.
-                  </div>
-                ) : (
-                  urgencyFeed.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="rounded-xl border border-border/60 bg-card/60 px-4 py-3 text-xs text-muted-foreground"
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-foreground">
-                          {alert.product}
-                        </p>
-                        <span className="text-[10px] uppercase text-muted-foreground">
-                          {alert.alertType}
-                        </span>
-                      </div>
-                      <p className="mt-2">
-                        Action: {alert.action} • Status: {alert.deliveryStatus}
-                      </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {new Date(alert.sentAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiTile
+          label="Alerts sent"
+          value={alerts.meta?.total ?? (alerts.isLoading ? "—" : alerts.alerts.length)}
+          hint="All Telegram alerts sent to your account."
+        />
+        <KpiTile
+          label="Last alert"
+          value={lastAlertSentAt ? new Date(lastAlertSentAt).toLocaleDateString() : "Not yet"}
+          delta={lastAlertSentAt ? new Date(lastAlertSentAt).toLocaleTimeString() : undefined}
+        />
+        <KpiTile
+          label="Bot status"
+          value={healthLabel}
+          delta={botUsername}
+          hint="Whether the BazarSync AI bot is reachable right now."
+        />
+        <KpiTile
+          label="Connected since"
+          value={
+            status.data?.connectedAt
+              ? new Date(status.data.connectedAt).toLocaleDateString()
+              : "Not connected"
+          }
+        />
+      </div>
 
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <TelegramAlertHistory
+          alerts={alerts.alerts}
+          meta={alerts.meta}
+          page={alerts.page}
+          onPageChange={alerts.setPage}
+          isLoading={alerts.isLoading}
+          isError={alerts.isError}
+          onRetry={() => alerts.refetch()}
+        />
         <div className="space-y-6">
-          <TelegramAlertHistory
-            alerts={alerts.alerts}
-            meta={alerts.meta}
-            page={alerts.page}
-            onPageChange={alerts.setPage}
-            isLoading={alerts.isLoading}
-            isError={alerts.isError}
-            onRetry={() => alerts.refetch()}
-          />
+          <TestAlertButton enabled={isConnected} />
           <ProductSnapshotCard isConnected={isConnected} />
         </div>
       </div>

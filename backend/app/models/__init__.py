@@ -27,6 +27,7 @@ from app.models.dead_stock_recovery_recommendation import DeadStockRecoveryActio
 from app.models.demo_seed_record import DemoSeedRecord
 from app.models.business_finance import BusinessExpense, BusinessExpenseStatus, BusinessExpenseType, MarketplaceStoreMetric
 from app.models.dynamic_pricing_recommendation import DynamicPricingAction, DynamicPricingRecommendation, DynamicPricingRecommendationStatus
+from app.models.recommendation_outcome import RecommendationOutcome, RecommendationOutcomeStatus, RecommendationOutcomeType
 from app.models.inventory_history import InventoryHistory, InventorySnapshotSource
 from app.models.inventory_aging import InventoryAgeSource, InventoryAgingSnapshot
 from app.models.inventory_stock_in import InventoryStockIn
@@ -111,6 +112,9 @@ __all__ = [
     "DynamicPricingAction",
     "DynamicPricingRecommendation",
     "DynamicPricingRecommendationStatus",
+    "RecommendationOutcome",
+    "RecommendationOutcomeStatus",
+    "RecommendationOutcomeType",
     "DemoSeedRecord",
     "BusinessExpense",
     "BusinessExpenseStatus",

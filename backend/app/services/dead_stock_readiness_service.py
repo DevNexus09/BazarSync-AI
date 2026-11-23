@@ -453,7 +453,7 @@ def _needs_recalculation(
 ) -> bool:
     if aging and assessment is None:
         return True
-    if assessment and assessment.calculation_version != settings.dead_stock_formula_version:
+    if assessment and assessment.calculation_version != settings.dead_stock_calculation_version:
         return True
     if assessment and velocity and velocity.calculated_at > assessment.assessed_at:
         return True

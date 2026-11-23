@@ -10,7 +10,7 @@ from app.models.inventory_risk import InventoryRiskDataStatus, InventoryRiskLeve
 from app.models.reorder_recommendation import ReorderRecommendationAction, ReorderRecommendationStatus
 from app.models.sales_velocity import SalesVelocityDataStatus
 from app.models.stockout_prediction import StockoutPredictionStatus
-from app.services.inventory_intelligence_service import InventoryIntelligenceService
+from app.services.inventory_intelligence_service import InventoryIntelligenceService, _list_item
 
 
 class FakeInventoryIntelligenceRepository:
@@ -208,6 +208,8 @@ class InventoryIntelligenceServiceTests(unittest.TestCase):
         self.assertEqual(InventoryRiskLevel.HIGH, response.risk_level)
         self.assertEqual(ReorderRecommendationAction.REORDER, response.reorder_action)
         self.assertEqual(datetime(2026, 6, 29, 5, tzinfo=timezone.utc), response.last_updated_at)
+        self.assertEqual(repo.bundles[item.id]["reorder"].id, response.reorder_recommendation_id)
+        self.assertEqual(ReorderRecommendationStatus.OPEN, response.recommendation_status)
 
     def test_reorder_sorting_pagination_and_filtering(self):
         repo = FakeInventoryIntelligenceRepository()
@@ -235,6 +237,23 @@ class InventoryIntelligenceServiceTests(unittest.TestCase):
 
         self.assertEqual(2, total)
         self.assertEqual("B", items[0].product_name)
+        self.assertEqual(repo.reorder_rows[1]["reorder"].id, items[0].reorder_recommendation_id)
+        self.assertEqual(8, items[0].supplier_lead_time_days)
+        # Older rows have no lead-time evidence: unknown, not "not defaulted".
+        self.assertIsNone(items[0].supplier_lead_time_defaulted)
+
+    def test_list_item_reports_defaulted_lead_time_and_missing_reorder(self):
+        owner_id = uuid4()
+        item = product(owner_id)
+        defaulted = reorder(owner_id, item.id)
+        defaulted.evidence = {"supplier_lead_time_defaulted": True}
+        with_reorder = _list_item({"product": item, "risk": risk(owner_id, item.id), "reorder": defaulted, "prediction": None})
+        without = _list_item({"product": item, "risk": risk(owner_id, item.id), "reorder": None, "prediction": None})
+
+        self.assertTrue(with_reorder.supplier_lead_time_defaulted)
+        self.assertIsNone(without.reorder_recommendation_id)
+        self.assertIsNone(without.supplier_lead_time_days)
+        self.assertIsNone(without.supplier_lead_time_defaulted)
 
     def test_risk_filtering_and_seller_isolation(self):
         repo = FakeInventoryIntelligenceRepository()

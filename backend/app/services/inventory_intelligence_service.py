@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
@@ -75,6 +76,11 @@ class InventoryIntelligenceService:
             inventory_risk_score=getattr(risk, "risk_score", None),
             risk_level=getattr(risk, "risk_level", None),
             reorder_action=getattr(reorder, "action", None),
+            reorder_recommendation_id=getattr(reorder, "id", None),
+            recommendation_status=getattr(reorder, "recommendation_status", None),
+            supplier_lead_time_defaulted=_lead_time_defaulted(reorder),
+            safety_stock_units=_evidence_int(reorder, "safety_stock_units"),
+            safety_stock_service_level=_evidence_decimal(reorder, "safety_stock_service_level"),
             recommended_quantity=getattr(reorder, "recommended_quantity", None),
             reorder_deadline=getattr(reorder, "reorder_deadline", None),
             confidence_score=getattr(risk, "confidence_score", None),
@@ -178,7 +184,29 @@ def _list_item(row: dict) -> InventoryIntelligenceListItem:
         calculation_version=getattr(risk, "calculation_version", None),
         as_of_date=getattr(risk, "as_of_date", None),
         last_updated_at=getattr(risk, "assessed_at", None),
+        reorder_recommendation_id=getattr(reorder, "id", None),
+        supplier_lead_time_days=getattr(reorder, "supplier_lead_time_days", None),
+        supplier_lead_time_defaulted=_lead_time_defaulted(reorder),
     )
+
+
+def _evidence_int(reorder, key: str) -> int | None:
+    evidence = getattr(reorder, "evidence", None)
+    value = evidence.get(key) if isinstance(evidence, dict) else None
+    return int(value) if value is not None else None
+
+
+def _evidence_decimal(reorder, key: str) -> Decimal | None:
+    evidence = getattr(reorder, "evidence", None)
+    value = evidence.get(key) if isinstance(evidence, dict) else None
+    return Decimal(str(value)) if value is not None else None
+
+
+def _lead_time_defaulted(reorder) -> bool | None:
+    evidence = getattr(reorder, "evidence", None)
+    if not isinstance(evidence, dict) or "supplier_lead_time_defaulted" not in evidence:
+        return None
+    return bool(evidence["supplier_lead_time_defaulted"])
 
 
 def _freshness_status(last_calculation_time: datetime | None) -> str:

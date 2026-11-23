@@ -88,6 +88,8 @@ class ReorderRecommendation(Base):
     evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     calculation_version: Mapped[str] = mapped_column(String(20), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # When the seller marked it ordered; older ORDERED rows have NULL (use updated_at).
+    ordered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

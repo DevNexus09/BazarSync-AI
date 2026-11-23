@@ -232,6 +232,7 @@ Live Groq, end-to-end worker/WebSocket/RAG delivery, pricing accuracy, productio
 5. Repair the transaction-price evidence adapter and build offline, point-in-time datasets with coverage, stockout, promotion, refund, fee and currency handling. Evaluate on forward time splits against simple baselines. Report error, uncertainty coverage, missing-data behavior and business guard violations across seller/product cohorts.
 6. Run candidate forecasts in shadow mode. Compare coverage, drift, safety, latency and fallback rates before enabling the evidence-backed result for selected sellers. Keep advisory semantics and a flag-based rollback.
 
+<<<<<<< Updated upstream
 ## Business Copilot accuracy eval
 
 Plan: [copilot plan](../superpowers/plans/copilot%20plan.md). Golden set: `backend/tests/fixtures/copilot_golden_questions.json` (40 questions on the `demo1@gmail.com` comprehensive demo seed, as_of 2026-11-21, ISO date ranges). Runner: `python scripts/copilot_eval.py --seller-id <uuid>`. A question passes when every expected value appears in the answer.
@@ -358,3 +359,130 @@ Checks:
 - mypy on the 3 changed app files: 184 errors before and after (all pre-existing, none in new code).
 - The new repository query was compiled against the PostgreSQL dialect but not run against a database; there is no repository-level DB test harness.
 - Not done: the staging run on a seeded product with a stockout.
+=======
+## Pricing and inventory improvement plan, Phase 2 (2026-11-23)
+
+Shared UI foundation, no behaviour change (nothing mounts these yet except `MissingDataReason`).
+
+New in `frontend/src/components/ui/`:
+- `card.tsx` (`Card`, `CardHeader`, `CardBody` on `glass-panel`).
+- `status.ts` + `status-badge.tsx`: the one status map (risk, data, reorder, dead stock, pricing action). Every status has icon, label and tone; unknown values render neutral with readable text.
+- `kpi-tile.tsx`: label, value, optional delta, hint tooltip reachable by keyboard and linked with `aria-describedby`; renders as a button when clickable.
+- `data-table.tsx`: `@tanstack/react-table` with column sort (`aria-sort`), search, page size 10/25/50, sticky header, row click and Enter/Space, rows collapse to cards below `sm`. Client-side paging only (`shortcut:` comment).
+- `drawer.tsx`: Radix Dialog (already installed via `radix-ui`), right panel, full screen on mobile, focus trap, Esc, and focus returned to the opening row/button.
+- `tabs.tsx` (`UrlTabs`): Radix Tabs with the value in `?tab=`, other query params kept, unknown values fall back to the default.
+- `empty-state.tsx`: `EmptyState` and `MissingData`; `components/dead-stock/MissingDataReason.tsx` is now a wrapper around `MissingData` (same text).
+- `how-calculated.tsx` (native `<details>`), `freshness-pill.tsx`.
+
+Helpers:
+- Formatting went into the existing `src/utils/formatters.ts` instead of a new `lib/format.ts`: `formatMoney` (Decimal strings formatted exactly via Intl, `null` for missing), `formatRelativeTime`, `hoursSince`. Page-local helpers are replaced when Phases 3 and 4 rewrite those pages.
+- `src/lib/ui-i18n.ts`: English map with an optional `bn` field per entry and `{param}` filling.
+
+Checks:
+- Vitest: 27 files, 144 tests passed (17 new in `ui-primitives.test.tsx` and `formatters.test.ts`).
+- `tsc -b --noEmit`, `eslint .` and `vite build` clean (build keeps the existing chunk-size warning).
+- Not done: visual check at 375px/1366px in both themes; the components are not on a page yet, so this moves to Phases 3 and 4.
+
+## Pricing and inventory improvement plan, Phase 3 (2026-11-23)
+
+Pricing analytics redesign behind `VITE_PRICING_V2_UI` (default off; off keeps the old `/app/pricing` page).
+
+Backend:
+- New read-only `GET /pricing/overview` (`app/api/v1/pricing_overview.py`, `app/services/pricing_overview_service.py`, `app/schemas/pricing_overview.py`). Seller from the auth context; four seller-scoped queries (products, latest snapshot per product and latest recommendation per product via `DISTINCT ON`, active product pricing policies). Per row: live price vs latest median, position (±2% = at market), margin at risk (price below the snapshot's safe minimum), `has_pricing_policy`, latest recommendation with `is_actionable` (OPEN, not HOLD, not expired). Summary is over all products, not just the page. `limit` 1–200.
+- `RevenueSimulatorService` evidence now also carries `elasticity` and `elasticity_sample_count` (additive).
+- The product simulator (`POST /products/{id}/pricing/simulate`) was already Decimal and MarginGuard-checked, so the workspace uses it as is. The public float simulator (`app/api/pricing_simulator_public.py`, `app/lib/pricing/revenue_simulator.py`) has no frontend caller any more but is kept because routes are preserved.
+
+Frontend (`src/pages/pricing/v2/`):
+- `/app/pricing` overview: four KPI tiles that filter the table, setup progress banner, searchable/sortable table, row opens the workspace. `?productId=` links redirect to `/app/pricing/:id`. Refresh queues the seller-wide analytics workflow.
+- `/app/pricing/:productId` workspace: recommendation card (Mark as applied / Dismiss call the existing endpoints, copy says the price is never changed for the seller), market box plot (plain list under 3 competitors, fix-it link when none), profit-at-each-price chart from the recommendation candidates with the unsafe range shaded, simulator slider in paisa snapped to `price_increment` and bounded by the policy change limits (debounced 300 ms, labels the elasticity source), costs & fees, price history. Missing fee policy replaces the recommendation with `PricingSetupRequiredCard`.
+- `/app/pricing/setup` checklist (fees → pricing policy → competitor tracking) derived from existing data, linking to the existing forms. Deviation from the plan: `fee-setup`, `policy-setup` and `fee-policies` are not redirected, because the checklist and backend readiness links open them.
+- Deleted dead code: `RevenueSimulatorCard.tsx`, `services/revenue-simulator-service.ts`, `schemas/revenue-simulator.ts`, `types/revenue-simulator.ts`, `lib/pricing/revenueSimulator.ts` and its test.
+
+Checks:
+- Backend: `tests/api/test_pricing_overview.py` (7) and the simulator evidence assertion pass; full suite 1122 passed, 85 skipped on `develop`. ruff/mypy: no findings in new files (2 pre-existing unused imports in `test_revenue_simulator_service.py`). Overview queries ran read-only against the local dev database.
+- Frontend: 28 files, 154 tests passed (16 new in `pages/pricing/v2`); `tsc`, `eslint .` and `vite build` clean.
+- Not done: browser check at 375px/1366px, keyboard-only pass and axe scan; needs a signed-in seller with products.
+- Note: this phase was written on `develop`. Phase 1 is committed on `feature/copilot-robustness` (`7a3025f`) and is not on `develop`.
+
+## Pricing and inventory improvement plan, Phase 4 (2026-11-23)
+
+Inventory intelligence redesign behind `VITE_INVENTORY_V2_UI` (default off; off keeps the 1,053-line page and its tests unchanged).
+
+Backend (additive, no migration):
+- `InventoryIntelligenceListItem` gains `reorder_recommendation_id`, `supplier_lead_time_days` and `supplier_lead_time_defaulted` (from the reorder evidence; `None` when older rows lack it). `ProductInventoryIntelligenceResponse` gains `reorder_recommendation_id` and `recommendation_status`. The actions need the id; the runway bar and data-health line need the lead time.
+- Telegram inventory alerts include a deep link (`/app/inventory-intelligence?tab=reorder|today&product=<id>`) when `INVENTORY_ALERT_DASHBOARD_BASE_URL` is set; unset (default) sends no link, as before. Before this, `dashboard_url` was never set. The alert dedupe key does not use the message, so links cannot create duplicate alerts.
+
+Frontend (`src/pages/inventory-intelligence/v2/`):
+- Shell with URL tabs (`?tab=today|reorder|dead-stock`), filters in the URL (`urgency`, `category`, `show`) and a product drawer on any tab (`?product=`).
+- Today: four KPI tiles (out of stock, runs out in under 7 days, reorder now, cash stuck), each jumping to the filtered tab; "To do today" ranked out of stock > runs out before lead time > deadline within 3 days > dead stock by locked capital, one line per product, top 8, already ordered/dismissed excluded. Ranking is client-side from the `/inventory-intelligence/risks` list (all assessed products, not only `REORDER`) and the dead-stock list.
+- Data health banner replaces the per-product Data quality panel at page level: defaulted lead time and not-enough-sales counts with fix links; hidden when healthy.
+- Reorder: DataTable with `StockRunwayBar` (red when runway < lead time), urgency and category filters, CSV export of the filtered rows. Ordered ✓ / Dismiss are optimistic with a 5-second Undo; the API has no reopen, so the call is held for the window and sent only if not undone, and pending calls are sent at once if the page unmounts.
+- Slow & dead stock: search plus one Show control (All / At risk / Dead / Needs review), risk and category under More filters, small age chart; recovery options and "Why we suggest this" (triggered rules in plain words) moved into the drawer.
+- Drawer: risk and runway, stock and sales pace, reorder box with the same delayed decisions, missing-lead-time fix, 30-day stock sparkline from inventory history, How we calculated this.
+- Shared status map gains the backend `HOLD` reorder action.
+- Deviation: the old page's tests were not moved to the tabs, because the old page stays live while the flag is off; new tests cover the v2 page.
+
+Checks:
+- Backend: full suite 1124 passed, 85 skipped (`develop`). New tests for the list/product fields and the alert link. ruff/mypy: nothing new (2 pre-existing unused imports, 1 pre-existing mypy error in `inventory_alert_service.py`).
+- Frontend: 30 files, 167 tests passed (new: ranking, KPIs, data health, runway, CSV, urgency filter; page: to-do order, data health line, deep link + Esc, row → drawer focus return, optimistic mark-ordered with Undo and the delayed call). `tsc`, `eslint .`, `vite build` clean.
+- Not done: browser check (375px/1366px, ~1.5-screen default view at 1366×768, keyboard-only, axe); needs a signed-in seller with data.
+
+## Pricing and inventory improvement plan, Phase 5 (2026-11-23)
+
+Model quality, backend only, every switch default-off. Migration `o9c0d1e2f3a4` (additive: one enum value) follows `n8b9c0d1e2f3` on `develop`.
+
+5.1 Category-pooled elasticity (`DEMAND_RESPONSE_POOLING_ENABLED`)
+- `app/services/pooled_elasticity.py` (pure): daily product panels (unit-weighted daily price), days that ended with no stock dropped as censored, within-product fixed effects, OLS on ln(price) with weekday and promotion controls (promotion days are kept as a control instead of being discarded), product slope estimated on price alone with the category's control effects held fixed, then shrunk toward the category slope with weight n / (n + `DEMAND_RESPONSE_POOLING_STRENGTH`=20). Clamped to the existing min/max elasticity.
+- Out-of-time check per category: fit on days before the last 28, predict held-out daily units, pass only with ≥14 holdout days, price variation in the holdout, and ≥5% lower MAE than a no-price-effect baseline. Result stored in each estimate's `quality_metrics.out_of_time`.
+- Training runs only in the Celery task `demand_response.fit_pooled_elasticity` (daily beat entry added only when the flag is on), per seller with a transaction advisory lock; rows persist through the existing idempotent `persist_estimate` as `POOLED_CATEGORY` / `pooled-v1`, so redelivery is a no-op. Pooling never crosses sellers.
+- Request paths only read: `DemandResponseService.estimate_for_product` uses a fresh pooled row when the flag is on (simulator and legacy pricing agree); legacy `_latest_elasticity` skips pooled rows when the flag is off, so turning it off fully reverts. Pooled estimates get the learned uncertainty band (0.35). The orchestrator and action evaluation still accept only `HISTORICAL_ELASTICITY`, so pooled estimates do not drive orchestrated price changes.
+- Enum comparisons are done as text so a deploy that runs before the migration does not fail.
+
+5.2 Variability safety stock (`VARIABILITY_SAFETY_STOCK_ENABLED`)
+- v1 reorder path: safety units = ceil(z(service level) × σ_daily × √lead time), σ from the last 56 days of net units (no-sale days count as zero, days that ended stocked out are dropped), minimum 14 usable days. Service level `REORDER_SAFETY_STOCK_SERVICE_LEVEL`=0.95, per product `specifications.reorder_service_level`. Falls back to the existing buffer-days formula with the reason recorded (`insufficient_history`, `history_unavailable`, `missing_lead_time`). Rows get version suffix `+vss` so they never collide with v1 rows.
+- Deviation: σ comes from the seller's daily sales, not `ForecastIntervalService`, which needs approved forecast artifacts; the forecast-aware path already sizes uncertainty from calibrated intervals.
+- The product inventory response now exposes `safety_stock_units` and `safety_stock_service_level`; the drawer shows "buffer of N units (95% protection)".
+- Phase 4 fix: the drawer read the lead-time-defaulted flag from `metadata` (risk factors), where it never is. The product response now has `supplier_lead_time_defaulted` and the drawer uses it.
+
+5.3 Forecast-aware reorder rollout
+- `FORECAST_AWARE_REORDER_SELLER_ALLOWLIST` (comma-separated seller ids) limits forecast-aware planning to listed sellers when `FORECAST_AWARE_REORDER_ENABLED=true`; empty keeps today's all-sellers behaviour.
+- `FORECAST_AWARE_REORDER_SHADOW_ENABLED` builds the other method for every recommendation and stores a summary in `evidence.shadow`; it never changes the decision, and a shadow failure is recorded, not raised. `scripts/reorder_shadow_report.py --seller-id … --days 14` prints agreement (same-action rate, mean quantity gap, one-sided reorders) in a read-only transaction.
+- Not done: the two-week shadow run itself.
+
+5.4 Forecast-assisted pricing selection (`FORECAST_ASSISTED_PRICING_SELECTION_ENABLED`)
+- With `FORECAST_ASSISTED_PRICING_ENABLED` and this flag on, a non-current price is chosen only when a fresh pooled estimate passed its out-of-time check, the approved baseline forecast is available, fresh competitor prices are sufficient, the candidate passed MarginGuard, and the gain beats `DYNAMIC_PRICING_MIN_IMPROVEMENT_RATE`. Otherwise the existing HOLD is returned with `price_response.reason`. Units come from `forecast_candidate_units` on the baseline forecast; profit uses each candidate's MarginGuard unit profit (Decimal). Confidence is capped at 70.
+- Whether the gate passes on real sellers is unverified; on the local demo seed the pooled fit gave −1.64 and passed (9.3% MAE improvement), which is seeded data, not evidence.
+
+Checks:
+- Backend: full suite 1156 passed, 85 skipped (32 new tests: pooled model, lookup, safety stock, rollout/shadow, validated selection). New queries ran read-only against the local PostgreSQL (without the new migration); migration SQL checked with `alembic upgrade --sql`. ruff: nothing new. mypy: no errors in new or changed code (one pre-existing error in `ReorderRecommendationRepository.history`).
+- Frontend: 30 files, 167 tests; `tsc`, `eslint .`, `vite build` clean.
+
+## Pricing and inventory improvement plan, Phase 6 (2026-11-23)
+
+Outcome tracking and calibration behind `RECOMMENDATION_OUTCOMES_ENABLED` (default off). Migration `p0d1e2f3a4b5` (additive) follows `o9c0d1e2f3a4`.
+
+- New table `recommendation_outcomes`: seller, product, type (`PRICING` / `REORDER` / `RECOVERY`), recommendation id, decided_at, window start and days, evaluated_at, predicted and observed value, `OBSERVED` / `UNAVAILABLE`, hit, confidence at recommendation time, version, details JSON. Unique `(recommendation_id, window_days)`; inserts use `ON CONFLICT DO NOTHING`, so redelivery and concurrent runs cannot duplicate. Additions beyond the plan's column list: product_id, decided_at, window_start, hit, confidence_score, details (needed for calibration and to record evidence).
+- `reorder_recommendations.ordered_at` (nullable, additive) is set when a reorder is marked ordered. Older ORDERED rows fall back to `updated_at`, recorded as `decided_at_source`.
+- Rules (`app/services/recommendation_outcomes.py`, pure, Decimal):
+  - Reorder: window = max(14 days, lead time + safety buffer) after it was marked ordered. Hit = no inventory snapshot at or below zero in the window; no snapshots → `UNAVAILABLE` (unknown, not a hit). Predicted units (rate × window) versus sold units, first stockout, and whether it came before the reorder deadline are recorded.
+  - Price: profit in the 14 days after "applied" versus the 14 days before, per sale line (price − fee rate × price − fixed fees per unit − current product cost), fees from the recommendation's analytics snapshot. Attributed only if the average sold price after is within 2% of the suggested price (else `UNAVAILABLE: price_not_applied`); no priced sales → `UNAVAILABLE`. Hit = the profit change has the predicted sign; predicted = 30-day profit impact scaled to the window.
+  - Recovery: type reserved; no evaluation rule yet (the plan defines rules for reorder and price only).
+- Celery task `recommendation_outcomes.evaluate` (daily beat only when enabled), per-seller advisory lock, evaluates only windows that have fully passed, within a 120-day lookback.
+- Calibration: `GET /recommendation-outcomes/track-record?recommendation_type=PRICING|REORDER` (seller from auth) returns the hit rate over the last 60 days overall and per confidence band (<40 low, <70 medium, ≥70 high, matching the UI labels), marked reliable at ≥20 judged outcomes. Engine scores are not rewritten; the UI shows the measured rate next to the label instead ("Confidence: Medium · right 67% of the time"), and the reorder drawer shows the same for its band.
+- UI: one "Track record" line under the header of the pricing overview and the inventory page, shown only when enabled and reliable.
+
+Checks:
+- Backend: 13 new tests (rules, bands, API scope and flag). Full suite 1169 passed, 85 skipped. ruff and mypy clean for the new files.
+- PostgreSQL: a throwaway copy of the local dev database (template clone, dropped afterwards) was migrated to head; `p0d1e2f3a4b5` applied cleanly. On it, marking a reorder ordered set `ordered_at`, a full evaluation wrote one pricing and one reorder outcome, a second run wrote none, and no rows appeared for other sellers. The pricing outcome was correctly `UNAVAILABLE: price_not_applied` because the demo data never moved to the suggested price. The clone also showed the local dev database is already at `o9c0d1e2f3a4`.
+- Frontend: 31 files, 170 tests; `tsc`, `eslint`, `vite build` clean.
+
+## Pricing and inventory improvement plan, i18n completion (2026-11-23)
+
+Plan principle 6 ("all new strings go through an i18n map") now holds for the redesigned pages.
+
+- `src/lib/ui-i18n.ts` gains `createStrings(map)`, so each feature keeps its own map with the same English fallback and `{param}` filling as `ui()`. The shared map keeps the cross-page UI strings (badges, table, freshness, track record).
+- `src/pages/pricing/v2/pricing-i18n.ts` (172 keys) and `src/pages/inventory-intelligence/v2/inventory-i18n.ts` (174 keys) hold all visible text of the v2 pricing and inventory pages, including logic-built sentences (to-do list, runway, position, elasticity source, MarginGuard rejection reasons), chart labels, tooltips, aria labels and CSV headers. The pricing keys added to the shared map in Phase 3 moved to the pricing map.
+- To add Bangla, fill `bn` on an entry; untranslated entries fall back to English. Choosing the language at runtime is not wired yet (open question 1 in the plan).
+- A sweep of the v2 code found no remaining visible English outside the maps (only a developer error message, CSS classes, URLs and React keys); every key in both maps is used.
+- Checks: frontend 32 files, 172 tests passed (2 new for the lookup); English output is unchanged, so existing text assertions still pass. `tsc`, `eslint .`, `vite build` clean.
+>>>>>>> Stashed changes

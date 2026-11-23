@@ -1,18 +1,12 @@
-import { Info, MessageCircle } from "lucide-react"
+import { HelpCircle, Loader2, MessageCircle, Unplug } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { TelegramStatusBadge } from "@/components/telegram/telegram-status-badge"
 import type {
   TelegramConnectionState,
   TelegramConnectionStatus,
 } from "@/types/telegram"
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) {
-    return "Not yet"
-  }
-  return new Date(value).toLocaleString()
-}
 
 const resolveTelegramHandle = (status?: TelegramConnectionStatus | null) => {
   if (!status) {
@@ -26,6 +20,12 @@ const resolveTelegramHandle = (status?: TelegramConnectionStatus | null) => {
     .join(" ")
   return name || "Telegram user"
 }
+
+const SETUP_STEPS = [
+  { title: "Get your code", body: "Click Connect Telegram to create a one-time command." },
+  { title: "Open the bot", body: "Find the BazarSync AI bot in Telegram and press Start." },
+  { title: "Send the command", body: "Paste the command in the chat. This page updates on its own." },
+]
 
 type TelegramConnectCardProps = {
   status?: TelegramConnectionStatus | null
@@ -51,66 +51,71 @@ export function TelegramConnectCard({
   const isConnected = status?.isConnected ?? false
 
   return (
-    <div className="glass-panel p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Telegram connection
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Link your Telegram account to receive BazarSync AI alerts instantly.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onShowInstructions}
-            aria-label="Bot connection instructions"
-            title="Bot connection instructions"
-          >
-            <Info className="size-4" />
-          </Button>
-          <TelegramStatusBadge state={state} />
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-        <div className="flex items-center justify-between">
-          <span>Connected account</span>
-          <span className="font-semibold text-foreground">
-            {resolveTelegramHandle(status)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>Last alert sent</span>
-          <span className="font-semibold text-foreground">
-            {formatDateTime(status?.lastAlertSentAt)}
-          </span>
-        </div>
-        {errorMessage ? (
-          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200">
-            {errorMessage}
+    <Card className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <MessageCircle aria-hidden className="size-5" />
           </div>
-        ) : null}
+          <div>
+            <h3 className="text-base font-semibold text-foreground">
+              {isConnected ? "Telegram is connected" : "Connect your Telegram"}
+            </h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {isConnected
+                ? `Alerts are delivered to ${resolveTelegramHandle(status)}.`
+                : "Get price, stock and competitor alerts on your phone the moment they happen."}
+            </p>
+          </div>
+        </div>
+        <TelegramStatusBadge state={state} />
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button size="sm" onClick={onConnect} disabled={isConnecting}>
-          <MessageCircle className="size-4" />
-          {isConnected ? "Reconnect Telegram Bot" : "Connect Telegram Bot"}
+      {isConnected ? null : (
+        <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+          {SETUP_STEPS.map((step, index) => (
+            <li key={step.title} className="glass-panel-muted flex gap-3 p-3">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                {index + 1}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{step.title}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {errorMessage ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
+          {errorMessage}
+        </p>
+      ) : null}
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Button onClick={onConnect} disabled={isConnecting} variant={isConnected ? "outline" : "default"}>
+          {isConnecting ? (
+            <Loader2 aria-hidden className="size-4 animate-spin" />
+          ) : (
+            <MessageCircle aria-hidden className="size-4" />
+          )}
+          {isConnected ? "Reconnect" : "Connect Telegram"}
         </Button>
         {isConnected ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDisconnect}
-            disabled={isDisconnecting}
-          >
-            Disconnect
+          <Button variant="ghost" onClick={onDisconnect} disabled={isDisconnecting}>
+            <Unplug aria-hidden className="size-4" />
+            {isDisconnecting ? "Disconnecting..." : "Disconnect"}
           </Button>
         ) : null}
+        <Button variant="link" className="ml-auto" onClick={onShowInstructions}>
+          <HelpCircle aria-hidden className="size-4" />
+          How it works
+        </Button>
       </div>
-    </div>
+    </Card>
   )
 }

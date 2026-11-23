@@ -2,6 +2,7 @@ export type DemandEstimationMethod =
   | "HISTORICAL_ELASTICITY"
   | "CATEGORY_PRIOR"
   | "CONSERVATIVE_HEURISTIC"
+  | "POOLED_CATEGORY"
   | "INSUFFICIENT_DATA"
 
 export type DemandDataStatus = "SUFFICIENT" | "LIMITED" | "INSUFFICIENT"

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.inventory_history import InventoryHistory
 from app.models.product import Product
+from app.models.sales_record import SalesRecord, SalesRecordStatus
 from app.models.reorder_recommendation import (
     FORECAST_REORDER_VERSION, ReorderRecommendation, ReorderRecommendationStatus,
 )
@@ -65,6 +66,41 @@ class ReorderRecommendationRepository:
             date_column=StockoutPrediction.as_of_date,
             as_of_date=as_of_date,
         )
+
+    def daily_demand_history(
+        self, *, seller_id: UUID, product_ids: list[UUID], start: date, end: date
+    ) -> dict[UUID, tuple[dict[date, int], dict[date, int]]]:
+        """Per product: (net units sold per day, available stock per snapshot day), seller-scoped."""
+        if not product_ids:
+            return {}
+        returns = SalesRecord.returned_units + SalesRecord.refunded_restocked_units
+        day = func.date(SalesRecord.sold_at)
+        sales = self._db.execute(
+            select(SalesRecord.product_id, day.label("day"), func.sum(func.greatest(SalesRecord.quantity_sold - returns, 0)).label("units"))
+            .where(
+                SalesRecord.seller_id == seller_id,
+                SalesRecord.product_id.in_(product_ids),
+                SalesRecord.status.in_((SalesRecordStatus.COMPLETED, SalesRecordStatus.FULFILLED)),
+                SalesRecord.is_test_order.is_(False),
+                day >= start,
+                day <= end,
+            )
+            .group_by(SalesRecord.product_id, day)
+        ).all()
+        stock = self._db.execute(
+            select(InventoryHistory.product_id, InventoryHistory.snapshot_date, InventoryHistory.quantity_available).where(
+                InventoryHistory.seller_id == seller_id,
+                InventoryHistory.product_id.in_(product_ids),
+                InventoryHistory.snapshot_date >= start,
+                InventoryHistory.snapshot_date <= end,
+            )
+        ).all()
+        result: dict[UUID, tuple[dict[date, int], dict[date, int]]] = {pid: ({}, {}) for pid in product_ids}
+        for product_id, sold_day, units in sales:
+            result[product_id][0][sold_day] = int(units or 0)
+        for product_id, snapshot_date, available in stock:
+            result[product_id][1][snapshot_date] = int(available)
+        return result
 
     def add_idempotent(self, recommendation: ReorderRecommendation) -> tuple[ReorderRecommendation, bool]:
         existing = self.get_for_date(

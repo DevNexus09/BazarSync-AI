@@ -85,6 +85,8 @@ class RevenueSimulatorServiceTests(unittest.TestCase):
         self.assertEqual(Decimal("30.0000"), result.baseline_units)
         self.assertEqual(Decimal("3300.00"), result.scenarios[0].expected_revenue)
         self.assertEqual(Decimal("900.00"), result.scenarios[0].expected_profit)
+        self.assertEqual("-0.8", result.evidence["elasticity"])
+        self.assertEqual(0, result.evidence["elasticity_sample_count"])
 
     def test_simulation_prepares_missing_pricing_analytics_snapshot(self) -> None:
         seller_id = uuid4()

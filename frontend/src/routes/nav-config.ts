@@ -43,12 +43,6 @@ export const appNavItems: NavItem[] = [
     description: "Stockout risk and reorder planning",
   },
   {
-    label: "Telegram Alerts",
-    path: "/app/telegram-alerts",
-    icon: MessageCircle,
-    description: "BazarSync AI Telegram alerts",
-  },
-  {
     label: "Pricing Analytics",
     path: "/app/pricing",
     icon: LineChart,
@@ -61,3 +55,11 @@ export const appNavItems: NavItem[] = [
     description: "Account preferences",
   },
 ]
+
+// Reached from the topbar Telegram status, not the sidebar; kept here so the header can title the page.
+export const telegramNavItem: NavItem = {
+  label: "Telegram Alerts",
+  path: "/app/telegram-alerts",
+  icon: MessageCircle,
+  description: "BazarSync AI Telegram alerts",
+}

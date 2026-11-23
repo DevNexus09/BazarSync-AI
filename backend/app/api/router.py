@@ -24,9 +24,11 @@ from app.api.v1.market_opportunities import router as market_opportunities_route
 from app.api.v1.products import router as products_router
 from app.api.v1.product_visibility_metrics import router as product_visibility_metrics_router
 from app.api.v1.pricing_analytics import router as pricing_analytics_router
+from app.api.v1.pricing_overview import router as pricing_overview_router
 from app.api.v1.pricing_policies import router as pricing_policies_router
 from app.api.v1.rag import router as rag_router
 from app.api.v1.revenue_simulator import router as revenue_simulator_router
+from app.api.v1.recommendation_outcomes import router as recommendation_outcomes_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.reorder_recommendations import router as reorder_recommendations_router
 from app.api.v1.sales_import import router as sales_import_router
@@ -59,6 +61,8 @@ api_router.include_router(dynamic_pricing_router)
 api_router.include_router(products_router)
 api_router.include_router(product_visibility_metrics_router)
 api_router.include_router(pricing_analytics_router)
+api_router.include_router(pricing_overview_router)
+api_router.include_router(recommendation_outcomes_router)
 api_router.include_router(pricing_policies_router)
 api_router.include_router(rag_router)
 api_router.include_router(revenue_simulator_router)

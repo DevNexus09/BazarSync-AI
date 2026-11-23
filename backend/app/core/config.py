@@ -132,6 +132,8 @@ class Settings(BaseModel):
     telegram_inventory_alert_max_attempts: int = 5
     telegram_inventory_alert_initial_backoff_seconds: int = 60
     telegram_inventory_alert_max_backoff_seconds: int = 3600
+    # Frontend origin for deep links in inventory alerts, e.g. https://app.example.com. Unset = no link.
+    inventory_alert_dashboard_base_url: str | None = None
     inventory_intelligence_schedule_enabled: bool = False
     inventory_intelligence_daily_hour_utc: int = 1
     inventory_intelligence_daily_minute_utc: int = 15
@@ -198,6 +200,24 @@ class Settings(BaseModel):
     demand_response_allow_heuristic_fallback: bool = True
     demand_response_max_forecast_multiplier: float = 3.0
     demand_response_formula_version: str = "v1"
+    # Phase 5 model quality. Every switch is default-off.
+    demand_response_pooling_enabled: bool = False
+    demand_response_pooling_strength: int = Field(default=20, ge=1)
+    demand_response_pooling_holdout_days: int = Field(default=28, ge=7)
+    demand_response_pooling_min_holdout_days: int = Field(default=14, ge=7)
+    demand_response_pooling_min_improvement_rate: Decimal = Field(default=Decimal("0.05"), ge=0, lt=1)
+    variability_safety_stock_enabled: bool = False
+    reorder_safety_stock_service_level: Decimal = Field(default=Decimal("0.95"), gt=Decimal("0.5"), lt=1)
+    reorder_safety_stock_history_days: int = Field(default=56, ge=14)
+    reorder_safety_stock_min_days: int = Field(default=14, ge=7)
+    forecast_aware_reorder_seller_allowlist: str = ""
+    forecast_aware_reorder_shadow_enabled: bool = False
+    forecast_assisted_pricing_selection_enabled: bool = False
+    recommendation_outcomes_enabled: bool = False
+    recommendation_outcome_window_days: int = Field(default=14, ge=7, le=90)
+    recommendation_outcome_lookback_days: int = Field(default=120, ge=14)
+    recommendation_track_record_days: int = Field(default=60, ge=14)
+    recommendation_track_record_min_outcomes: int = Field(default=20, ge=1)
     dynamic_pricing_formula_version: str = "v1"
     forecast_assisted_pricing_enabled: bool = False
     dynamic_pricing_min_improvement_rate: float = 0.02
@@ -441,6 +461,7 @@ class Settings(BaseModel):
             "telegram_inventory_alert_max_attempts": int(os.getenv("TELEGRAM_INVENTORY_ALERT_MAX_ATTEMPTS", "5")),
             "telegram_inventory_alert_initial_backoff_seconds": int(os.getenv("TELEGRAM_INVENTORY_ALERT_INITIAL_BACKOFF_SECONDS", "60")),
             "telegram_inventory_alert_max_backoff_seconds": int(os.getenv("TELEGRAM_INVENTORY_ALERT_MAX_BACKOFF_SECONDS", "3600")),
+            "inventory_alert_dashboard_base_url": os.getenv("INVENTORY_ALERT_DASHBOARD_BASE_URL") or None,
             "inventory_intelligence_schedule_enabled": _parse_bool(
                 os.getenv("INVENTORY_INTELLIGENCE_SCHEDULE_ENABLED"),
                 default=scraper_schedule_default,
@@ -525,6 +546,23 @@ class Settings(BaseModel):
             ),
             "demand_response_max_forecast_multiplier": float(os.getenv("DEMAND_RESPONSE_MAX_FORECAST_MULTIPLIER", "3.0")),
             "demand_response_formula_version": os.getenv("DEMAND_RESPONSE_FORMULA_VERSION", "v1"),
+            "demand_response_pooling_enabled": _parse_bool(os.getenv("DEMAND_RESPONSE_POOLING_ENABLED")),
+            "demand_response_pooling_strength": int(os.getenv("DEMAND_RESPONSE_POOLING_STRENGTH", "20")),
+            "demand_response_pooling_holdout_days": int(os.getenv("DEMAND_RESPONSE_POOLING_HOLDOUT_DAYS", "28")),
+            "demand_response_pooling_min_holdout_days": int(os.getenv("DEMAND_RESPONSE_POOLING_MIN_HOLDOUT_DAYS", "14")),
+            "demand_response_pooling_min_improvement_rate": os.getenv("DEMAND_RESPONSE_POOLING_MIN_IMPROVEMENT_RATE", "0.05"),
+            "variability_safety_stock_enabled": _parse_bool(os.getenv("VARIABILITY_SAFETY_STOCK_ENABLED")),
+            "reorder_safety_stock_service_level": os.getenv("REORDER_SAFETY_STOCK_SERVICE_LEVEL", "0.95"),
+            "reorder_safety_stock_history_days": int(os.getenv("REORDER_SAFETY_STOCK_HISTORY_DAYS", "56")),
+            "reorder_safety_stock_min_days": int(os.getenv("REORDER_SAFETY_STOCK_MIN_DAYS", "14")),
+            "forecast_aware_reorder_seller_allowlist": os.getenv("FORECAST_AWARE_REORDER_SELLER_ALLOWLIST", ""),
+            "forecast_aware_reorder_shadow_enabled": _parse_bool(os.getenv("FORECAST_AWARE_REORDER_SHADOW_ENABLED")),
+            "forecast_assisted_pricing_selection_enabled": _parse_bool(os.getenv("FORECAST_ASSISTED_PRICING_SELECTION_ENABLED")),
+            "recommendation_outcomes_enabled": _parse_bool(os.getenv("RECOMMENDATION_OUTCOMES_ENABLED")),
+            "recommendation_outcome_window_days": int(os.getenv("RECOMMENDATION_OUTCOME_WINDOW_DAYS", "14")),
+            "recommendation_outcome_lookback_days": int(os.getenv("RECOMMENDATION_OUTCOME_LOOKBACK_DAYS", "120")),
+            "recommendation_track_record_days": int(os.getenv("RECOMMENDATION_TRACK_RECORD_DAYS", "60")),
+            "recommendation_track_record_min_outcomes": int(os.getenv("RECOMMENDATION_TRACK_RECORD_MIN_OUTCOMES", "20")),
             "dynamic_pricing_formula_version": os.getenv("DYNAMIC_PRICING_FORMULA_VERSION", "v1"),
             "forecast_assisted_pricing_enabled": _parse_bool(os.getenv("FORECAST_ASSISTED_PRICING_ENABLED")),
             "dynamic_pricing_min_improvement_rate": float(os.getenv("DYNAMIC_PRICING_MIN_IMPROVEMENT_RATE", "0.02")),

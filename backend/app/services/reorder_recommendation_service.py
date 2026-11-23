@@ -27,9 +27,14 @@ from app.repositories.reorder_recommendation_repository import ReorderRecommenda
 from app.services.forecast_reorder_service import (
     MAX_STOCK, REORDER_SPEC_KEYS, ReorderInputs, ReorderPlan, load_reorder_forecast, plan_reorder,
 )
+from app.services.safety_stock import SafetyStock, product_service_level, variability_safety_stock
 from app.services.sales_velocity_service import SalesVelocityCalculation, SalesVelocityService
 
 logger = logging.getLogger(__name__)
+
+# Rows sized with variability safety stock get their own version so they never collide with v1 rows.
+VARIABILITY_SAFETY_STOCK_SUFFIX = "+vss"
+DemandHistory = tuple[dict[date, int], dict[date, int]]
 
 
 class ReorderRecommendationRepositoryProtocol(Protocol):
@@ -42,6 +47,7 @@ class ReorderRecommendationRepositoryProtocol(Protocol):
     def history(self, *, seller_id: UUID, product_id: UUID, from_date: date | None, to_date: date | None, calculation_version: str | None, order: str, limit: int, offset: int) -> tuple[list[ReorderRecommendation], int]: ...
     def get_by_id(self, *, seller_id: UUID, recommendation_id: UUID) -> ReorderRecommendation | None: ...
     def save_status(self, recommendation: ReorderRecommendation) -> ReorderRecommendation: ...
+    def daily_demand_history(self, *, seller_id: UUID, product_ids: list[UUID], start: date, end: date) -> dict[UUID, DemandHistory]: ...
 
 
 class ProductReorderSettings(TypedDict):
@@ -85,6 +91,7 @@ class ReorderRecommendationService:
         self._repository = repository or ReorderRecommendationRepository(db)  # type: ignore[arg-type]
         self._db = db
         self._forecast_enabled = settings.forecast_aware_reorder_enabled
+        self._variability_enabled = settings.variability_safety_stock_enabled
         self._calculation_version = calculation_version or settings.reorder_calculation_version
         self._log = log or logger
 
@@ -101,6 +108,7 @@ class ReorderRecommendationService:
         calculation_version: str | None = None,
         confirmed_incoming_quantity: int | None = None,
     ) -> ReorderRecommendationOutcome:
+        history = self._demand_history(product.seller_id, [product.id], as_of_date).get(product.id)
         recommendation = self.build_recommendation(
             product=product,
             seller=seller,
@@ -111,6 +119,7 @@ class ReorderRecommendationService:
             generated_at=_ensure_utc(generated_at or datetime.now(timezone.utc)),
             calculation_version=calculation_version or self._calculation_version,
             confirmed_incoming_quantity=confirmed_incoming_quantity,
+            demand_history=history,
         )
         saved, created = self._repository.add_idempotent(recommendation)
         return ReorderRecommendationOutcome(saved, created)
@@ -134,15 +143,17 @@ class ReorderRecommendationService:
                 products_by_seller.setdefault(product.seller_id, (seller, []))[1].append(product)
             for batch_seller_id, (seller, products) in products_by_seller.items():
                 try:
+                    forecast = self._uses_forecast(batch_seller_id)
                     as_of = as_of_date or (
                         SalesVelocityService.business_date_for_seller(seller, timestamp)
-                        if self._forecast_enabled else timestamp.date()
+                        if forecast else timestamp.date()
                     )
                     product_ids = [item.id for item in products]
                     inventory = self._repository.latest_inventory_for_products(seller_id=batch_seller_id, product_ids=product_ids, as_of_date=as_of)
-                    through = as_of - timedelta(days=1) if self._forecast_enabled else as_of
+                    through = as_of - timedelta(days=1) if forecast else as_of
                     velocities = self._repository.latest_velocity_for_products(seller_id=batch_seller_id, product_ids=product_ids, as_of_date=through)
-                    stockouts = {} if self._forecast_enabled else self._repository.latest_stockout_for_products(seller_id=batch_seller_id, product_ids=product_ids, as_of_date=as_of)
+                    stockouts = {} if forecast else self._repository.latest_stockout_for_products(seller_id=batch_seller_id, product_ids=product_ids, as_of_date=as_of)
+                    histories = self._demand_history(batch_seller_id, product_ids, as_of)
                     for product in products:
                         recommendation = self.build_recommendation(
                             product=product,
@@ -153,9 +164,10 @@ class ReorderRecommendationService:
                             as_of_date=as_of,
                             generated_at=(
                                 datetime.now(timezone.utc)
-                                if self._forecast_enabled and generated_at is None else timestamp
+                                if forecast and generated_at is None else timestamp
                             ),
                             calculation_version=version,
+                            demand_history=histories.get(product.id),
                         )
                         saved, was_created = self._repository.add_idempotent(recommendation)
                         if was_created:
@@ -183,9 +195,45 @@ class ReorderRecommendationService:
         calculation_version: str,
         confirmed_incoming_quantity: int | None = None,
         verified_zero_sales: bool = False,
+        demand_history: DemandHistory | None = None,
+    ) -> ReorderRecommendation:
+        arguments = dict(
+            product=product, seller=seller, inventory_snapshot=inventory_snapshot, sales_velocity=sales_velocity,
+            stockout_prediction=stockout_prediction, as_of_date=as_of_date, generated_at=generated_at,
+            calculation_version=calculation_version, confirmed_incoming_quantity=confirmed_incoming_quantity,
+            verified_zero_sales=verified_zero_sales, demand_history=demand_history,
+        )
+        primary = self._uses_forecast(product.seller_id)
+        recommendation = self._build_single(use_forecast=primary, **arguments)  # type: ignore[arg-type]
+        if settings.forecast_aware_reorder_shadow_enabled:
+            # Shadow only records the other method's advice for comparison; it never changes the decision.
+            try:
+                shadow = self._build_single(use_forecast=not primary, **arguments)  # type: ignore[arg-type]
+                summary: dict[str, object] = _shadow_summary(shadow, forecast=not primary)
+            except Exception as exc:  # the shadow must never block the primary advice
+                self._log.warning("Reorder shadow failed product_id=%s error=%s", product.id, type(exc).__name__)
+                summary = {"method": "forecast_aware" if not primary else "standard", "error": type(exc).__name__}
+            recommendation.evidence = {**recommendation.evidence, "shadow": summary}
+        return recommendation
+
+    def _build_single(
+        self,
+        *,
+        use_forecast: bool,
+        product: Product,
+        seller: Seller,
+        inventory_snapshot: InventoryHistory | None,
+        sales_velocity: SalesVelocity | SalesVelocityCalculation | None,
+        stockout_prediction: StockoutPrediction | None,
+        as_of_date: date,
+        generated_at: datetime,
+        calculation_version: str,
+        confirmed_incoming_quantity: int | None = None,
+        verified_zero_sales: bool = False,
+        demand_history: DemandHistory | None = None,
     ) -> ReorderRecommendation:
         settings_snapshot = self._product_reorder_settings(product)
-        if self._forecast_enabled:
+        if use_forecast:
             return self._build_forecast_recommendation(
                 product=product, seller=seller, inventory=inventory_snapshot,
                 velocity=sales_velocity, calculation_version=calculation_version,
@@ -228,8 +276,30 @@ class ReorderRecommendationService:
         elif velocity_confidence < Decimal(str(settings.reorder_minimum_velocity_confidence)):
             insufficient_reason = "velocity_confidence_below_minimum"
 
-        reorder_point = _ceil_decimal(rate * Decimal(lead_time + safety_days))
-        target_stock = _ceil_decimal(rate * Decimal(lead_time + safety_days + review_days))
+        safety = None
+        if self._variability_enabled:
+            calculation_version = f"{calculation_version}{VARIABILITY_SAFETY_STOCK_SUFFIX}"
+            if demand_history is None:
+                safety = SafetyStock("history_unavailable")
+            else:
+                units_by_day, available_by_day = demand_history
+                safety = variability_safety_stock(
+                    units_by_day=units_by_day,
+                    available_by_day=available_by_day,
+                    start=as_of_date - timedelta(days=settings.reorder_safety_stock_history_days - 1),
+                    end=as_of_date,
+                    lead_time_days=lead_time,
+                    service_level=product_service_level(getattr(product, "specifications", None), settings.reorder_safety_stock_service_level),
+                    min_days=settings.reorder_safety_stock_min_days,
+                )
+        if safety is not None and safety.status == "ok" and safety.units is not None:
+            safety_stock = Decimal(safety.units)
+            reorder_point = _ceil_decimal(rate * Decimal(lead_time)) + safety.units
+            target_stock = _ceil_decimal(rate * Decimal(lead_time + review_days)) + safety.units
+        else:
+            safety_stock = rate * Decimal(safety_days)
+            reorder_point = _ceil_decimal(rate * Decimal(lead_time + safety_days))
+            target_stock = _ceil_decimal(rate * Decimal(lead_time + safety_days + review_days))
         raw_quantity = max(0, target_stock - inventory_position)
         recommended_quantity = self._adjust_quantity(raw_quantity, min_order=min_order, pack_size=pack_size)
         deadline = self._reorder_deadline(
@@ -273,7 +343,9 @@ class ReorderRecommendationService:
             "safety_buffer_days": safety_days,
             "review_period_days": review_days,
             "lead_time_demand": str((rate * Decimal(lead_time)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)),
-            "safety_stock": str((rate * Decimal(safety_days)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)),
+            "safety_stock": str(safety_stock.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)),
+            "safety_stock_method": "variability" if safety is not None and safety.status == "ok" else "buffer_days",
+            **(safety.evidence() if safety is not None else {}),
             "reorder_point": reorder_point,
             "target_stock": target_stock,
             "raw_reorder_quantity": raw_quantity,
@@ -377,6 +449,23 @@ class ReorderRecommendationService:
             generated_at=inputs.evaluated_at,
         )
 
+    def _uses_forecast(self, seller_id: UUID) -> bool:
+        """Forecast-aware planning when the flag is on and the seller is allow-listed (an empty list means all)."""
+        if not self._forecast_enabled:
+            return False
+        allowed = forecast_reorder_allowlist()
+        return not allowed or str(seller_id).lower() in allowed
+
+    def _demand_history(self, seller_id: UUID, product_ids: list[UUID], as_of_date: date) -> dict[UUID, DemandHistory]:
+        if not self._variability_enabled or (self._uses_forecast(seller_id) and not settings.forecast_aware_reorder_shadow_enabled):
+            return {}
+        return self._repository.daily_demand_history(
+            seller_id=seller_id,
+            product_ids=product_ids,
+            start=as_of_date - timedelta(days=settings.reorder_safety_stock_history_days - 1),
+            end=as_of_date,
+        )
+
     def latest_recommendation(self, *, seller_id: UUID, product_id: UUID, calculation_version: str | None = None) -> ReorderRecommendation | None:
         return self._repository.latest(seller_id=seller_id, product_id=product_id, calculation_version=calculation_version)
 
@@ -388,6 +477,8 @@ class ReorderRecommendationService:
         if recommendation is None:
             raise ReorderRecommendationNotFoundError
         recommendation.recommendation_status = status
+        if status == ReorderRecommendationStatus.ORDERED and getattr(recommendation, "ordered_at", None) is None:
+            recommendation.ordered_at = datetime.now(timezone.utc)
         return self._repository.save_status(recommendation)
 
     def _product_reorder_settings(self, product: Product) -> ProductReorderSettings:
@@ -483,3 +574,36 @@ def _ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def forecast_reorder_allowlist() -> set[str]:
+    return {item.strip().lower() for item in settings.forecast_aware_reorder_seller_allowlist.split(",") if item.strip()}
+
+
+def _shadow_summary(recommendation: ReorderRecommendation, *, forecast: bool) -> dict[str, object]:
+    return {
+        "method": "forecast_aware" if forecast else "standard",
+        "action": recommendation.action.value,
+        "status": recommendation.recommendation_status.value,
+        "recommended_quantity": recommendation.recommended_quantity,
+        "reorder_point": recommendation.reorder_point,
+        "reorder_deadline": recommendation.reorder_deadline.isoformat() if recommendation.reorder_deadline else None,
+        "calculation_version": recommendation.calculation_version,
+    }
+
+
+def summarize_shadow(recommendations: list[ReorderRecommendation]) -> dict[str, object]:
+    """Agreement between primary advice and its recorded shadow, for the rollout decision."""
+    compared = [row for row in recommendations if isinstance((row.evidence or {}).get("shadow"), dict) and "error" not in row.evidence["shadow"]]
+    failed = sum(1 for row in recommendations if isinstance((row.evidence or {}).get("shadow"), dict) and "error" in row.evidence["shadow"])
+    same_action = sum(1 for row in compared if row.evidence["shadow"]["action"] == row.action.value)
+    gaps = [abs(int(row.evidence["shadow"]["recommended_quantity"] or 0) - int(row.recommended_quantity or 0)) for row in compared]
+    return {
+        "recommendations": len(recommendations),
+        "compared": len(compared),
+        "shadow_failures": failed,
+        "same_action_rate": round(same_action / len(compared), 4) if compared else None,
+        "mean_quantity_gap": round(sum(gaps) / len(gaps), 2) if gaps else None,
+        "primary_reorders_only": sum(1 for row in compared if row.action.value == "REORDER" and row.evidence["shadow"]["action"] != "REORDER"),
+        "shadow_reorders_only": sum(1 for row in compared if row.action.value != "REORDER" and row.evidence["shadow"]["action"] == "REORDER"),
+    }

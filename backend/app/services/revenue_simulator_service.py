@@ -149,6 +149,8 @@ class RevenueSimulatorService:
                 "demand_quality": estimate.quality_metrics,
                 "demand_evidence": estimate.evidence,
                 "baseline_source": _baseline_source(analytics, estimate),
+                "elasticity": str(estimate.elasticity) if estimate.elasticity is not None else None,
+                "elasticity_sample_count": estimate.sample_count,
                 "simulation_note": "Simulation does not apply prices. Margin guard rejection blocks revenue and profit projections.",
             },
         )

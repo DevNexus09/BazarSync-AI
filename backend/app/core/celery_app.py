@@ -79,6 +79,17 @@ if settings.inventory_intelligence_schedule_enabled:
             hour=settings.inventory_intelligence_daily_hour_utc,
         ),
     }
+if settings.demand_response_pooling_enabled:
+    # Offline training only; requests read the stored estimates.
+    beat_schedule["demand_response_pooled_elasticity_daily"] = {
+        "task": "demand_response.fit_pooled_elasticity",
+        "schedule": crontab(minute=30, hour=0),
+    }
+if settings.recommendation_outcomes_enabled:
+    beat_schedule["recommendation_outcomes_daily"] = {
+        "task": "recommendation_outcomes.evaluate",
+        "schedule": crontab(minute=45, hour=0),
+    }
 if settings.dead_stock_workflow_schedule_enabled:
     beat_schedule["dead_stock_daily"] = {
         "task": "dead_stock.daily_workflow",

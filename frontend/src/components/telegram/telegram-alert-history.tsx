@@ -1,6 +1,18 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  BellOff,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardBody, CardHeader } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
+import { TONE_CLASSES, type StatusTone } from "@/components/ui/status"
 import { ErrorState } from "@/components/common/error-state"
 import type { PaginationMeta, TelegramAlertRecord } from "@/types/telegram"
 import { cn } from "@/lib/utils"
@@ -15,15 +27,30 @@ type TelegramAlertHistoryProps = {
   onRetry: () => void
 }
 
-const statusStyles: Record<string, string> = {
-  delivered: "bg-emerald-500/15 text-emerald-300",
-  failed: "bg-rose-500/15 text-rose-300",
-  pending: "bg-amber-500/15 text-amber-300",
-  duplicate: "bg-muted/60 text-muted-foreground",
+const DELIVERY_STYLES: Record<string, { tone: StatusTone; icon: LucideIcon }> = {
+  delivered: { tone: "success", icon: CheckCircle2 },
+  failed: { tone: "danger", icon: XCircle },
+  pending: { tone: "warning", icon: Clock },
+  duplicate: { tone: "neutral", icon: Copy },
 }
 
 const toTitleCase = (value: string) =>
-  value.replace(/\b\w/g, (char) => char.toUpperCase())
+  value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+
+function DeliveryBadge({ status }: { status: string }) {
+  const { tone, icon: Icon } = DELIVERY_STYLES[status] ?? { tone: "neutral", icon: Clock }
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium",
+        TONE_CLASSES[tone]
+      )}
+    >
+      <Icon aria-hidden className="size-3.5" />
+      {toTitleCase(status)}
+    </span>
+  )
+}
 
 export function TelegramAlertHistory({
   alerts,
@@ -65,62 +92,51 @@ export function TelegramAlertHistory({
   }
 
   return (
-    <div className="glass-panel p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Recent Telegram alerts
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Latest alerts delivered through BazarSync AI Telegram.
-          </p>
-        </div>
-        <span className="text-xs text-muted-foreground">
-          {meta?.total ?? alerts.length} total
-        </span>
-      </div>
+    <Card>
+      <CardHeader
+        title="Alert history"
+        description="Every alert sent to your Telegram, newest first."
+        actions={
+          <span className="text-sm text-muted-foreground">
+            {meta?.total ?? alerts.length} total
+          </span>
+        }
+      />
 
       {alerts.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-4 text-xs text-muted-foreground">
-          No Telegram alerts sent yet. Alerts will appear here once delivery starts.
-        </div>
+        <CardBody>
+          <EmptyState
+            icon={BellOff}
+            title="No alerts sent yet"
+            message="Once Telegram is connected, alerts will show up here as they are delivered."
+          />
+        </CardBody>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-border/60">
-          <div className="min-w-[720px]">
-            <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.9fr] gap-2 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase text-muted-foreground">
-              <span>Alert Type</span>
-              <span>Product</span>
-              <span>Action</span>
-              <span>Sent Time</span>
-              <span>Status</span>
-            </div>
-            {alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.9fr] gap-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground"
-              >
-                <span className="font-semibold text-foreground">
-                  {toTitleCase(alert.alertType)}
-                </span>
-                <span className="truncate">{alert.product}</span>
-                <span>{toTitleCase(alert.action)}</span>
-                <span>{new Date(alert.sentAt).toLocaleString()}</span>
-                <span
-                  className={cn(
-                    "inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                    statusStyles[alert.deliveryStatus] ?? "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {toTitleCase(alert.deliveryStatus)}
-                </span>
+        <ul className="divide-y divide-border/60">
+          {alerts.map((alert) => (
+            <li
+              key={alert.id}
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {alert.product}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {toTitleCase(alert.alertType)} · {toTitleCase(alert.action)} ·{" "}
+                  <time dateTime={alert.sentAt}>
+                    {new Date(alert.sentAt).toLocaleString()}
+                  </time>
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
+              <DeliveryBadge status={alert.deliveryStatus} />
+            </li>
+          ))}
+        </ul>
       )}
 
-      {meta ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      {meta && meta.totalPages > 1 ? (
+        <div className="flex border-t border-border/60 px-4 py-3 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>
             Page {meta.page} of {meta.totalPages}
           </span>
@@ -146,6 +162,6 @@ export function TelegramAlertHistory({
           </div>
         </div>
       ) : null}
-    </div>
+    </Card>
   )
 }

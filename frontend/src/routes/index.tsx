@@ -9,6 +9,7 @@ import RegisterPage from "@/pages/auth/register-page"
 import ForgotPasswordPage from "@/pages/auth/forgot-password-page"
 import NotFoundPage from "@/pages/not-found"
 import LandingPage from "@/pages/landing/landing-page"
+import { inventoryV2Enabled, pricingV2Enabled } from "@/utils/env"
 
 const router = createBrowserRouter([
   {
@@ -118,18 +119,45 @@ const router = createBrowserRouter([
               {
                 path: "inventory-intelligence",
                 lazy: async () => ({
-                  Component: (await import(
-                    "@/pages/inventory-intelligence/inventory-intelligence-page"
-                  )).default,
+                  Component: inventoryV2Enabled
+                    ? (await import("@/pages/inventory-intelligence/v2/inventory-intelligence-v2-page")).default
+                    : (await import("@/pages/inventory-intelligence/inventory-intelligence-page")).default,
                 }),
               },
-              {
-                path: "pricing",
-                lazy: async () => ({
-                  Component: (await import("@/pages/pricing/pricing-page"))
-                    .default,
-                }),
-              },
+              ...(pricingV2Enabled
+                ? [
+                    {
+                      path: "pricing",
+                      // Old links used /app/pricing?productId=<id>; send them to the workspace.
+                      loader: ({ request }: { request: Request }) => {
+                        const productId = new URL(request.url).searchParams.get("productId")
+                        return productId ? redirect(`/app/pricing/${productId}`) : null
+                      },
+                      lazy: async () => ({
+                        Component: (await import("@/pages/pricing/v2/pricing-overview-page")).default,
+                      }),
+                    },
+                    {
+                      path: "pricing/setup",
+                      lazy: async () => ({
+                        Component: (await import("@/pages/pricing/v2/pricing-setup-page")).default,
+                      }),
+                    },
+                    {
+                      path: "pricing/:productId",
+                      lazy: async () => ({
+                        Component: (await import("@/pages/pricing/v2/pricing-workspace-page")).default,
+                      }),
+                    },
+                  ]
+                : [
+                    {
+                      path: "pricing",
+                      lazy: async () => ({
+                        Component: (await import("@/pages/pricing/pricing-page")).default,
+                      }),
+                    },
+                  ]),
               {
                 path: "pricing/fee-setup",
                 lazy: async () => ({

@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -247,6 +247,7 @@ class DynamicPricingService:
             else []
         )
         evaluations: list[dict[str, Any]] = []
+        quotes = {}
         for price in candidates:
             quote = (
                 baseline
@@ -258,6 +259,7 @@ class DynamicPricingService:
                     marketplace=MARKETPLACE_NAME,
                 )
             )
+            quotes[price] = quote
             reasons = [reason.value for reason in quote.rejection_reasons]
             supported_price = Decimal("0") < price <= MAX_PERSISTED_PRICE
             if not supported_price:
@@ -299,6 +301,74 @@ class DynamicPricingService:
         stock_exposure = None
         if forecast_units is not None and product.stock_quantity is not None:
             stock_exposure = forecast_units > product.stock_quantity
+        validated = (
+            self._validated_price_selection(
+                product=product,
+                current_price=current_price,
+                candidates=candidates,
+                quotes=quotes,
+                evaluations=evaluations,
+                forecast_units=forecast_units,
+                market_reasons=market_reasons,
+                objective=policy.objective if policy else PricingObjective.MAXIMIZE_EXPECTED_PROFIT,
+                as_of_date=generated_at.date(),
+            )
+            if settings.forecast_assisted_pricing_selection_enabled and self._db is not None
+            else None
+        )
+        if validated is not None and validated["recommendation"] is not None:
+            choice = validated["recommendation"]
+            evidence.update(
+                {
+                    "formula_version": PRICING_FORECAST_VERSION,
+                    "candidate_count": len(evaluations),
+                    "candidates": evaluations,
+                    "selected": choice["evaluation"],
+                    "recommended_target_price": str(choice["price"]),
+                    "constraint_safe_candidate_prices": [item["candidate_price"] for item in evaluations if item["is_allowed"]],
+                    "price_response": validated["price_response"],
+                    "competitor_evidence": {**market.to_context(), "validated_fresh_price_count": len(fresh_prices)},
+                    "risk": {
+                        "inventory_risk_level": inventory_risk,
+                        "catalog_stock_units": product.stock_quantity,
+                        "baseline_point_exceeds_catalog_stock": stock_exposure,
+                        "forecast_uncertainty": baseline_forecast.get("uncertainty"),
+                    },
+                    "confidence": {"price_change": "OUT_OF_TIME_VALIDATED"},
+                }
+            )
+            return DynamicPricingRecommendation(
+                seller_id=seller_id,
+                product_id=product.id,
+                pricing_analytics_id=pricing_analytics_id,
+                elasticity_estimate_id=validated["estimate_id"],
+                action=derive_action(
+                    current_price=current_price,
+                    selected_price=choice["price"],
+                    min_actionable_change_rate=self._config.min_actionable_change_rate,
+                ),
+                current_price=current_price,
+                recommended_price=choice["price"],
+                minimum_safe_price=quotes[choice["price"]].minimum_safe_price,
+                expected_units=choice["units"],
+                expected_revenue=choice["revenue"],
+                expected_profit=choice["profit"],
+                baseline_expected_revenue=validated["baseline_revenue"],
+                baseline_expected_profit=validated["baseline_profit"],
+                revenue_impact=_money(choice["revenue"] - validated["baseline_revenue"]),
+                profit_impact=_money(choice["profit"] - validated["baseline_profit"]),
+                margin_rate=quotes[choice["price"]].margin_rate,
+                confidence_score=validated["confidence"],
+                estimation_method=DemandEstimationMethod.POOLED_CATEGORY,
+                recommendation_status=DynamicPricingRecommendationStatus.OPEN,
+                objective=policy.objective if policy else PricingObjective.MAXIMIZE_EXPECTED_PROFIT,
+                evidence=evidence,
+                formula_version=PRICING_FORECAST_VERSION,
+                generated_at=generated_at,
+                expires_at=generated_at + timedelta(hours=self._config.expiration_hours),
+            )
+        if validated is not None:
+            evidence["price_response"] = validated["price_response"]
         selected = evaluations[candidates.index(current_price)]
         evidence.update(
             {
@@ -371,6 +441,90 @@ class DynamicPricingService:
             generated_at=generated_at,
             expires_at=generated_at + timedelta(hours=self._config.expiration_hours),
         )
+
+    def _validated_price_selection(
+        self,
+        *,
+        product: Product,
+        current_price: Decimal,
+        candidates: list[Decimal],
+        quotes: dict,
+        evaluations: list[dict[str, Any]],
+        forecast_units: Decimal | None,
+        market_reasons: list[str],
+        objective: PricingObjective,
+        as_of_date: date,
+    ) -> dict[str, Any]:
+        """Pick a constraint-safe price only with out-of-time-validated price response (Phase 5.4).
+
+        Returns {"recommendation": None, ...} with the blocking reason when any gate fails, so the caller keeps HOLD.
+        """
+        from app.services.pooled_elasticity_service import latest_pooled_estimate, out_of_time_passed
+
+        record = latest_pooled_estimate(self._session, seller_id=product.seller_id, product_id=product.id, as_of_date=as_of_date)
+        blocked = {"recommendation": None, "estimate_id": record.id if record else None}
+        if record is None or record.elasticity is None:
+            return {**blocked, "price_response": {"status": "UNAVAILABLE", "reason": "NO_POOLED_ESTIMATE"}}
+        validation = (record.quality_metrics or {}).get("out_of_time")
+        response = {
+            "status": "VALIDATED" if out_of_time_passed(record) else "NOT_VALIDATED",
+            "estimate_id": str(record.id),
+            "elasticity": str(record.elasticity),
+            "method": record.estimation_method.value,
+            "out_of_time": validation,
+        }
+        if not out_of_time_passed(record):
+            return {**blocked, "price_response": {**response, "reason": "OUT_OF_TIME_VALIDATION_NOT_PASSED"}}
+        if forecast_units is None:
+            return {**blocked, "price_response": {**response, "reason": "BASELINE_FORECAST_UNAVAILABLE"}}
+        if market_reasons:
+            return {**blocked, "price_response": {**response, "reason": market_reasons[0]}}
+        estimate = elasticity_from_record(record)
+        scored: list[dict[str, Any]] = []
+        for price, evaluation in zip(candidates, evaluations):
+            quote = quotes[price]
+            if not evaluation["is_allowed"] or quote.unit_profit is None:
+                continue
+            forecast = self._demand_response.forecast_candidate_units(
+                current_price=current_price,
+                candidate_price=price,
+                baseline_units=forecast_units,
+                forecast_horizon_days=30,
+                baseline_period={"source": "baseline_demand_forecast"},
+                estimate=estimate,
+            )
+            if forecast.central_estimate is None:
+                continue
+            units = forecast.central_estimate
+            revenue, profit = _money(price * units), _money(quote.unit_profit * units)
+            evaluation.update(
+                {
+                    "expected_units": str(units),
+                    "expected_units_lower": str(forecast.lower_estimate),
+                    "expected_units_upper": str(forecast.upper_estimate),
+                    "expected_revenue": str(revenue),
+                    "expected_profit": str(profit),
+                    "eligible_for_price_change": price != current_price,
+                    "rejection_reasons": [reason for reason in evaluation["rejection_reasons"] if reason != "PRICE_RESPONSE_UNVALIDATED"],
+                }
+            )
+            scored.append({"price": price, "units": units, "revenue": revenue, "profit": profit, "evaluation": evaluation})
+        baseline = next((item for item in scored if item["price"] == current_price), None)
+        if baseline is None:
+            return {**blocked, "price_response": {**response, "reason": "CURRENT_PRICE_NOT_SAFE"}}
+        # Same rule as the legacy selector: profit for the profit objective, revenue among margin-safe prices otherwise.
+        key = "profit" if objective == PricingObjective.MAXIMIZE_EXPECTED_PROFIT else "revenue"
+        best = max(scored, key=lambda item: (item[key], -abs(item["price"] - current_price)))
+        threshold = baseline[key] * (Decimal("1") + self._config.min_improvement_rate) if baseline[key] > 0 else baseline[key]
+        choice = best if best["price"] != current_price and best[key] > threshold else baseline
+        return {
+            "recommendation": choice,
+            "estimate_id": record.id,
+            "baseline_revenue": baseline["revenue"],
+            "baseline_profit": baseline["profit"],
+            "confidence": min(record.confidence, Decimal("70.00")),
+            "price_response": response,
+        }
 
     def build_recommendation(
         self,
@@ -620,7 +774,15 @@ class DynamicPricingService:
         return self._session.execute(select(PricingAnalyticsSnapshot).where(PricingAnalyticsSnapshot.seller_id == seller_id, PricingAnalyticsSnapshot.product_id == product_id).order_by(PricingAnalyticsSnapshot.calculated_at.desc()).limit(1)).scalar_one_or_none()
 
     def _latest_elasticity(self, *, seller_id: UUID, product_id: UUID) -> DemandElasticityEstimate | None:
-        return self._session.execute(select(DemandElasticityEstimate).where(DemandElasticityEstimate.seller_id == seller_id, DemandElasticityEstimate.product_id == product_id).order_by(DemandElasticityEstimate.calculated_at.desc()).limit(1)).scalar_one_or_none()
+        statement = select(DemandElasticityEstimate).where(
+            DemandElasticityEstimate.seller_id == seller_id,
+            DemandElasticityEstimate.product_id == product_id,
+        )
+        if not settings.demand_response_pooling_enabled:
+            # Pooled rows exist only after the flag was on; ignore them once it is off.
+            # Text comparison: safe even before the migration adds the enum value.
+            statement = statement.where(cast(DemandElasticityEstimate.estimation_method, String) != DemandEstimationMethod.POOLED_CATEGORY.value)
+        return self._session.execute(statement.order_by(DemandElasticityEstimate.calculated_at.desc()).limit(1)).scalar_one_or_none()
 
     def _existing_for_snapshot(self, *, seller_id: UUID, product_id: UUID, pricing_analytics_id: UUID, objective: PricingObjective) -> DynamicPricingRecommendation | None:
         return self._session.execute(select(DynamicPricingRecommendation).where(DynamicPricingRecommendation.seller_id == seller_id, DynamicPricingRecommendation.product_id == product_id, DynamicPricingRecommendation.pricing_analytics_id == pricing_analytics_id, DynamicPricingRecommendation.objective == objective, DynamicPricingRecommendation.formula_version == self._persistence_formula_version)).scalar_one_or_none()

@@ -38,6 +38,9 @@ export type InventoryIntelligenceItem = {
   calculationVersion: string | null
   asOfDate: string | null
   lastUpdatedAt: string | null
+  reorderRecommendationId?: string | null
+  supplierLeadTimeDays?: number | null
+  supplierLeadTimeDefaulted?: boolean | null
 }
 
 export type InventoryIntelligencePage<T = InventoryIntelligenceItem> = {
@@ -77,6 +80,11 @@ export type ProductInventoryIntelligence = {
   asOfDate: string | null
   lastUpdatedAt: string | null
   metadata: Record<string, unknown> | null
+  reorderRecommendationId?: string | null
+  recommendationStatus?: string | null
+  supplierLeadTimeDefaulted?: boolean | null
+  safetyStockUnits?: number | null
+  safetyStockServiceLevel?: number | null
 }
 
 export type InventoryWorkflowResponse = {

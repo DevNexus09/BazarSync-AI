@@ -368,3 +368,20 @@ class TelegramInventoryAlertServiceTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_inventory_dashboard_url_deep_links_to_product_drawer():
+    from uuid import uuid4
+
+    from app.services.telegram.inventory_alert_service import inventory_dashboard_url
+
+    product_id = uuid4()
+    assert inventory_dashboard_url(None, product_id=product_id, reorder=True) is None
+    assert inventory_dashboard_url("https://app.example.com", product_id=None, reorder=True) is None
+    assert (
+        inventory_dashboard_url("https://app.example.com/", product_id=product_id, reorder=True)
+        == f"https://app.example.com/app/inventory-intelligence?tab=reorder&product={product_id}"
+    )
+    assert inventory_dashboard_url("https://app.example.com", product_id=product_id, reorder=False).endswith(
+        f"?tab=today&product={product_id}"
+    )

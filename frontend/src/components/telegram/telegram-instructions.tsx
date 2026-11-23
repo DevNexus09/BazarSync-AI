@@ -122,7 +122,7 @@ export function TelegramInstructions({
         </div>
         {!token ? (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Click “Connect Telegram Bot” to generate a secure token.
+            Click “Generate new token” to create a secure command.
           </p>
         ) : null}
         <p className="mt-2 text-[11px] text-muted-foreground">

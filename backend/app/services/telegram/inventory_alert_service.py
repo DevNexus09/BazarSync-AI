@@ -277,6 +277,11 @@ class TelegramInventoryAlertService:
             recommended_action=getattr(getattr(reorder, "action", None), "value", None),
             recommended_quantity=getattr(reorder, "recommended_quantity", None),
             reorder_deadline=getattr(reorder, "reorder_deadline", None),
+            dashboard_url=inventory_dashboard_url(
+                settings.inventory_alert_dashboard_base_url,
+                product_id=getattr(product, "id", None),
+                reorder=getattr(getattr(reorder, "action", None), "value", None) == "REORDER",
+            ),
         )
         return format_inventory_alert_message(context)
 
@@ -376,3 +381,11 @@ def _sanitize_failure(detail: str | None) -> str:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def inventory_dashboard_url(base_url: str | None, *, product_id, reorder: bool) -> str | None:
+    """Deep link to the product drawer on the inventory page (?tab=&product=)."""
+    if not base_url or product_id is None:
+        return None
+    tab = "reorder" if reorder else "today"
+    return f"{base_url.rstrip('/')}/app/inventory-intelligence?tab={tab}&product={product_id}"

@@ -37,6 +37,9 @@ type ApiListItem = {
   calculation_version?: string | null
   as_of_date?: string | null
   last_updated_at?: string | null
+  reorder_recommendation_id?: string | null
+  supplier_lead_time_days?: number | null
+  supplier_lead_time_defaulted?: boolean | null
 }
 
 type ApiPage = {
@@ -76,6 +79,11 @@ type ApiProductIntelligence = {
   as_of_date?: string | null
   last_updated_at?: string | null
   metadata?: Record<string, unknown> | null
+  reorder_recommendation_id?: string | null
+  recommendation_status?: string | null
+  supplier_lead_time_defaulted?: boolean | null
+  safety_stock_units?: number | null
+  safety_stock_service_level?: string | number | null
 }
 
 type ApiWorkflow = {
@@ -143,6 +151,9 @@ const mapItem = (item: ApiListItem): InventoryIntelligenceItem => ({
   calculationVersion: item.calculation_version ?? null,
   asOfDate: item.as_of_date ?? null,
   lastUpdatedAt: item.last_updated_at ?? null,
+  reorderRecommendationId: item.reorder_recommendation_id ?? null,
+  supplierLeadTimeDays: item.supplier_lead_time_days ?? null,
+  supplierLeadTimeDefaulted: item.supplier_lead_time_defaulted ?? null,
 })
 
 const mapPage = (data: ApiPage): InventoryIntelligencePage => ({
@@ -182,6 +193,11 @@ const mapProduct = (data: ApiProductIntelligence): ProductInventoryIntelligence 
   asOfDate: data.as_of_date ?? null,
   lastUpdatedAt: data.last_updated_at ?? null,
   metadata: data.metadata ?? null,
+  reorderRecommendationId: data.reorder_recommendation_id ?? null,
+  recommendationStatus: data.recommendation_status ?? null,
+  supplierLeadTimeDefaulted: data.supplier_lead_time_defaulted ?? null,
+  safetyStockUnits: data.safety_stock_units ?? null,
+  safetyStockServiceLevel: toNumberOrNull(data.safety_stock_service_level),
 })
 
 const mapWorkflow = (data: ApiWorkflow): InventoryWorkflowResponse => ({
@@ -242,4 +258,23 @@ export async function runProductInventoryWorkflow(productId: string) {
     `/inventory-intelligence/products/${productId}/workflow`
   )
   return mapWorkflow(data)
+}
+
+/** Records the seller's decision only; it never places an order or changes stock. */
+export async function setReorderRecommendationStatus(
+  recommendationId: string,
+  decision: "mark-ordered" | "dismiss",
+) {
+  await apiClient.post(`/reorder-recommendations/${recommendationId}/${decision}`)
+}
+
+export type InventoryHistoryPoint = { date: string; available: number }
+
+export async function getProductInventoryHistory(productId: string, days = 30): Promise<InventoryHistoryPoint[]> {
+  const from = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
+  const { data } = await apiClient.get<{ items: Array<{ snapshot_date: string; quantity_available: number }> }>(
+    `/products/${productId}/inventory-history`,
+    { params: { from, order: "asc", limit: days + 1 } },
+  )
+  return data.items.map((item) => ({ date: item.snapshot_date, available: item.quantity_available }))
 }
