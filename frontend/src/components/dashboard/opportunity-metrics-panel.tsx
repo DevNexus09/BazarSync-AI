@@ -1,9 +1,14 @@
+import { ErrorState } from "@/components/common/error-state"
+import { EmptyHint } from "@/components/dashboard/empty-hint"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { KpiTrend, type OpportunityMetric } from "@/types/dashboard"
 
 type OpportunityMetricsPanelProps = {
   metrics?: OpportunityMetric[]
   isLoading: boolean
+  isError: boolean
+  onRetry: () => void
 }
 
 const trendStyles: Record<KpiTrend, string> = {
@@ -15,6 +20,8 @@ const trendStyles: Record<KpiTrend, string> = {
 export function OpportunityMetricsPanel({
   metrics,
   isLoading,
+  isError,
+  onRetry,
 }: OpportunityMetricsPanelProps) {
   if (isLoading) {
     return (
@@ -32,6 +39,20 @@ export function OpportunityMetricsPanel({
     )
   }
 
+  if (isError) {
+    return (
+      <ErrorState
+        title="Opportunity metrics unavailable"
+        message="Opportunity metrics could not be loaded."
+        action={
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Retry
+          </Button>
+        }
+      />
+    )
+  }
+
   const items = metrics ?? []
 
   return (
@@ -40,9 +61,11 @@ export function OpportunityMetricsPanel({
         Opportunity metrics
       </h3>
       {items.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-4 text-xs text-muted-foreground">
-          Opportunity metrics will appear when AI signals are available.
-        </div>
+        <EmptyHint
+          message="No recommendations yet. Generate one to see revenue, confidence and opportunity signals."
+          actionLabel="Generate recommendations"
+          to="/app/recommendations"
+        />
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {items.map((metric) => (

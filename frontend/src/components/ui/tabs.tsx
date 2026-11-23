@@ -42,7 +42,7 @@ export function UrlTabs({
             key={tab.value}
             value={tab.value}
             className={cn(
-              "-mb-px whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition",
+              "whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition",
               "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "data-[state=active]:border-primary data-[state=active]:text-foreground",
             )}

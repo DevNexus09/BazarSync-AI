@@ -10,7 +10,9 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/common/error-state"
+import { EmptyHint } from "@/components/dashboard/empty-hint"
 import type { MarketTrendPoint } from "@/types/dashboard"
+import { formatDateTime, formatShortDate } from "@/utils/formatters"
 
 type MarketTrendWidgetProps = {
   data?: MarketTrendPoint[]
@@ -27,7 +29,7 @@ export function MarketTrendWidget({
 }: MarketTrendWidgetProps) {
   if (isLoading) {
     return (
-      <div className="glass-panel p-4">
+      <div className="glass-panel h-full p-4">
         <div className="h-5 w-32 animate-pulse rounded bg-muted/60" />
         <div className="mt-4 h-40 animate-pulse rounded-lg bg-muted/30" />
       </div>
@@ -50,26 +52,30 @@ export function MarketTrendWidget({
 
   if (!data || data.length === 0) {
     return (
-      <div className="glass-panel p-4">
+      <div className="glass-panel h-full p-4">
         <h3 className="text-sm font-semibold text-foreground">Market trends</h3>
-        <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-4 text-xs text-muted-foreground">
-          Trend signals will appear once market intelligence starts streaming.
-        </div>
+        <EmptyHint
+          message="No recommendations in the last 14 days. Trends are built from recommendation signals."
+          actionLabel="Generate recommendations"
+          to="/app/recommendations"
+        />
       </div>
     )
   }
 
   return (
-    <div className="glass-panel p-4">
+    <div className="glass-panel h-full p-4">
       <h3 className="text-sm font-semibold text-foreground">Market trends</h3>
       <p className="text-xs text-muted-foreground">
         Demand, urgency, and opportunity indices.
       </p>
-      <div className="mt-4 h-48">
+      <div className="mt-3 h-48">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <XAxis
               dataKey="timestamp"
+              tickFormatter={formatShortDate}
+              minTickGap={24}
               tickLine={false}
               axisLine={false}
               tick={{ fill: "rgb(var(--muted-foreground))", fontSize: 11 }}
@@ -81,6 +87,7 @@ export function MarketTrendWidget({
               width={40}
             />
             <Tooltip
+              labelFormatter={(label) => formatDateTime(String(label))}
               contentStyle={{
                 background: "rgb(var(--tooltip-background))",
                 border: "1px solid rgb(var(--tooltip-border))",
@@ -95,7 +102,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="demandIndex"
               name="Demand"
-              stroke="rgb(var(--chart-4))"
+              stroke="rgb(var(--chart-2))"
               strokeWidth={2}
               dot={false}
             />
@@ -103,7 +110,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="urgencyIndex"
               name="Urgency"
-              stroke="rgb(var(--chart-3))"
+              stroke="rgb(var(--warning))"
               strokeWidth={2}
               dot={false}
             />
@@ -111,7 +118,7 @@ export function MarketTrendWidget({
               type="monotone"
               dataKey="opportunityIndex"
               name="Opportunity"
-              stroke="rgb(var(--chart-2))"
+              stroke="rgb(var(--success))"
               strokeWidth={2}
               dot={false}
             />

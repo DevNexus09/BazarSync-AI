@@ -2,6 +2,7 @@ import { Activity, Bell, Bot, Server } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/common/error-state"
+import { EmptyHint } from "@/components/dashboard/empty-hint"
 import { ActivitySeverity, type ActivityItem } from "@/types/dashboard"
 import { cn } from "@/lib/utils"
 
@@ -74,9 +75,7 @@ export function RealtimeActivityFeed({
         </span>
       </div>
       {feed.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed bg-muted/30 p-4 text-xs text-muted-foreground">
-          Waiting for live events from the BazarSync-AI engine.
-        </div>
+        <EmptyHint message="No recent activity. New recommendations, alerts and competitor changes will appear here." />
       ) : (
         <div className="mt-4 space-y-3">
           {feed.map((item) => {

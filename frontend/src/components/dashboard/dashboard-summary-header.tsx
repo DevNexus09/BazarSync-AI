@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { RefreshCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -8,7 +9,7 @@ import {
   type DashboardSummary,
   type RealtimeStatus,
 } from "@/types/dashboard"
-import { formatNumber } from "@/utils/formatters"
+import { formatDateTime, formatNumber } from "@/utils/formatters"
 
 type DashboardSummaryHeaderProps = {
   summary?: DashboardSummary
@@ -16,6 +17,7 @@ type DashboardSummaryHeaderProps = {
   isRefreshing: boolean
   realtimeStatus?: RealtimeStatus
   onRefresh: () => void
+  aside?: ReactNode
 }
 
 const trendStyles: Record<KpiTrend, string> = {
@@ -30,10 +32,11 @@ export function DashboardSummaryHeader({
   isRefreshing,
   realtimeStatus,
   onRefresh,
+  aside,
 }: DashboardSummaryHeaderProps) {
   if (isLoading && !summary) {
     return (
-      <div className="glass-panel p-6">
+      <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <div className="h-6 w-48 animate-pulse rounded bg-muted/70" />
@@ -41,14 +44,7 @@ export function DashboardSummaryHeader({
           </div>
           <div className="h-10 w-40 animate-pulse rounded-lg bg-muted/50" />
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={`summary-skeleton-${index}`}
-              className="h-20 rounded-xl border bg-muted/30"
-            />
-          ))}
-        </div>
+        <div className="h-24 animate-pulse rounded-xl bg-muted/30" />
       </div>
     )
   }
@@ -61,43 +57,42 @@ export function DashboardSummaryHeader({
             {
               label: "Active alerts",
               value: formatNumber(summary.activeAlerts),
-              delta: "Realtime",
-              trend: KpiTrend.Up,
+              delta: "Open now",
+              trend: KpiTrend.Flat,
             },
             {
-              label: "Live competitors",
+              label: "Monitored products",
               value: formatNumber(summary.liveCompetitors),
-              delta: "Tracking",
+              delta: "Tracked against competitors",
               trend: KpiTrend.Flat,
             },
             {
               label: "AI recommendations",
               value: formatNumber(summary.aiRecommendations),
-              delta: "Today",
-              trend: KpiTrend.Up,
+              delta: "In the last hour",
+              trend: KpiTrend.Flat,
             },
             {
               label: "Revenue opportunities",
               value: formatNumber(summary.revenueOpportunities),
-              delta: "This week",
-              trend: KpiTrend.Up,
+              delta: "Open opportunities",
+              trend: KpiTrend.Flat,
             },
           ]
         : []
 
   return (
-    <section className="glass-panel p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            AI Operations Center
-          </p>
           <h1 className="heading-font text-2xl font-semibold text-foreground">
-            Realtime marketplace intelligence
+            AI Operations Center
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Live pricing, urgency, and recommendation signals for BazarSync AI
-            sellers.
+            What changed in your market and what to do next.
+            {summary?.lastSyncedAt
+              ? ` Updated ${formatDateTime(summary.lastSyncedAt)}.`
+              : ""}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -113,40 +108,25 @@ export function DashboardSummaryHeader({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-12">
+      <dl className="glass-panel grid grid-cols-2 divide-border/50 lg:grid-cols-4 lg:divide-x xl:col-span-9">
         {metrics.map((metric) => (
-          <div
-            key={metric.label}
-            className="rounded-xl border border-border/60 bg-card/60 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_0_18px_rgb(var(--primary)/.2)]"
-          >
-            <p className="text-xs text-muted-foreground">{metric.label}</p>
-            <div className="mt-2 text-2xl font-semibold text-foreground">
+          <div key={metric.label} className="px-5 py-4">
+            <dt className="text-xs text-muted-foreground">{metric.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
               {metric.value}
-            </div>
-            <p className={cn("mt-1 text-xs font-semibold", trendStyles[metric.trend])}>
+            </dd>
+            <dd
+              className={cn("mt-0.5 text-xs", trendStyles[metric.trend])}
+            >
               {metric.delta}
-            </p>
+            </dd>
           </div>
         ))}
+      </dl>
+      {aside ? <div className="xl:col-span-3">{aside}</div> : null}
       </div>
 
-      {summary?.insights?.length ? (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {summary.insights.slice(0, 2).map((insight) => (
-            <div
-              key={insight.id}
-              className="rounded-xl border border-dashed bg-muted/30 p-4"
-            >
-              <div className="text-sm font-semibold text-foreground">
-                {insight.title}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {insight.summary}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
     </section>
   )
 }

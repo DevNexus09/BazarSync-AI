@@ -1,5 +1,6 @@
 import apiClient from "@/api/client"
-import { SystemStatus } from "@/types/dashboard"
+import { formatCurrency, formatNumber, formatPercent } from "@/utils/formatters"
+import { KpiTrend, SystemStatus } from "@/types/dashboard"
 import {
   CompetitorStatus,
   CompetitorTrend,
@@ -281,18 +282,72 @@ export async function getDashboardSummary(
   }
 }
 
+type ApiMarketTrendPoint = {
+  timestamp: string
+  demand_index: number
+  urgency_index: number
+  opportunity_index: number
+  price_index: number
+}
+
 export async function getMarketTrends(
   signal?: AbortSignal
 ): Promise<MarketTrendPoint[]> {
-  void signal
-  return []
+  const { data } = await apiClient.get<ApiMarketTrendPoint[]>(
+    "/dashboard/market-trends",
+    { signal }
+  )
+  return data.map((point) => ({
+    timestamp: point.timestamp,
+    demandIndex: point.demand_index,
+    urgencyIndex: point.urgency_index,
+    opportunityIndex: point.opportunity_index,
+    priceIndex: point.price_index,
+  }))
+}
+
+type ApiOpportunityMetric = {
+  id: string
+  label: string
+  value: number | string
+  delta: number | string | null
+  trend: string
+}
+
+const formatMetricNumber = (id: string, value: number) => {
+  if (id === "revenue-opportunity") return formatCurrency(value)
+  if (id === "confidence") return formatPercent(value)
+  return formatNumber(value)
+}
+
+export function mapOpportunityMetric(
+  metric: ApiOpportunityMetric
+): OpportunityMetric {
+  const { id, delta, value } = metric
+  let deltaLabel: string
+  if (delta == null) deltaLabel = "No prior signal"
+  else if (typeof delta === "string") deltaLabel = delta
+  else deltaLabel = `${delta > 0 ? "+" : ""}${formatMetricNumber(id, delta)}`
+  return {
+    id,
+    label: metric.label,
+    value: typeof value === "number" ? formatMetricNumber(id, value) : value,
+    delta: deltaLabel,
+    trend:
+      metric.trend === KpiTrend.Up || metric.trend === KpiTrend.Down
+        ? metric.trend
+        : KpiTrend.Flat,
+  }
 }
 
 export async function getOpportunityMetrics(
   signal?: AbortSignal
 ): Promise<OpportunityMetric[]> {
-  void signal
-  return []
+  const { data } = await apiClient.get<ApiOpportunityMetric[]>(
+    "/dashboard/opportunity-metrics",
+    { signal }
+  )
+  return data.map(mapOpportunityMetric)
 }
 
 export async function getMarketOpportunities(
@@ -320,8 +375,11 @@ export async function getMarketOpportunities(
 export async function getActivityFeed(
   signal?: AbortSignal
 ): Promise<ActivityItem[]> {
-  void signal
-  return []
+  // Backend fields already match the frontend shape.
+  const { data } = await apiClient.get<ActivityItem[]>("/dashboard/activity", {
+    signal,
+  })
+  return data
 }
 
 export async function getRecommendations(
@@ -329,7 +387,7 @@ export async function getRecommendations(
 ): Promise<Recommendation[]> {
   const { data } = await apiClient.get<PaginatedResponse<ApiRecommendationRecord>>(
     "/dashboard/recommendations",
-    { signal }
+    { signal, params: { sort_by: "urgency_score", page_size: 3 } }
   )
   return data.items.map((rec) => ({
     id: rec.recommendation_id,
@@ -380,9 +438,24 @@ export async function getCompetitors(
   })
 }
 
+type ApiCompetitorPricePoint = {
+  timestamp: string
+  competitor_price: number
+  seller_price: number
+  market_average: number
+}
+
 export async function getCompetitorPriceTrend(
   signal?: AbortSignal
 ): Promise<CompetitorPricePoint[]> {
-  void signal
-  return []
+  const { data } = await apiClient.get<ApiCompetitorPricePoint[]>(
+    "/dashboard/competitor-price-trend",
+    { signal }
+  )
+  return data.map((point) => ({
+    timestamp: point.timestamp,
+    competitorPrice: point.competitor_price,
+    sellerPrice: point.seller_price,
+    marketAverage: point.market_average,
+  }))
 }

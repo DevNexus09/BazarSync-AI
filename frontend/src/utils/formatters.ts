@@ -102,3 +102,10 @@ export function hoursSince(
   const time = (value instanceof Date ? value : new Date(value)).getTime()
   return Number.isNaN(time) ? null : (now.getTime() - time) / 3_600_000
 }
+
+export function formatShortDate(value: string | number) {
+  return new Date(value).toLocaleDateString("en-BD", {
+    month: "short",
+    day: "numeric",
+  })
+}

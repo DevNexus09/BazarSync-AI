@@ -39,6 +39,9 @@ class OpportunityMetricsService:
 
         latest_rec = latest[0] if latest else None
         prev_rec = previous[0] if previous else None
+        if latest_rec is None:
+            # No recommendations means no evidence; return nothing rather than zero-valued tiles.
+            return []
 
         _, latest_analytics = _split_context_snapshot(
             latest_rec.recommendation_context if latest_rec else None

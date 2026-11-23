@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { CheckCircle2, Sparkles } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -10,6 +11,7 @@ import {
 
 type RecommendationCardProps = {
   recommendation: Recommendation
+  action?: ReactNode
 }
 
 const priorityStyles: Record<RecommendationPriority, string> = {
@@ -35,22 +37,31 @@ const actionLabels: Record<RecommendationAction, string> = {
   [RecommendationAction.Hold]: "Hold price",
 }
 
-export function RecommendationCard({ recommendation }: RecommendationCardProps) {
+export function RecommendationCard({
+  recommendation,
+  action,
+}: RecommendationCardProps) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--accent)/.15)]">
+    <div className="flex h-full flex-col rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--accent)/.15)]">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted-foreground">
+        <div className="min-w-0">
+          <p
+            className="truncate text-xs text-muted-foreground"
+            title={recommendation.product}
+          >
             {recommendation.product}
           </p>
           <h4 className="text-sm font-semibold text-foreground">
             {recommendation.title}
           </h4>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p
+            className="mt-1 line-clamp-3 text-xs text-muted-foreground"
+            title={recommendation.summary}
+          >
             {recommendation.summary}
           </p>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Sparkles className="size-4" />
         </div>
       </div>
@@ -72,7 +83,7 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
           {recommendation.status.replace("_", " ")}
         </span>
       </div>
-      <div className="mt-4 grid gap-2 text-xs text-muted-foreground">
+      <div className="mb-4 mt-4 grid gap-2 text-xs text-muted-foreground">
         <div className="flex items-center justify-between">
           <span>Recommended action</span>
           <span className="font-semibold text-foreground">
@@ -86,9 +97,12 @@ export function RecommendationCard({ recommendation }: RecommendationCardProps) 
           </span>
         </div>
       </div>
-      <div className="mt-4 inline-flex items-center gap-1 text-xs text-muted-foreground">
-        <CheckCircle2 className="size-3.5" />
-        Updated {new Date(recommendation.createdAt).toLocaleString()}
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <CheckCircle2 aria-hidden className="size-3.5" />
+          Updated {new Date(recommendation.createdAt).toLocaleString()}
+        </span>
+        {action}
       </div>
     </div>
   )
