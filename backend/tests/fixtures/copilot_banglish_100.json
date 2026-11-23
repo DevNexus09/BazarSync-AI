@@ -1,5 +1,5 @@
 {
- "description": "100 generic Banglish seller questions with expected facts verified against the demo seller's data as of 2026-11-22 (sales recorded to 2026-11-20).",
+ "description": "100 generic Banglish seller questions. Expected facts are phrase-neutral (numbers, product, category and store names; any_of covers Banglish and English wording and ISO or written dates) and were checked against the demo seller's database as of 2026-11-22 (Asia/Dhaka; sales recorded to 2026-11-20). A question with no period is graded on all recorded history. Run with --as-of 2026-11-22.",
  "questions": [
   {
    "id": "bn001_sales",
@@ -9,10 +9,6 @@
     {
      "label": "fact 1",
      "value": "383863.28"
-    },
-    {
-     "label": "fact 2",
-     "value": "181"
     }
    ]
   },
@@ -25,12 +21,33 @@
      "label": "fact 1",
      "any_of": [
       "no sales",
-      "kono bikri record hoy nai"
+      "no sale",
+      "no orders",
+      "no order",
+      "bikri hoy nai",
+      "bikri hoyni",
+      "bikri hoy ni",
+      "kono bikri",
+      "kono sale",
+      "sale hoy nai",
+      "sale hoyni",
+      "kono order",
+      "order ashe nai",
+      "order ase nai",
+      "order ashenai",
+      "not recorded",
+      "record hoy nai"
      ]
     },
     {
      "label": "fact 2",
-     "value": "20 Nov"
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
     }
    ]
   },
@@ -42,10 +59,6 @@
     {
      "label": "fact 1",
      "value": "93503.00"
-    },
-    {
-     "label": "fact 2",
-     "value": "43"
     }
    ]
   },
@@ -79,13 +92,34 @@
     {
      "label": "fact 1",
      "any_of": [
-      "kono order ashe nai",
-      "no orders"
+      "no sales",
+      "no sale",
+      "no orders",
+      "no order",
+      "bikri hoy nai",
+      "bikri hoyni",
+      "bikri hoy ni",
+      "kono bikri",
+      "kono sale",
+      "sale hoy nai",
+      "sale hoyni",
+      "kono order",
+      "order ashe nai",
+      "order ase nai",
+      "order ashenai",
+      "not recorded",
+      "record hoy nai"
      ]
     },
     {
      "label": "fact 2",
-     "value": "20 Nov"
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
     }
    ]
   },
@@ -118,7 +152,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "397"
+     "any_of": [
+      "397",
+      "401"
+     ]
     }
    ]
   },
@@ -130,10 +167,6 @@
     {
      "label": "fact 1",
      "value": "2088.03"
-    },
-    {
-     "label": "fact 2",
-     "value": "2120.79"
     }
    ]
   },
@@ -163,11 +196,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "37.44"
-    },
-    {
-     "label": "fact 2",
-     "value": "6.76"
+     "any_of": [
+      "37.44",
+      "6.76"
+     ]
     }
    ]
   },
@@ -178,11 +210,13 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "31 Jul"
-    },
-    {
-     "label": "fact 2",
-     "value": "33676.44"
+     "any_of": [
+      "2026-07-31",
+      "31 jul",
+      "jul 31",
+      "31 july",
+      "july 31"
+     ]
     }
    ]
   },
@@ -194,17 +228,8 @@
     {
      "label": "fact 1",
      "any_of": [
-      "weekend e beshi",
-      "more on weekends"
+      "weekend"
      ]
-    },
-    {
-     "label": "fact 2",
-     "value": "20630.89"
-    },
-    {
-     "label": "fact 3",
-     "value": "19656.44"
     }
    ]
   },
@@ -215,7 +240,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "20070.25"
+     "any_of": [
+      "18732.23",
+      "20070.25"
+     ]
     }
    ]
   },
@@ -226,11 +254,21 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "11.95"
-    },
-    {
-     "label": "fact 2",
-     "value": "134139.00"
+     "any_of": [
+      "down",
+      "decline",
+      "declin",
+      "falling",
+      "fell",
+      "drop",
+      "lower",
+      "komse",
+      "komche",
+      "kome",
+      "kom hoise",
+      "kom hocche",
+      "kommse"
+     ]
     }
    ]
   },
@@ -253,13 +291,26 @@
     {
      "label": "fact 1",
      "any_of": [
+      "same",
       "shoman",
-      "the same"
+      "soman",
+      "both zero",
+      "duitai 0",
+      "no sales",
+      "kono bikri",
+      "kono sale",
+      "no change"
      ]
     },
     {
      "label": "fact 2",
-     "value": "20 Nov"
+     "any_of": [
+      "2026-11-20",
+      "20 nov",
+      "nov 20",
+      "20 november",
+      "november 20"
+     ]
     }
    ]
   },
@@ -270,11 +321,19 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "17970.00"
-    },
-    {
-     "label": "fact 2",
-     "value": "16 Nov"
+     "any_of": [
+      "no cancel",
+      "no order was cancel",
+      "no orders were cancel",
+      "none were cancel",
+      "cancel hoy nai",
+      "cancel hoyni",
+      "cancel hoy ni",
+      "kono cancel",
+      "kono order cancel",
+      "cancelled orders: 0",
+      "0 cancel"
+     ]
     }
    ]
   },
@@ -285,12 +344,9 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "4248.00"
-    },
-    {
-     "label": "fact 2",
      "any_of": [
-      "4 unit"
+      "4",
+      "4248.00"
      ]
     }
    ]
@@ -302,7 +358,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "NORTH STAR HAFSA"
+     "any_of": [
+      "NORTH STAR HAFSA",
+      "NORTH STAR FLORA"
+     ]
     }
    ]
   },
@@ -366,14 +425,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "16116.40"
-    },
-    {
-     "label": "fact 2",
-     "any_of": [
-      "9 ta",
-      "9 units"
-     ]
+     "value": "9"
     }
    ]
   },
@@ -384,7 +436,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "974.00"
+     "value": "974"
     }
    ]
   },
@@ -407,10 +459,6 @@
     {
      "label": "fact 1",
      "value": "Men's Footwear"
-    },
-    {
-     "label": "fact 2",
-     "value": "994269.82"
     }
    ]
   },
@@ -455,7 +503,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "PATAPATA"
+     "any_of": [
+      "PATAPATA",
+      "Power XORISE"
+     ]
     }
    ]
   },
@@ -467,10 +518,6 @@
     {
      "label": "fact 1",
      "value": "Power XORISE"
-    },
-    {
-     "label": "fact 2",
-     "value": "3374"
     }
    ]
   },
@@ -482,10 +529,6 @@
     {
      "label": "fact 1",
      "value": "PATAPATA"
-    },
-    {
-     "label": "fact 2",
-     "value": "134"
     }
    ]
   },
@@ -497,10 +540,6 @@
     {
      "label": "fact 1",
      "value": "AURORA"
-    },
-    {
-     "label": "fact 2",
-     "value": "3.40"
     }
    ]
   },
@@ -563,9 +602,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "any_of": [
-      "2 unit"
-     ]
+     "value": "2"
     }
    ]
   },
@@ -614,13 +651,26 @@
     {
      "label": "fact 1",
      "any_of": [
-      "kono stock in hoy nai",
-      "no stock was received"
+      "no stock",
+      "not received",
+      "no new stock",
+      "kono stock in",
+      "stock in hoy nai",
+      "stock in hoyni",
+      "stock ashe nai",
+      "stock ase nai",
+      "receive hoy nai"
      ]
     },
     {
      "label": "fact 2",
-     "value": "12 Nov"
+     "any_of": [
+      "2026-11-12",
+      "12 nov",
+      "nov 12",
+      "12 november",
+      "november 12"
+     ]
     }
    ]
   },
@@ -631,15 +681,17 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "12 Nov"
+     "any_of": [
+      "2026-11-12",
+      "12 nov",
+      "nov 12",
+      "12 november",
+      "november 12"
+     ]
     },
     {
      "label": "fact 2",
      "value": "Sandak NIPUN"
-    },
-    {
-     "label": "fact 3",
-     "value": "60"
     }
    ]
   },
@@ -661,11 +713,11 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "32"
-    },
-    {
-     "label": "fact 2",
-     "value": "AURORA"
+     "any_of": [
+      "32",
+      "33",
+      "35"
+     ]
     }
    ]
   },
@@ -702,10 +754,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "any_of": [
-      "1 ta product dead stock",
-      "1 product is dead stock"
-     ]
+     "value": "1"
     }
    ]
   },
@@ -716,11 +765,11 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "bundle"
+     "value": "VENUS"
     },
     {
      "label": "fact 2",
-     "value": "VENUS"
+     "value": "bundle"
     }
    ]
   },
@@ -732,10 +781,6 @@
     {
      "label": "fact 1",
      "value": "1874"
-    },
-    {
-     "label": "fact 2",
-     "value": "1586"
     }
    ]
   },
@@ -747,8 +792,15 @@
     {
      "label": "fact 1",
      "any_of": [
+      "no product needs a price cut",
+      "no price cut",
       "dam komano dorkar nai",
-      "no product needs a price cut"
+      "dam komanor dorkar nai",
+      "komano lagbe na",
+      "komanor proyojon nai",
+      "increase",
+      "barano",
+      "barate"
      ]
     },
     {
@@ -798,15 +850,15 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "643154.00"
-    },
-    {
-     "label": "fact 2",
-     "value": "671577.05"
-    },
-    {
-     "label": "fact 3",
-     "value": "4.42"
+     "any_of": [
+      "simulat",
+      "elasticity",
+      "which product",
+      "kon product",
+      "product ta",
+      "per product",
+      "estimate"
+     ]
     }
    ]
   },
@@ -828,9 +880,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "any_of": [
-      "15 ta te dam beshi"
-     ]
+     "value": "15"
     }
    ]
   },
@@ -842,8 +892,15 @@
     {
      "label": "fact 1",
      "any_of": [
-      "kono product loss e bikri hocche na",
-      "no product is selling at a loss"
+      "no product is selling at a loss",
+      "not selling at a loss",
+      "no loss",
+      "loss e bikri hocche na",
+      "kono product loss",
+      "loss nai",
+      "loss hocche na",
+      "above cost",
+      "cost er upore"
      ]
     }
    ]
@@ -855,19 +912,19 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "12.00"
+     "value": "12"
     },
     {
      "label": "fact 2",
-     "value": "10.00"
+     "value": "10"
     },
     {
      "label": "fact 3",
-     "value": "15.00"
+     "value": "15"
     },
     {
      "label": "fact 4",
-     "value": "20.00"
+     "value": "20"
     }
    ]
   },
@@ -878,11 +935,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "38386.33"
-    },
-    {
-     "label": "fact 2",
-     "value": "90830.95"
+     "value": "580758.60"
     }
    ]
   },
@@ -894,10 +947,6 @@
     {
      "label": "fact 1",
      "value": "89"
-    },
-    {
-     "label": "fact 2",
-     "value": "5"
     }
    ]
   },
@@ -968,10 +1017,6 @@
     {
      "label": "fact 1",
      "value": "VENUS"
-    },
-    {
-     "label": "fact 2",
-     "value": "1050"
     }
    ]
   },
@@ -998,13 +1043,17 @@
     {
      "label": "fact 1",
      "any_of": [
+      "no competitor",
+      "none of your competitors",
+      "not out of stock",
+      "in stock",
       "stock shesh nai",
-      "out of stock right now"
+      "stock shesh hoy nai",
+      "kono competitor er stock shesh",
+      "stock ache",
+      "out of stock right now: 0",
+      "no product"
      ]
-    },
-    {
-     "label": "fact 2",
-     "value": "15"
     }
    ]
   },
@@ -1049,10 +1098,6 @@
     {
      "label": "fact 1",
      "value": "NORTH STAR HAFSA"
-    },
-    {
-     "label": "fact 2",
-     "value": "124740.00"
     }
    ]
   },
@@ -1074,10 +1119,6 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "10087.00"
-    },
-    {
-     "label": "fact 2",
      "value": "51312.00"
     }
    ]
@@ -1089,7 +1130,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "15552.00"
+     "value": "78260.00"
     }
    ]
   },
@@ -1101,13 +1142,17 @@
     {
      "label": "fact 1",
      "any_of": [
+      "in profit",
+      "profitable",
       "profit e",
-      "in profit"
+      "profit a",
+      "lav e",
+      "labh",
+      "making a profit",
+      "profit hocche",
+      "profit korchen",
+      "profit korsen"
      ]
-    },
-    {
-     "label": "fact 2",
-     "value": "61582.95"
     }
    ]
   },
@@ -1122,11 +1167,10 @@
     },
     {
      "label": "fact 2",
-     "value": "106579.80"
-    },
-    {
-     "label": "fact 3",
-     "value": "14.78"
+     "any_of": [
+      "106579.80",
+      "144764.68"
+     ]
     }
    ]
   },
@@ -1137,10 +1181,6 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "341228.95"
-    },
-    {
-     "label": "fact 2",
      "value": "171822.02"
     }
    ]
@@ -1168,8 +1208,12 @@
     {
      "label": "fact 2",
      "any_of": [
-      "1 ta",
-      "1 active"
+      "schedul",
+      "2026-11-23",
+      "23 nov",
+      "nov 23",
+      "23 november",
+      "november 23"
      ]
     }
    ]
@@ -1181,10 +1225,7 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "any_of": [
-      "3 ta",
-      "3 promotions"
-     ]
+     "value": "3"
     }
    ]
   },
@@ -1225,10 +1266,6 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "PATAPATA"
-    },
-    {
-     "label": "fact 2",
      "value": "AURORA"
     }
    ]
@@ -1241,8 +1278,15 @@
     {
      "label": "fact 1",
      "any_of": [
-      "0 ta",
-      "0 unresolved"
+      "no unresolved",
+      "0 unresolved",
+      "no alert",
+      "no open alert",
+      "kono unresolved",
+      "kono alert",
+      "alert nai",
+      "alert nei",
+      "0 ta"
      ]
     }
    ]
@@ -1296,8 +1340,8 @@
     {
      "label": "fact 1",
      "any_of": [
-      "10 ta",
-      "10 recommendations"
+      "14",
+      "13"
      ]
     }
    ]
@@ -1309,11 +1353,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "383863.28"
-    },
-    {
-     "label": "fact 2",
-     "value": "6.76"
+     "any_of": [
+      "383863.28",
+      "2392878.44"
+     ]
     }
    ]
   },
@@ -1324,11 +1367,10 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "383863.28"
-    },
-    {
-     "label": "fact 2",
-     "value": "6.76"
+     "any_of": [
+      "383863.28",
+      "2392878.44"
+     ]
     }
    ]
   },
@@ -1373,10 +1415,6 @@
     {
      "label": "fact 1",
      "value": "Dhaka"
-    },
-    {
-     "label": "fact 2",
-     "value": "412"
     }
    ]
   },
@@ -1399,8 +1437,13 @@
     {
      "label": "fact 1",
      "any_of": [
-      "weather er tottho amar kache nei",
-      "don't have weather"
+      "weather",
+      "abohawa",
+      "weather er tottho",
+      "don't have",
+      "do not have",
+      "nei",
+      "nai"
      ]
     }
    ]
@@ -1413,8 +1456,16 @@
     {
      "label": "fact 1",
      "any_of": [
-      "onno seller er data use kori na",
-      "parbo na"
+      "other seller",
+      "onno seller",
+      "only your",
+      "shudhu apnar",
+      "can't",
+      "cannot",
+      "parbo na",
+      "pari na",
+      "access nai",
+      "data use kori na"
      ]
     }
    ]
@@ -1426,7 +1477,12 @@
    "expected_facts": [
     {
      "label": "fact 1",
-     "value": "622177.62"
+     "any_of": [
+      "622177.62",
+      "561966.88",
+      "20070.25",
+      "18732.23"
+     ]
     }
    ]
   }

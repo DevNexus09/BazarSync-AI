@@ -218,6 +218,14 @@ class CopilotAnswerBuilderTests(unittest.TestCase):
         self.assertIn("Friday: 33676.00", answer.answer)
         self.assertIn("Power XORISE: stock 14, price 3374.00", answer.answer)
 
+    def test_fallback_states_a_count_tool_result_in_the_reply_script(self):
+        count = _data_result("count_products", {"count": 15, "filters_used": {}})
+
+        bangla = self.builder.build(classification=_classification(CopilotIntent.UNKNOWN, language="bn"), tool_results=[count], evidence=[{"source_table": "products", "source_id": "x"}], missing_data=[], reply_language="bn", primary_tools={"count_products"}, period=None)
+
+        self.assertIn("15", bangla.answer)
+        self.assertTrue(bangla.answer.startswith("আপনার ডেটা থেকে"), bangla.answer)
+
     def test_fallback_shows_memory_only_for_memory_questions(self):
         memory = _result("retrieve_business_memory", "memory_chunks", [{"title": "Supplier delay note", "summary": "late in March"}])
         revenue = _data_result("get_revenue_summary", {"gross_revenue": "250.00", "order_count": 3, "units_sold": 4})

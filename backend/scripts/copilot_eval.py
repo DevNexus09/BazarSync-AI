@@ -6,6 +6,10 @@ appears in the answer. Live LLM calls may cost money; questions run sequentially
 
     python scripts/copilot_eval.py --seller-id <uuid>
     python scripts/copilot_eval.py --seller-id <uuid> --only rev_october,stock_in_week
+    python scripts/copilot_eval.py --seller-id <uuid> --fixture tests/fixtures/copilot_banglish_heldout.json --as-of 2026-11-22
+
+``--as-of`` pins "today" to that day at 21:00 Asia/Dhaka for the planner, the classifier and the
+agent loop, so relative periods ("last 7 din", "gotokal") resolve the same way on every run.
 
 The orchestrator persists one Copilot conversation per question for that seller, exactly
 like the API does; those conversations are tagged ``metadata_json.source = "copilot_eval"``
@@ -16,7 +20,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import datetime, timezone
+from datetime import date, datetime, time as day_time, timezone
 from decimal import Decimal, InvalidOperation
 import json
 from pathlib import Path
@@ -25,6 +29,7 @@ import sys
 import time
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND))
@@ -78,11 +83,27 @@ def grade(case: dict[str, Any], answer: str, tools: list[str]) -> dict[str, Any]
     }
 
 
+def as_of_now(value: str | None) -> datetime | None:
+    """``YYYY-MM-DD`` -> that day at 21:00 in the seller calendar (Asia/Dhaka)."""
+    if not value:
+        return None
+    return datetime.combine(date.fromisoformat(value), day_time(21, 0), tzinfo=ZoneInfo("Asia/Dhaka"))
+
+
 async def run(args: argparse.Namespace) -> dict[str, Any]:
     from app.db.session import SessionLocal
     from app.repositories.copilot_repository import CopilotRepository
+    from app.services.copilot import orchestrator as orchestrator_module
+    from app.services.copilot.entity_resolver import CopilotEntityResolver
+    from app.services.copilot.intent_classifier import CopilotIntentClassifier
     from app.services.copilot.orchestrator import CopilotOrchestrator, CopilotOrchestratorRequest
+    from app.services.copilot.question_planner import CopilotQuestionPlanner
     from app.services.rag_memory_backfill_service import EVAL_CONVERSATION_SOURCE
+
+    as_of = as_of_now(args.as_of)
+    if as_of is not None:
+        # The agent loop's "today" (the planner and classifier get it per orchestrator below).
+        orchestrator_module._today_seller = as_of.date  # type: ignore[assignment]
 
     cases = json.loads(Path(args.fixture).read_text(encoding="utf-8"))["questions"]
     if args.only:
@@ -98,7 +119,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                 conversation = CopilotRepository(session).create_conversation(
                     seller_id=seller_id, user_id=seller_id, title=f"[eval] {case['id']}", metadata_json={"source": EVAL_CONVERSATION_SOURCE}
                 )
-                result = await CopilotOrchestrator(db=session).ask(
+                # None keeps the orchestrator's own defaults (real "now").
+                planner = None if as_of is None else CopilotQuestionPlanner(entity_resolver=CopilotEntityResolver(db=session), now=as_of)
+                classifier = None if as_of is None else CopilotIntentClassifier(db=session, now=as_of)
+                result = await CopilotOrchestrator(db=session, question_planner=planner, classifier=classifier).ask(
                     CopilotOrchestratorRequest(
                         seller_id=seller_id,
                         user_id=seller_id,
@@ -129,6 +153,8 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     summary = {
         "ran_at": datetime.now(timezone.utc).isoformat(),
         "seller_id": str(seller_id),
+        "fixture": str(args.fixture),
+        "as_of": args.as_of,
         "total": len(rows),
         "passed": passed,
         "score": round(passed / len(rows), 4) if rows else 0.0,
@@ -148,6 +174,7 @@ def main() -> int:
     cli.add_argument("--fixture", default=str(FIXTURE), help="Questions JSON (default: the golden set).")
     cli.add_argument("--only", help="Comma-separated question ids.")
     cli.add_argument("--verbose", action="store_true", help="Print failing answers.")
+    cli.add_argument("--as-of", help="Pin today to YYYY-MM-DD (21:00 Asia/Dhaka) so relative periods are reproducible.")
     cli.add_argument("--pause", type=float, default=0.0, help="Seconds to wait between questions (provider rate limits).")
     asyncio.run(run(cli.parse_args()))
     return 0

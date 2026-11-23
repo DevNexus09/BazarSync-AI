@@ -122,3 +122,27 @@ def _snapshot_kwargs(product: Product) -> dict:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecommendationStatusFilterTests(unittest.TestCase):
+    def test_status_filters_use_only_values_the_enum_has(self):
+        # PostgreSQL rejects an IN list with a value outside the enum ("PENDING"), failing the whole tool.
+        from app.models.dynamic_pricing_recommendation import DynamicPricingRecommendation
+        from app.services.copilot.tool_registry import _existing_statuses
+
+        column = DynamicPricingRecommendation.__table__.c.recommendation_status
+        self.assertEqual(["OPEN"], _existing_statuses(column, ["OPEN", "PENDING"]))
+        self.assertEqual(["DISMISSED"], _existing_statuses(column, ["DISMISSED", "IGNORED", "REJECTED"]))
+
+    def test_model_supplied_status_filter_outside_the_enum_matches_nothing_instead_of_failing(self):
+        # The model asked for promotions with status "ACTIVE" (the enum says RUNNING); PostgreSQL failed the tool.
+        from sqlalchemy.dialects import postgresql
+
+        from app.models.promotion import PromotionPlan
+        from app.services.copilot.tool_registry import _enum_safe_equals
+
+        unknown = _enum_safe_equals(PromotionPlan.__table__.c.status, "ACTIVE").compile(dialect=postgresql.dialect())
+        known = _enum_safe_equals(PromotionPlan.__table__.c.status, "RUNNING").compile(dialect=postgresql.dialect())
+
+        self.assertNotIn("ACTIVE", [str(value) for value in unknown.params.values()])
+        self.assertIn("RUNNING", str(known.params))

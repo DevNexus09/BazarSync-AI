@@ -1712,7 +1712,7 @@ class SqlAlchemyCopilotToolDataAccess:
         if product_id:
             stmt = stmt.where(PromotionPlan.product_id == product_id)
         if status:
-            stmt = stmt.where(PromotionPlan.status == status)
+            stmt = stmt.where(_enum_safe_equals(PromotionPlan.status, status))
         if marketplace:
             stmt = stmt.where(PromotionPlan.marketplace == marketplace)
         stmt = _date_filter(stmt, PromotionPlan.planned_start_at, from_date, to_date)
@@ -1730,7 +1730,7 @@ class SqlAlchemyCopilotToolDataAccess:
         if product_id:
             stmt = stmt.where(PromotionResult.product_id == product_id)
         if status:
-            stmt = stmt.where(PromotionResult.result_status == status)
+            stmt = stmt.where(_enum_safe_equals(PromotionResult.result_status, status))
         if marketplace:
             stmt = stmt.where(PromotionResult.marketplace == marketplace)
         stmt = _date_filter(stmt, PromotionResult.started_at, from_date, to_date)
@@ -2390,7 +2390,7 @@ class SqlAlchemyCopilotToolDataAccess:
             .order_by(DemandElasticityEstimate.calculated_at.desc())
             .limit(1)
         ).scalar_one_or_none()
-        elasticity = Decimal(estimate.elasticity) if estimate is not None else None
+        elasticity = Decimal(estimate.elasticity) if estimate is not None and estimate.elasticity is not None else None
         current_price = Decimal(product.selling_price) if product.selling_price else None
         units_factor = Decimal("1")
         if elasticity is not None and current_price and price:
@@ -2566,7 +2566,7 @@ class SqlAlchemyCopilotToolDataAccess:
             value = filters.get(filter_name)
             column = _model_column(spec.model, column_name)
             if value is not None and column is not None:
-                statement = statement.where(column == value)
+                statement = statement.where(_enum_safe_equals(column, value))
         category = filters.get("category")
         if category and (spec.join_product_for_seller or _model_column(spec.model, spec.product_field) is not None):
             product_column = _model_column(spec.model, spec.product_field)
@@ -2583,11 +2583,11 @@ class SqlAlchemyCopilotToolDataAccess:
         if spec.name == "get_ignored_recommendations":
             status_column = _model_column(spec.model, "recommendation_status")
             if status_column is not None:
-                statement = statement.where(status_column.in_(["DISMISSED", "IGNORED", "REJECTED"]))
+                statement = statement.where(status_column.in_(_existing_statuses(status_column, ["DISMISSED", "IGNORED", "REJECTED"])))
         if spec.name == "get_pending_recommendations":
             status_column = _model_column(spec.model, "recommendation_status")
             if status_column is not None:
-                statement = statement.where(status_column.in_(["OPEN", "PENDING"]))
+                statement = statement.where(status_column.in_(_existing_statuses(status_column, ["OPEN", "PENDING"])))
         if spec.model in {RagMemoryChunk, RagMemoryDocument}:
             deleted_column = _model_column(spec.model, "deleted_at")
             if deleted_column is not None:
@@ -3234,6 +3234,17 @@ def _evidence(source_table: str, source_id: Any, payload: Any = None) -> dict[st
 
 
 RESTRICTED_FIELD_FRAGMENTS = ("password", "token", "api_key", "apikey", "cookie", "secret", "stack", "raw_html", "html", "telegram_chat_id", "celery_task_id", "error_message", "delivery_error")
+
+
+def _existing_statuses(column: Any, wanted: list[str]) -> list[str]:
+    """Only the statuses the column's enum defines: PostgreSQL rejects the whole query for any other value."""
+    allowed = getattr(getattr(column, "type", None), "enums", None)
+    return [value for value in wanted if not allowed or value in allowed]
+
+
+def _enum_safe_equals(column: Any, value: Any) -> Any:
+    """``column == value``, except a value outside the column's enum matches no rows instead of failing the query."""
+    return column.in_(_existing_statuses(column, [value.value if isinstance(value, Enum) else str(value)]))
 
 
 def _model_column(model: Any, name: str | None):

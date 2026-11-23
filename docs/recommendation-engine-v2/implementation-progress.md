@@ -291,3 +291,45 @@ Changes:
 Tests: `tests/test_copilot_direct_answers.py` (14 tests: seller isolation, missing data, fallthrough, flag gate, dead-stock latest run, simulation, metadata serialisation). The full backend suite passes: 1203 passed, 85 skipped.
 
 **Removed (2026-11-22, plan `docs/superpowers/plans/2026-11-22-copilot-llm-accuracy.md` Task 1):** the template layer matched keywords and broke on new wording, so `direct_answers.py`, its flag `COPILOT_DIRECT_ANSWERS_ENABLED` and its 11 tests are gone. The 100/100 and 39/40 rows above measured that layer and no longer describe the shipped code. The tool bug fixes, migration and seed script stay; their 3 tests moved to `tests/test_copilot_previous_fixes.py`. Suite after removal: 1192 passed, 85 skipped.
+
+### Copilot LLM accuracy plan: eval results (2026-11-23)
+
+Plan: `docs/superpowers/plans/2026-11-22-copilot-llm-accuracy.md`, Tasks 1–9. The model now picks the tools; the deterministic planner runs only when the loop yields nothing.
+
+Fixtures:
+- `tests/fixtures/copilot_banglish_100.json` was rewritten. Its expected facts are phrase-neutral: numbers, names, and dates written as ISO or in words. `any_of` lists cover Banglish and English wording. Each fact was re-derived with SQL against the demo seller (as of 2026-11-22, Asia/Dhaka), or from the deterministic tool reading that seller's tables, never from Copilot answers.
+- New: `tests/fixtures/copilot_banglish_heldout.json`, with the user's 5 pasted questions plus 30 new phrasings.
+- A fact is required only if the question asks for it.
+- A question with no period is graded on all recorded history (the Task 2 default).
+- Facts that could not be reproduced were dropped or replaced: cash flow 341228.95, VENUS demand 1050, Lex Loafer 1586, the 10% simulation totals, Daraz fees 38386.33, and "10 unacknowledged" (the real figure is 13 reorder + 1 pricing).
+- `scripts/copilot_eval.py --as-of YYYY-MM-DD` pins "today" for the planner, the classifier and the agent loop.
+
+Pre-existing bugs found by the eval and fixed:
+- `get_pending_recommendations` and `get_ignored_recommendations` filtered on statuses the enums lack (`PENDING`, `IGNORED`, `REJECTED`), so PostgreSQL failed the whole tool.
+- Model-supplied enum filters (for example promotions `status="ACTIVE"`) did the same.
+- Both now match only defined values (`_existing_statuses`, `_enum_safe_equals`).
+- `simulate_price_change` crashed on an elasticity estimate with no value.
+
+Runs, all with `--as-of 2026-11-22`:
+
+| Run | Score | Notes |
+| --- | --- | --- |
+| Held-out 35, pause 4 | 23/35 | `20261122T174206Z.json` |
+| Banglish 100, pause 4 | 23/100 | `20261122T180239Z.json`; 65 answers were `ALL_ROUTES_FAILED`. Gemini and OpenRouter free tiers were rate-limited. Groq rejected loop prompts (413) and then hit its 8000 tokens/min limit. |
+| Golden 40, pause 4 | 33/40 | `20261122T181639Z.json` |
+| Held-out 35, pause 12 | 26/35 (74%) | `20261123T043018Z.json`, re-graded after removing 3 over-strict facts; 4 fallback answers |
+| Banglish 100, pause 12 | 50/100 | `20261123T051459Z.json`, re-graded; 27 fallback answers |
+| Golden 40, pause 12 | 6/40 | `20261123T053337Z.json`; every Gemini model and OpenRouter were rate-limited (daily free quota spent), so 32 answers are fallbacks. This run measures quotas, not the pipeline. |
+
+The re-runs used routes changed in `backend/.env` on 2026-11-22 at 23:46: five Gemini models then OpenRouter, with no Groq.
+
+The ≥95% target is not met. Failure causes in the paced runs:
+1. Provider quota. The free tiers cannot carry 175 questions with up to 4 calls each; this counts against Task 8.
+2. The planner fallback picks loosely related tools when the loop's model is unavailable (about 12 failures), and the answer then says "not recorded". This is the original D2 planner weakness.
+3. Flash-lite model mistakes even with the right tool (about 14), for example a wrong percentage, "best seller" by row count, or daily average per order.
+4. The fallback's primary tool is the planner's first tool, which is sometimes the wrong one (2 failures, such as the Bangla product count answered from `get_product_setup_summary`).
+
+Checks:
+- Backend suite: 1231 passed, 85 skipped.
+- `ruff check app tests scripts`: 52 errors before and after the plan, none in changed files.
+- mypy on the plan's 19 changed Python files: 110 errors before (at `5c0b856`), 109 after.

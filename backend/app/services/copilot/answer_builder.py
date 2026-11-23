@@ -223,6 +223,9 @@ def _fact_lines(results: list[ToolExecutionResult], *, period: dict[str, Any] | 
             lines.extend(_records_lines(data, period=period, lang=lang))
         elif result.tool_name == "get_product_profile" and isinstance(data.get("product"), dict):
             lines.append(_profile_line(data["product"]))
+        elif isinstance(data.get("count"), int) and not isinstance(data.get("count"), bool):
+            # count_* tools return one top-level figure and no rows.
+            lines.append(f"{_label(result.tool_name.removeprefix('count_'))}: {data['count']}")
     others = {name: rows for name, rows in rows_by_tool.items() if name not in {"query_business_records", "get_product_profile"}}
     return [*lines, *_product_lines(others), *(_memory_lines(rows_by_tool) if with_memory else [])]
 
