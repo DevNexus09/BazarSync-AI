@@ -5,6 +5,8 @@ import { AuthFormAlert } from "@/components/auth/auth-form-alert"
 import { PageHeader } from "@/components/common/page-header"
 import { TelegramStatusBadge } from "@/components/telegram/telegram-status-badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardBody, CardHeader } from "@/components/ui/card"
+import { UrlTabs } from "@/components/ui/tabs"
 import { useAlerts } from "@/hooks/useAlerts"
 import { useAuth } from "@/hooks/use-auth"
 import { useTelegramConnection } from "@/hooks/useTelegramConnection"
@@ -190,277 +192,261 @@ export default function ProfilePage() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Settings"
-        description="Manage account profile, Telegram status, and alert preferences."
-      />
+  const initials =
+    (formValues.fullName || user?.email || "U")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((chunk) => chunk[0]?.toUpperCase())
+      .join("") || "U"
+  const photoUrl = formValues.profileImageUrl.trim()
+  const avatar = (size: string) =>
+    photoUrl ? (
+      <img src={photoUrl} alt="" className={`${size} shrink-0 rounded-full object-cover`} />
+    ) : (
+      <div className={`${size} flex shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary`}>
+        {initials}
+      </div>
+    )
 
-      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-6">
-          <div className="glass-panel p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Signed in as {user?.email ?? "seller"}
-                </p>
+  const profileTab = (
+    <Card>
+      <form onSubmit={handleSubmit}>
+        <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-10">
+          {sectionIntro(
+            "Profile details",
+            "Update seller and business information for tailored intelligence."
+          )}
+          <div className="space-y-6">
+            <AuthFormAlert message={formError} />
+            {successMessage ? (
+              <div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+                {successMessage}
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+              {avatar("size-20 text-xl ring-4 ring-primary/10")}
+              <div className="min-w-0 flex-1 space-y-3">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-muted-foreground">
+                    Upload profile photo
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    onChange={handleProfilePhotoChange}
+                    className="block w-full text-sm text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-border/60 file:bg-muted/40 file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground hover:file:bg-muted/70"
+                  />
+                </label>
+                <AuthField
+                  id="profile-image-url"
+                  name="profileImageUrl"
+                  label="Or paste image URL"
+                  value={formValues.profileImageUrl}
+                  onChange={handleChange}
+                  placeholder="https://example.com/profile-photo.jpg"
+                  error={fieldErrors.profileImageUrl}
+                />
                 <p className="text-xs text-muted-foreground">
-                  Keep your details updated for accurate alerts and recommendations.
+                  Paste an image URL to show your photo in the top-right account
+                  circle.
                 </p>
               </div>
-              <span className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground">
-                Account status: Active
-              </span>
             </div>
-          </div>
-
-          <div className="glass-panel p-6">
-            <div className="mb-6 space-y-1">
-              <h2 className="text-base font-semibold text-foreground">
-                Profile details
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Update seller and business information for tailored intelligence.
-              </p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <AuthFormAlert message={formError} />
-              {successMessage ? (
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-                  {successMessage}
-                </div>
-              ) : null}
-              <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 sm:flex-row sm:items-center">
-                {formValues.profileImageUrl.trim() ? (
-                  <img
-                    src={formValues.profileImageUrl.trim()}
-                    alt=""
-                    className="size-20 rounded-full object-cover"
+            <div className="border-t border-border/60" />
+            <div className="grid gap-x-4 gap-y-5 md:grid-cols-2">
+                  <AuthField
+                    id="profile-full-name"
+                    name="fullName"
+                    label="Full name"
+                    value={formValues.fullName}
+                    onChange={handleChange}
+                    placeholder="e.g. Ayesha Rahman"
+                    error={fieldErrors.fullName}
                   />
-                ) : (
-                  <div className="flex size-20 items-center justify-center rounded-full bg-muted/60 text-lg font-semibold text-foreground">
-                    {(formValues.fullName || user?.email || "U")
-                      .split(" ")
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((chunk) => chunk[0]?.toUpperCase())
-                      .join("") || "U"}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <label className="mb-3 block">
-                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                      Upload profile photo
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/gif"
-                      onChange={handleProfilePhotoChange}
-                      className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground"
+                  <AuthField
+                    id="profile-business-name"
+                    name="businessName"
+                    label="Business name"
+                    value={formValues.businessName}
+                    onChange={handleChange}
+                    placeholder="e.g. Dhaka Gadgets"
+                    error={fieldErrors.businessName}
+                  />
+                  <AuthField
+                    id="profile-industry"
+                    name="industry"
+                    label="Industry"
+                    value={formValues.industry}
+                    onChange={handleChange}
+                    placeholder="e.g. Consumer electronics"
+                    error={fieldErrors.industry}
+                  />
+                  <AuthField
+                    id="profile-website"
+                    name="website"
+                    label="Website"
+                    value={formValues.website}
+                    onChange={handleChange}
+                    placeholder="https://example.com"
+                    error={fieldErrors.website}
+                  />
+                  <div className="md:col-span-2">
+                    <AuthField
+                      id="profile-address"
+                      name="addressLine"
+                      label="Business address"
+                      value={formValues.addressLine}
+                      onChange={handleChange}
+                      placeholder="Street address"
+                      error={fieldErrors.addressLine}
                     />
-                  </label>
+                  </div>
                   <AuthField
-                    id="profile-image-url"
-                    name="profileImageUrl"
-                    label="Or paste image URL"
-                    value={formValues.profileImageUrl}
+                    id="profile-city"
+                    name="city"
+                    label="City"
+                    value={formValues.city}
                     onChange={handleChange}
-                    placeholder="https://example.com/profile-photo.jpg"
-                    error={fieldErrors.profileImageUrl}
+                    placeholder="e.g. Dhaka"
+                    error={fieldErrors.city}
                   />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Paste an image URL to show your photo in the top-right account
-                    circle.
-                  </p>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <AuthField
-                  id="profile-full-name"
-                  name="fullName"
-                  label="Full name"
-                  value={formValues.fullName}
-                  onChange={handleChange}
-                  placeholder="e.g. Ayesha Rahman"
-                  error={fieldErrors.fullName}
-                />
-                <AuthField
-                  id="profile-business-name"
-                  name="businessName"
-                  label="Business name"
-                  value={formValues.businessName}
-                  onChange={handleChange}
-                  placeholder="e.g. Dhaka Gadgets"
-                  error={fieldErrors.businessName}
-                />
-                <AuthField
-                  id="profile-industry"
-                  name="industry"
-                  label="Industry"
-                  value={formValues.industry}
-                  onChange={handleChange}
-                  placeholder="e.g. Consumer electronics"
-                  error={fieldErrors.industry}
-                />
-                <AuthField
-                  id="profile-website"
-                  name="website"
-                  label="Website"
-                  value={formValues.website}
-                  onChange={handleChange}
-                  placeholder="https://example.com"
-                  error={fieldErrors.website}
-                />
-                <div className="md:col-span-2">
                   <AuthField
-                    id="profile-address"
-                    name="addressLine"
-                    label="Business address"
-                    value={formValues.addressLine}
+                    id="profile-country"
+                    name="country"
+                    label="Country"
+                    value={formValues.country}
                     onChange={handleChange}
-                    placeholder="Street address"
-                    error={fieldErrors.addressLine}
+                    placeholder="e.g. Bangladesh"
+                    error={fieldErrors.country}
                   />
-                </div>
-                <AuthField
-                  id="profile-city"
-                  name="city"
-                  label="City"
-                  value={formValues.city}
-                  onChange={handleChange}
-                  placeholder="e.g. Dhaka"
-                  error={fieldErrors.city}
-                />
-                <AuthField
-                  id="profile-country"
-                  name="country"
-                  label="Country"
-                  value={formValues.country}
-                  onChange={handleChange}
-                  placeholder="e.g. Bangladesh"
-                  error={fieldErrors.country}
-                />
-                <AuthField
-                  id="profile-phone"
-                  name="phone"
-                  type="tel"
-                  label="Phone number"
-                  value={formValues.phone}
-                  onChange={handleChange}
-                  placeholder="+8801XXXXXXXXX"
-                  error={fieldErrors.phone}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isAuthenticating}>
-                  {isSaving ? "Saving..." : "Save profile"}
-                </Button>
-              </div>
-            </form>
+                  <AuthField
+                    id="profile-phone"
+                    name="phone"
+                    type="tel"
+                    label="Phone number"
+                    value={formValues.phone}
+                    onChange={handleChange}
+                    placeholder="+8801XXXXXXXXX"
+                    error={fieldErrors.phone}
+                  />
+            </div>
           </div>
         </div>
+        <div className="flex justify-end border-t border-border/60 bg-muted/10 px-6 py-4">
+          <Button type="submit" disabled={isAuthenticating} className="min-w-32">
+            {isSaving ? "Saving..." : "Save profile"}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
 
-        <div className="space-y-6">
-          <div className="glass-panel p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Telegram connection
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Bot: @bazarsync_bot
-                </p>
-              </div>
-              <TelegramStatusBadge state={telegramState} />
+  const notificationsTab = (
+    <div className="grid items-start gap-6 lg:grid-cols-2">
+      <Card>
+        <CardHeader
+          title="Telegram connection"
+          description="Bot: @bazarsync_bot"
+          actions={<TelegramStatusBadge state={telegramState} />}
+        />
+        <CardBody>
+          <dl className="divide-y divide-border/60 text-sm">
+            <div className="flex items-center justify-between gap-3 pb-3">
+              <dt className="text-muted-foreground">Connected account</dt>
+              <dd className="truncate font-medium text-foreground">
+                {telegram.status.data?.telegramUsername
+                  ? `@${telegram.status.data.telegramUsername}`
+                  : "Not connected"}
+              </dd>
             </div>
-            <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-              <div className="flex items-center justify-between">
-                <span>Connected account</span>
-                <span className="font-semibold text-foreground">
-                  {telegram.status.data?.telegramUsername
-                    ? `@${telegram.status.data.telegramUsername}`
-                    : "Not connected"}
+            <div className="flex items-center justify-between gap-3 pt-3">
+              <dt className="text-muted-foreground">Last alert</dt>
+              <dd className="text-right font-medium text-foreground">
+                {telegram.status.data?.lastAlertSentAt
+                  ? new Date(telegram.status.data.lastAlertSentAt).toLocaleString()
+                  : "No alerts sent"}
+              </dd>
+            </div>
+          </dl>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Notification preferences"
+          description="Configure how your team receives intelligence updates."
+        />
+        <CardBody>
+          <ul className="divide-y divide-border/60 text-sm">
+            {[
+              "Realtime competitor alerts",
+              "Stock risk notifications",
+              "Weekly intelligence summary",
+            ].map((label) => (
+              <li
+                key={label}
+                className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+              >
+                <span className="text-foreground">{label}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                  <span aria-hidden className="size-1.5 rounded-full bg-emerald-400" />
+                  Enabled
                 </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Last alert</span>
-                <span className="font-semibold text-foreground">
-                  {telegram.status.data?.lastAlertSentAt
-                    ? new Date(telegram.status.data.lastAlertSentAt).toLocaleString()
-                    : "No alerts sent"}
-                </span>
-              </div>
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
+        </CardBody>
+      </Card>
 
-          <div className="glass-panel p-5">
-            <h3 className="text-sm font-semibold text-foreground">
-              Notification preferences
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Configure how your team receives intelligence updates.
-            </p>
-            <div className="mt-4 space-y-3 text-xs text-muted-foreground">
-              {[
-                "Realtime competitor alerts",
-                "Stock risk notifications",
-                "Weekly intelligence summary",
-              ].map((label) => (
-                <label
-                  key={label}
-                  className="flex items-center justify-between rounded-lg border border-border/60 bg-card/60 px-3 py-2"
-                >
-                  <span>{label}</span>
-                  <span className="text-emerald-300">Enabled</span>
-                </label>
-              ))}
+      <Card className="lg:col-span-2">
+        <CardHeader
+          title="Activity history"
+          actions={
+            <span className="rounded-full border border-border/60 px-2.5 py-0.5 text-xs text-muted-foreground">
+              {formatNumber(alerts.alertHistory.data?.length ?? 0)} alerts
+            </span>
+          }
+        />
+        <CardBody>
+          {activity.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
+              Activity will appear once alerts are delivered.
             </div>
-          </div>
-
-          <div className="glass-panel p-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">
-                Activity history
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                {formatNumber(alerts.alertHistory.data?.length ?? 0)} alerts
-              </span>
-            </div>
-            <div className="mt-4 space-y-3">
-              {activity.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                  Activity will appear once alerts are delivered.
-                </div>
-              ) : (
-                activity.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-xs text-muted-foreground"
-                  >
-                    <p className="text-sm font-semibold text-foreground">
-                      {alert.title}
-                    </p>
-                    <p className="mt-1">{alert.message}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+          ) : (
+            <ol className="space-y-5 border-l border-border/60 pl-5">
+              {activity.map((alert) => (
+                <li key={alert.id} className="relative">
+                  <span
+                    aria-hidden
+                    className="absolute -left-[25px] top-1.5 size-2.5 rounded-full border-2 border-background bg-primary"
+                  />
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <p className="text-sm font-medium text-foreground">{alert.title}</p>
+                    <p className="text-[11px] text-muted-foreground">
                       {new Date(alert.createdAt).toLocaleString()}
                     </p>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{alert.message}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardBody>
+      </Card>
+    </div>
+  )
 
-      <div className="glass-panel border border-rose-500/30 bg-rose-500/5 p-6">
-        <div className="mb-4 space-y-1">
-          <h2 className="text-base font-semibold text-foreground">Delete account</h2>
-          <p className="text-xs text-muted-foreground">
+  const accountTab = (
+    <Card className="border-rose-500/30">
+      <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-10">
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-rose-300">Delete account</h2>
+          <p className="text-sm text-muted-foreground">
             Permanently removes your seller profile, products, alerts, and history.
           </p>
         </div>
-        <form onSubmit={handleDeleteSubmit} className="space-y-4">
+        <form onSubmit={handleDeleteSubmit} className="max-w-md space-y-4">
           <AuthFormAlert message={deleteError} />
           <AuthField
             id="delete-account-password"
@@ -473,13 +459,58 @@ export default function ProfilePage() {
             autoComplete="current-password"
             error={deleteFieldError}
           />
-          <div className="flex items-center justify-end">
-            <Button type="submit" variant="destructive" disabled={isAuthenticating}>
-              {isDeleting ? "Deleting..." : "Delete account"}
-            </Button>
-          </div>
+          <Button type="submit" variant="destructive" disabled={isAuthenticating}>
+            {isDeleting ? "Deleting..." : "Delete account"}
+          </Button>
         </form>
       </div>
+    </Card>
+  )
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageHeader
+        title="Settings"
+        description="Manage account profile, Telegram status, and alert preferences."
+      />
+
+      <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="flex min-w-0 items-center gap-4">
+          {avatar("size-14 text-base ring-4 ring-primary/10")}
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-foreground">
+              {formValues.fullName || user?.email || "seller"}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              Signed in as {user?.email ?? "seller"}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Keep your details updated for accurate alerts and recommendations.
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+          <span aria-hidden className="size-1.5 rounded-full bg-emerald-400" />
+          Account status: Active
+        </span>
+      </Card>
+
+      <UrlTabs
+        label="Settings sections"
+        defaultValue="profile"
+        tabs={[
+          { value: "profile", label: "Profile", content: profileTab },
+          { value: "notifications", label: "Notifications", content: notificationsTab },
+          { value: "account", label: "Account", content: accountTab },
+        ]}
+      />
     </div>
   )
 }
+
+const sectionIntro = (title: string, description: string) => (
+  <div className="space-y-1">
+    <h2 className="text-base font-semibold text-foreground">{title}</h2>
+    <p className="text-sm text-muted-foreground">{description}</p>
+  </div>
+)

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { Sparkles } from "lucide-react"
 
 import { CopilotAssistantMessage, type CopilotAssistantActions } from "@/components/copilot/CopilotAssistantMessage"
 import { CopilotStageSteps } from "@/components/copilot/CopilotStageSteps"
@@ -29,14 +30,14 @@ export function CopilotMessageList({
   }, [messages.length, isLoading, stage])
 
   return (
-    <div className="copilot-scroll flex-1 overflow-y-auto bg-background/35 px-3 py-3">
-      <div className="copilot-column space-y-3">
+    <div className="copilot-scroll flex-1 overflow-y-auto bg-background/35 px-3 py-4">
+      <div className="copilot-column space-y-5">
       {messages.map((message) =>
         message.role === "user" ? (
           <article
             key={message.id}
             lang={langAttribute(undefined, message.content)}
-            className="ml-auto max-w-[84%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm font-medium leading-5 text-primary-foreground"
+            className="ml-auto w-fit max-w-[84%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm leading-6 text-primary-foreground shadow-sm"
           >
             {message.content}
             {message.failed ? (
@@ -44,17 +45,26 @@ export function CopilotMessageList({
             ) : null}
           </article>
         ) : (
-          <CopilotAssistantMessage
-            key={message.id}
-            message={message}
-            onProposalChange={onProposalChange}
-            language={language}
-            actions={actions}
-            isLatest={message.id === latestAssistant?.id}
-          />
+          <div key={message.id} className="flex items-start gap-2.5">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary"
+            >
+              <Sparkles className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <CopilotAssistantMessage
+                message={message}
+                onProposalChange={onProposalChange}
+                language={language}
+                actions={actions}
+                isLatest={message.id === latestAssistant?.id}
+              />
+            </div>
+          </div>
         )
       )}
-      {isLoading ? <CopilotStageSteps stage={stage} language={language} /> : null}
+      {isLoading ? <div className="pl-[38px]"><CopilotStageSteps stage={stage} language={language} /></div> : null}
       {/* Announce only the newest answer, not the whole list, to screen readers. */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {isLoading ? "" : latestAssistant ? t(language, "answerReady") : ""}

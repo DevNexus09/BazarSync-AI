@@ -66,7 +66,8 @@ export const CopilotChatPanel = forwardRef<
       className={cn(
         "fixed inset-0 z-[80] h-[100dvh] w-screen origin-bottom-right transition-[opacity,transform,inset,width,height] duration-200 ease-out motion-reduce:transition-none",
         expanded
-          ? "sm:inset-4 sm:h-auto sm:w-auto"
+          ? // Centred window capped at 80rem; the huge spread shadow dims the page behind it.
+            "sm:inset-4 sm:h-auto sm:w-auto lg:inset-x-[max(1.5rem,calc(50vw-40rem))] lg:inset-y-6 sm:shadow-[0_0_0_100vmax_rgb(var(--overlay)/.55)] sm:rounded-2xl"
           : "sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[640px] sm:max-h-[calc(100dvh-3rem)] sm:w-[440px] sm:max-w-[calc(100vw-2rem)]",
         open ? "pointer-events-auto translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-3 scale-95 opacity-0"
       )}

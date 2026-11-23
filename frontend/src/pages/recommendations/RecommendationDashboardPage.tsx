@@ -4,11 +4,13 @@ import { Link, useSearchParams } from "react-router-dom"
 import { InlineAlert } from "@/components/common/inline-alert"
 import { PageHeader } from "@/components/common/page-header"
 import { Button } from "@/components/ui/button"
+import { Card, CardBody, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
 import { useProducts } from "@/hooks/use-products"
 import { formatDateTime } from "@/utils/formatters"
 import { getErrorMessage } from "@/utils/errors"
+import { cn } from "@/lib/utils"
 
 import { AnalyticsStats } from "./components/AnalyticsStats"
 import { EmptyRecommendationState } from "./components/EmptyRecommendationState"
@@ -98,28 +100,23 @@ export default function RecommendationDashboardPage() {
         }
       />
 
-      <div className="rounded-xl border bg-background p-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">
-              Recommendation scope
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Select a product to generate a pricing or inventory recommendation.
-            </p>
-          </div>
-          {data?.createdAt ? (
-            <span className="text-xs text-muted-foreground">
-              Last generated: {formatDateTime(data.createdAt)}
-              {isFetching ? " · Updating..." : ""}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <Card>
+        <CardHeader
+          title="Recommendation scope"
+          description="Select a product to generate a pricing or inventory recommendation."
+          actions={
+            data?.createdAt ? (
+              <span className="text-xs text-muted-foreground">
+                Last generated: {formatDateTime(data.createdAt)}
+                {isFetching ? " · Updating..." : ""}
+              </span>
+            ) : null
+          }
+        />
+        <CardBody className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] md:items-end">
           <div className="space-y-2">
             <label
-              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              className="text-xs font-medium text-muted-foreground"
               htmlFor="recommendation-product"
             >
               Product
@@ -152,22 +149,36 @@ export default function RecommendationDashboardPage() {
             ) : null}
           </div>
 
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="glass-panel-muted min-w-0 p-3">
+            <p className="text-xs font-medium text-muted-foreground">
               Selected product
             </p>
-            <p className="mt-2 break-words text-sm font-medium text-foreground">
+            <p className="break-words text-sm font-medium text-foreground">
               {selectedProduct?.title ?? "No product selected"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {selectedProduct?.category ?? "Category not set"}
             </p>
           </div>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
 
-      <div role="status" aria-live="polite" className="text-sm font-medium">
-        {generationState ? `Generation status: ${generationState}` : null}
+      <div role="status" aria-live="polite">
+        {generationState ? (
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-xs font-medium text-foreground">
+            <span
+              aria-hidden
+              className={cn(
+                "size-2 rounded-full",
+                generationState === "Completed" ? "bg-emerald-500"
+                  : generationState === "Failed" ? "bg-destructive"
+                  : generationState === "Queued" || generationState === "Processing" ? "animate-pulse bg-primary"
+                  : "bg-amber-500"
+              )}
+            />
+            {`Generation status: ${generationState}`}
+          </span>
+        ) : null}
       </div>
       {errorMessage ? (
         <div role="alert" className="space-y-2">

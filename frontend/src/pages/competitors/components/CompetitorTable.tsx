@@ -30,7 +30,7 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="hidden overflow-hidden rounded-xl border bg-background shadow-sm md:block">
+      <div className="glass-panel hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>

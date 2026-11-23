@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { ChevronLeft } from "lucide-react"
 
 import { ErrorState } from "@/components/common/error-state"
 import { LoadingState } from "@/components/common/loading-state"
@@ -12,21 +13,20 @@ import { getErrorMessage } from "@/utils/errors"
 
 export default function ProductEditPage() {
   const { productId } = useParams<{ productId: string }>()
+  const navigate = useNavigate()
   const { data, isLoading, isError, error, refetch } = useProduct(productId)
   const { mutateAsync: updateProduct, isPending } = useUpdateProduct()
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
   const handleSubmit = async (input: ProductInput) => {
     if (!productId) {
       return
     }
-    setSuccessMessage(null)
     setErrorMessage(null)
 
     try {
       await updateProduct({ productId, input })
-      setSuccessMessage("Product updated successfully.")
+      navigate(`/app/products/${productId}`)
     } catch (err) {
       setErrorMessage(
         getErrorMessage(err, "We couldn't update the product. Please try again.")
@@ -54,24 +54,28 @@ export default function ProductEditPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Edit product"
-        description="Update product details, pricing, and specs for competitor monitoring."
-        action={
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/app/products">Back to products</Link>
-          </Button>
-        }
-      />
+      <div className="space-y-4">
+        <Link
+          to={`/app/products/${data.id}`}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft aria-hidden className="size-4" />
+          {data.title}
+        </Link>
+        <PageHeader
+          title="Edit product"
+          description="Update details, specifications, pricing and stock for this product."
+        />
+      </div>
 
       <ProductForm
         key={data.id}
         onSubmit={handleSubmit}
         initialValues={data}
         isSubmitting={isPending}
-        successMessage={successMessage}
         errorMessage={errorMessage}
         submitLabel="Save changes"
+        cancelHref={`/app/products/${data.id}`}
       />
     </div>
   )

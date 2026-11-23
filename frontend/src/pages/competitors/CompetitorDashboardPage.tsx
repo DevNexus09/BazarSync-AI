@@ -5,7 +5,9 @@ import { useQueryClient } from "@tanstack/react-query"
 import { InlineAlert } from "@/components/common/inline-alert"
 import { PageHeader } from "@/components/common/page-header"
 import { Phase5Dashboard } from "@/components/dashboard/phase5-dashboard"
+import { Card, CardBody, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { KpiTile } from "@/components/ui/kpi-tile"
 import { useProducts } from "@/hooks/use-products"
 import { formatCurrency, formatNumber, formatPercent } from "@/utils/formatters"
 import { getErrorMessage } from "@/utils/errors"
@@ -187,164 +189,150 @@ export default function CompetitorDashboardPage() {
     scrapeStatus === "pending" ||
     scrapeStatus === "running"
 
+  const handleProductChange = (productId: string) => {
+    setSelectedProductId(productId)
+    setActiveScrapeRunId(null)
+    setScrapeStarted(false)
+    setShowScrapeSuccess(false)
+    runScraper.reset()
+  }
+
+  const metrics = [
+    {
+      label: "Competitors tracked",
+      value: hasCompetitors ? formatNumber(competitorSummary.total) : "—",
+    },
+    {
+      label: "Avg. competitor price",
+      value:
+        competitorSummary.averagePrice === null
+          ? "—"
+          : formatCurrency(competitorSummary.averagePrice),
+    },
+    {
+      label: "In-stock coverage",
+      value: hasCompetitors
+        ? `${competitorSummary.inStock}/${competitorSummary.total}`
+        : "—",
+    },
+    {
+      label: "Avg. similarity score",
+      value:
+        competitorSummary.averageSimilarity === null
+          ? "—"
+          : formatPercent(competitorSummary.averageSimilarity * 100),
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Competitor monitoring"
         description="Track Daraz rivals, benchmark pricing, and trigger fresh scrapes when the market moves."
+        action={
+          <RunScraperButton
+            onRun={() => {
+              runScraper.reset()
+              setScrapeStarted(true)
+              setShowScrapeSuccess(false)
+              runScraper.mutate(undefined, {
+                onSuccess: (data) => {
+                  setActiveScrapeRunId(data.scrape_run_id)
+                },
+                onError: () => {
+                  setScrapeStarted(false)
+                },
+              })
+            }}
+            isRunning={isScraperBusy}
+            isSuccess={showScrapeSuccess}
+            disabled={!canRunScraper}
+            errorMessage={scraperError}
+            className="sm:text-right"
+          />
+        }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-xl border bg-background p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Product focus
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Choose the SKU you want to benchmark against Daraz competitors.
-              </p>
-            </div>
-            <RunScraperButton
-              onRun={() => {
-                runScraper.reset()
-                setScrapeStarted(true)
-                setShowScrapeSuccess(false)
-                runScraper.mutate(undefined, {
-                  onSuccess: (data) => {
-                    setActiveScrapeRunId(data.scrape_run_id)
-                  },
-                  onError: () => {
-                    setScrapeStarted(false)
-                  },
-                })
-              }}
-              isRunning={isScraperBusy}
-              isSuccess={showScrapeSuccess}
-              disabled={!canRunScraper}
-              errorMessage={scraperError}
-            />
-          </div>
-
-          <div className="mt-4 grid gap-4 md:grid-cols-[2fr_1fr]">
-            <div className="space-y-2">
-              <label
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                htmlFor="competitor-product"
+      <Card>
+        <CardHeader
+          title="Product focus"
+          description="Choose the SKU you want to benchmark against Daraz competitors."
+        />
+        <CardBody className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] md:items-end">
+          <div className="space-y-2">
+            <label
+              className="text-xs font-medium text-muted-foreground"
+              htmlFor="competitor-product"
+            >
+              Product
+            </label>
+            {hasProducts ? (
+              <select
+                id="competitor-product"
+                value={activeProductId}
+                onChange={(event) => handleProductChange(event.target.value)}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={isProductsLoading}
               >
-                Product
-              </label>
-              {hasProducts ? (
-                <select
-                  id="competitor-product"
-                  value={activeProductId}
-                  onChange={(event) => {
-                    setSelectedProductId(event.target.value)
-                    setActiveScrapeRunId(null)
-                    setScrapeStarted(false)
-                    setShowScrapeSuccess(false)
-                    runScraper.reset()
-                  }}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  disabled={isProductsLoading}
-                >
-                  {products && products.length > 1 ? (
-                    <option value="" disabled>
-                      Select a product
-                    </option>
-                  ) : null}
-                  {products?.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.title}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  id="competitor-product"
-                  value={selectedProductId}
-                  onChange={(event) => {
-                    setSelectedProductId(event.target.value)
-                    setActiveScrapeRunId(null)
-                    setScrapeStarted(false)
-                    setShowScrapeSuccess(false)
-                    runScraper.reset()
-                  }}
-                  placeholder="Enter product id"
-                  disabled={isProductsLoading}
-                />
+                {products && products.length > 1 ? (
+                  <option value="" disabled>
+                    Select a product
+                  </option>
+                ) : null}
+                {products?.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.title}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                id="competitor-product"
+                value={selectedProductId}
+                onChange={(event) => handleProductChange(event.target.value)}
+                placeholder="Enter product id"
+                disabled={isProductsLoading}
+              />
+            )}
+            {productErrorMessage ? (
+              <InlineAlert variant="error" message={productErrorMessage} />
+            ) : null}
+          </div>
+          <div className="glass-panel-muted flex min-w-0 items-center gap-3 p-3">
+            <span
+              className={cn(
+                "size-2 shrink-0 rounded-full",
+                activeProductId ? "bg-emerald-500" : "bg-muted-foreground/40"
               )}
-              {productErrorMessage ? (
-                <InlineAlert
-                  variant="error"
-                  message={productErrorMessage}
-                />
-              ) : null}
-            </div>
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">
                 Selected product
               </p>
-              <p className="mt-2 text-sm font-medium text-foreground">
+              <p className="truncate text-sm font-medium text-foreground">
                 {selectedProduct?.title ?? "No product selected"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="truncate text-xs text-muted-foreground">
                 {activeProductId
                   ? `ID: ${activeProductId}`
                   : "Add a product to start competitor tracking."}
               </p>
             </div>
           </div>
-        </div>
+        </CardBody>
+      </Card>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          {[
-            {
-              label: "Competitors tracked",
-              value: hasCompetitors
-                ? formatNumber(competitorSummary.total)
-                : "—",
-            },
-            {
-              label: "Avg. competitor price",
-              value:
-                competitorSummary.averagePrice === null
-                  ? "—"
-                  : formatCurrency(competitorSummary.averagePrice),
-            },
-            {
-              label: "In-stock coverage",
-              value: hasCompetitors
-                ? `${competitorSummary.inStock}/${competitorSummary.total}`
-                : "—",
-            },
-            {
-              label: "Avg. similarity score",
-              value:
-                competitorSummary.averageSimilarity === null
-                  ? "—"
-                  : formatPercent(competitorSummary.averageSimilarity * 100),
-            },
-          ].map((metric) => (
-            <div
-              key={metric.label}
-              className={cn(
-                "rounded-xl border bg-background p-4 shadow-sm",
-                !hasCompetitors && "opacity-70"
-              )}
-            >
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {metric.label}
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                {metric.value}
-              </p>
-            </div>
-          ))}
-        </div>
+      <div
+        className={cn(
+          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4",
+          !hasCompetitors && "opacity-70"
+        )}
+      >
+        {metrics.map((metric) => (
+          <KpiTile key={metric.label} label={metric.label} value={metric.value} />
+        ))}
       </div>
-
-      <Phase5Dashboard />
 
       {!activeProductId ? (
         <EmptyState
@@ -361,6 +349,8 @@ export default function CompetitorDashboardPage() {
       ) : competitors.length > 0 ? (
         <CompetitorTable competitors={competitors} />
       ) : null}
+
+      <Phase5Dashboard />
     </div>
   )
 }

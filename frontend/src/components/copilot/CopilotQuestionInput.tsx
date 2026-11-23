@@ -60,7 +60,7 @@ export const CopilotQuestionInput = forwardRef<
 
   return (
     <form
-      className="bg-card px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="border-t border-border/50 bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       onSubmit={(event) => {
         event.preventDefault()
         submit()

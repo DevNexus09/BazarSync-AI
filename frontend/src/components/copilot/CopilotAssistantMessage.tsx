@@ -44,7 +44,7 @@ export function CopilotAssistantMessage({
   }
 
   return (
-    <article className="rounded-2xl rounded-bl-md border border-border/60 bg-card p-3.5 text-sm leading-6 text-foreground shadow-[0_1px_2px_rgb(var(--overlay)/.25)]">
+    <article className="rounded-2xl rounded-tl-md border border-border/60 bg-card px-4 py-3.5 text-sm leading-6 text-foreground shadow-[0_1px_2px_rgb(var(--overlay)/.25)]">
       <div lang={langAttribute(message.replyLanguage, message.content)}>
         {headline ? (
           <p data-testid="copilot-headline" className="mb-1.5 text-2xl font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground">
@@ -69,7 +69,7 @@ export function CopilotAssistantMessage({
                 type="button"
                 disabled={actions.disabled}
                 onClick={() => actions.onFollowUp?.(question)}
-                className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-left text-xs font-medium transition hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+                className="rounded-full border border-primary/25 bg-primary/5 px-3 py-1.5 text-left text-xs font-medium text-foreground transition hover:border-primary/50 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
               >
                 {question}
               </button>

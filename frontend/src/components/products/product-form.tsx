@@ -1,10 +1,14 @@
 import * as React from "react"
+import { Link } from "react-router-dom"
+import { Plus, X } from "lucide-react"
 
 import { FormField } from "@/components/common/form-field"
 import { InlineAlert } from "@/components/common/inline-alert"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import type { ProductInput } from "@/types/product"
-import { formatPercent } from "@/utils/formatters"
+import { formatCurrency, formatPercent } from "@/utils/formatters"
 
 export type ProductFormValues = {
   title: string
@@ -37,6 +41,7 @@ type ProductFormProps = {
   successMessage?: string | null
   errorMessage?: string | null
   submitLabel?: string
+  cancelHref?: string
 }
 
 const initialValues: ProductFormValues = {
@@ -153,6 +158,7 @@ export function ProductForm({
   successMessage,
   errorMessage,
   submitLabel = "Save product",
+  cancelHref,
 }: ProductFormProps) {
   const resolvedInitialValues = React.useMemo(
     () => buildInitialValues(providedValues),
@@ -326,274 +332,351 @@ export function ProductForm({
     await onSubmit(input)
   }
 
+  const sellingValue = parseNumber(values.sellingPrice)
+  const costValue = parseNumber(values.costPrice)
+  const minMarginValue = parseNumber(values.minimumMargin)
+  const marginOk =
+    actualMargin !== null && Number.isFinite(minMarginValue)
+      ? actualMargin >= minMarginValue
+      : null
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {successMessage ? (
-        <InlineAlert variant="success" message={successMessage} />
-      ) : null}
-      {errorMessage ? (
-        <InlineAlert variant="error" message={errorMessage} />
-      ) : null}
+    <form onSubmit={handleSubmit} noValidate>
+      <fieldset
+        className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start"
+        disabled={isSubmitting}
+      >
+        <div className="space-y-6">
+          {errorMessage ? <InlineAlert variant="error" message={errorMessage} /> : null}
+          {successMessage ? <InlineAlert variant="success" message={successMessage} /> : null}
 
-      <fieldset className="space-y-4" disabled={isSubmitting}>
-        <FormField
-          id="product-title"
-          name="title"
-          label="Product title"
-          value={values.title}
-          placeholder="Premium denim jacket"
-          onChange={handleChange}
-          error={errors.title}
-        />
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            id="product-sku"
-            name="sku"
-            label="SKU"
-            value={values.sku}
-            placeholder="SKU-001"
-            onChange={handleChange}
-          />
-          <div className="space-y-2">
-            <label
-              className="text-sm font-medium text-foreground"
-              htmlFor="product-status"
-            >
-              Product status
-            </label>
-            <select
-              id="product-status"
-              value={values.status}
-              onChange={handleStatusChange}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {["ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED", "DISCONTINUED"].map(
-                (status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label
-            className="text-sm font-medium text-foreground"
-            htmlFor="product-description"
+          <FormSection
+            title="Basic information"
+            description="How this product is identified across marketplaces."
           >
-            Product description
-          </label>
-          <textarea
-            id="product-description"
-            name="description"
-            value={values.description}
-            onChange={handleDescriptionChange}
-            rows={4}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
-            placeholder="Describe the product, specs, and variants."
-          />
-          {errors.description ? (
-            <p className="text-xs text-destructive">{errors.description}</p>
-          ) : null}
-        </div>
+            <FormField
+              id="product-title"
+              name="title"
+              label="Product title"
+              value={values.title}
+              placeholder="Premium denim jacket"
+              onChange={handleChange}
+              error={errors.title}
+            />
 
-        <div className="space-y-2">
-          <label
-            className="text-sm font-medium text-foreground"
-            htmlFor="product-category"
-          >
-            Product category
-          </label>
-          <select
-            id="product-category"
-            value={values.category}
-            onChange={handleCategoryChange}
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="" disabled>
-              Select category
-            </option>
-            {CATEGORY_OPTIONS.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          {errors.category ? (
-            <p className="text-xs text-destructive">{errors.category}</p>
-          ) : null}
-        </div>
-
-        {values.category ? (
-          <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                Product specifications
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Provide the key attributes that define this product.
-              </p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {CATEGORY_SPEC_FIELDS[values.category]?.map((field) => (
-                <FormField
-                  key={field.key}
-                  id={`spec-${field.key}`}
-                  name={`spec-${field.key}`}
-                  label={field.label}
-                  value={specifications[field.key] ?? ""}
-                  placeholder={field.placeholder}
-                  onChange={(event) =>
-                    handleSpecChange(field.key, event.target.value)
-                  }
-                />
-              ))}
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">
-                  Additional attributes
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddCustomSpec}
+            <div className="grid gap-4 md:grid-cols-3">
+              <FormField
+                id="product-sku"
+                name="sku"
+                label="SKU (optional)"
+                value={values.sku}
+                placeholder="SKU-001"
+                onChange={handleChange}
+              />
+              <SelectField id="product-category" label="Category" error={errors.category}>
+                <select
+                  id="product-category"
+                  value={values.category}
+                  onChange={handleCategoryChange}
+                  className={selectClass}
+                  aria-invalid={Boolean(errors.category)}
                 >
-                  Add attribute
-                </Button>
-              </div>
-              {customSpecs.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Add any extra attributes like size, color, or model number.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {customSpecs.map((spec, index) => (
-                    <div key={`custom-${index}`} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                      <input
-                        value={spec.key}
-                        onChange={(event) =>
-                          handleCustomSpecChange(
-                            index,
-                            event.target.value,
-                            spec.value
-                          )
-                        }
-                        placeholder="Attribute name"
-                        className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                      />
-                      <input
-                        value={spec.value}
-                        onChange={(event) =>
-                          handleCustomSpecChange(
-                            index,
-                            spec.key,
-                            event.target.value
-                          )
-                        }
-                        placeholder="Attribute value"
-                        className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveCustomSpec(index)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                  <option value="" disabled>
+                    Select category
+                  </option>
+                  {CATEGORY_OPTIONS.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+              </SelectField>
+              <SelectField id="product-status" label="Status">
+                <select
+                  id="product-status"
+                  value={values.status}
+                  onChange={handleStatusChange}
+                  className={selectClass}
+                >
+                  {["ACTIVE", "INACTIVE", "DRAFT", "ARCHIVED", "DISCONTINUED"].map((status) => (
+                    <option key={status} value={status}>
+                      {status.charAt(0) + status.slice(1).toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              </SelectField>
             </div>
+
+            <SelectField id="product-description" label="Description" error={errors.description}>
+              <textarea
+                id="product-description"
+                name="description"
+                value={values.description}
+                onChange={handleDescriptionChange}
+                rows={4}
+                aria-invalid={Boolean(errors.description)}
+                className="w-full rounded-xl border border-border/70 bg-card/70 px-3 py-2 text-sm text-foreground outline-none transition focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/30"
+                placeholder="Describe the product, materials and variants."
+              />
+            </SelectField>
+          </FormSection>
+
+          <FormSection
+            title="Specifications"
+            description="Clear specs like storage, colour or size reduce false competitor matches."
+          >
+            {!values.category ? (
+              <p className="text-sm text-muted-foreground">
+                Choose a category above to see suggested attributes.
+              </p>
+            ) : (
+              <>
+                {CATEGORY_SPEC_FIELDS[values.category]?.length ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {CATEGORY_SPEC_FIELDS[values.category].map((field) => (
+                      <FormField
+                        key={field.key}
+                        id={`spec-${field.key}`}
+                        name={`spec-${field.key}`}
+                        label={field.label}
+                        value={specifications[field.key] ?? ""}
+                        placeholder={field.placeholder}
+                        onChange={(event) => handleSpecChange(field.key, event.target.value)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground">Custom attributes</p>
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddCustomSpec}>
+                      <Plus /> Add attribute
+                    </Button>
+                  </div>
+                  {customSpecs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Anything else buyers compare on, like warranty or pack size.
+                    </p>
+                  ) : (
+                    customSpecs.map((spec, index) => (
+                      <div key={`custom-${index}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                        <Input
+                          value={spec.key}
+                          onChange={(event) =>
+                            handleCustomSpecChange(index, event.target.value, spec.value)
+                          }
+                          placeholder="Name"
+                          aria-label={`Attribute ${index + 1} name`}
+                        />
+                        <Input
+                          value={spec.value}
+                          onChange={(event) =>
+                            handleCustomSpecChange(index, spec.key, event.target.value)
+                          }
+                          placeholder="Value"
+                          aria-label={`Attribute ${index + 1} value`}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-lg"
+                          className="h-11 text-muted-foreground hover:text-danger"
+                          onClick={() => handleRemoveCustomSpec(index)}
+                          aria-label={`Remove attribute ${index + 1}`}
+                        >
+                          <X />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </FormSection>
+
+          <FormSection
+            title="Pricing and inventory"
+            description="Feeds AI pricing recommendations, MarginGuard and restock forecasts."
+          >
+            <div className="grid gap-4 md:grid-cols-3">
+              <FormField
+                id="product-cost"
+                name="costPrice"
+                label="Cost price (BDT)"
+                type="number"
+                inputMode="decimal"
+                min={1}
+                step={0.01}
+                value={values.costPrice}
+                placeholder="1200"
+                onChange={handleChange}
+                error={errors.costPrice}
+              />
+              <FormField
+                id="product-selling"
+                name="sellingPrice"
+                label="Selling price (BDT)"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={0.01}
+                value={values.sellingPrice}
+                placeholder="1790"
+                onChange={handleChange}
+                error={errors.sellingPrice}
+              />
+              <FormField
+                id="product-margin"
+                name="minimumMargin"
+                label="Minimum margin (%)"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={0.1}
+                value={values.minimumMargin}
+                placeholder="18"
+                onChange={handleChange}
+                error={errors.minimumMargin}
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <FormField
+                id="product-stock"
+                name="stockQuantity"
+                label="Stock quantity"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={values.stockQuantity}
+                placeholder="150"
+                onChange={handleChange}
+                error={errors.stockQuantity}
+              />
+              <FormField
+                id="product-lead-time"
+                name="supplierLeadTime"
+                label="Supplier lead time (days)"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={values.supplierLeadTime}
+                placeholder="7"
+                onChange={handleChange}
+                error={errors.supplierLeadTime}
+              />
+            </div>
+          </FormSection>
+        </div>
+
+        <aside className="glass-panel space-y-4 p-5 lg:sticky lg:top-6">
+          <h3 className="text-sm font-semibold text-foreground">Pricing summary</h3>
+          <dl className="space-y-3 text-sm">
+            <SummaryRow
+              label="Selling price"
+              value={Number.isFinite(sellingValue) ? formatCurrency(sellingValue) : "—"}
+            />
+            <SummaryRow
+              label="Profit per unit"
+              value={
+                Number.isFinite(sellingValue) && Number.isFinite(costValue)
+                  ? formatCurrency(sellingValue - costValue)
+                  : "—"
+              }
+            />
+            <SummaryRow
+              label="Margin"
+              value={
+                actualMargin === null ? (
+                  "—"
+                ) : (
+                  <span className={cn(marginOk === false ? "text-danger" : marginOk ? "text-success" : "")}>
+                    {formatPercent(actualMargin)}
+                  </span>
+                )
+              }
+            />
+          </dl>
+          {marginOk === false ? (
+            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+              Margin is below your {formatPercent(minMarginValue)} minimum.
+            </p>
+          ) : marginOk ? (
+            <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+              Meets your {formatPercent(minMarginValue)} minimum margin.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Enter cost, selling price and minimum margin to check profitability.
+            </p>
+          )}
+          <div className="flex flex-col gap-2 border-t border-border/60 pt-4">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : submitLabel}
+            </Button>
+            {cancelHref ? (
+              <Button variant="ghost" asChild>
+                <Link to={cancelHref}>Cancel</Link>
+              </Button>
+            ) : null}
           </div>
-        ) : null}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            id="product-cost"
-            name="costPrice"
-            label="Cost price (BDT)"
-            type="number"
-            inputMode="decimal"
-            min={1}
-            step={0.01}
-            value={values.costPrice}
-            placeholder="1200"
-            onChange={handleChange}
-            error={errors.costPrice}
-          />
-          <FormField
-            id="product-selling"
-            name="sellingPrice"
-            label="Selling price (BDT)"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step={0.01}
-            value={values.sellingPrice}
-            placeholder="1790"
-            onChange={handleChange}
-            error={errors.sellingPrice}
-            helperText={
-              actualMargin !== null
-                ? `Projected margin ${formatPercent(actualMargin)}`
-                : undefined
-            }
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <FormField
-            id="product-stock"
-            name="stockQuantity"
-            label="Stock quantity"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            value={values.stockQuantity}
-            placeholder="150"
-            onChange={handleChange}
-            error={errors.stockQuantity}
-          />
-          <FormField
-            id="product-lead-time"
-            name="supplierLeadTime"
-            label="Supplier lead time (days)"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            value={values.supplierLeadTime}
-            placeholder="7"
-            onChange={handleChange}
-            error={errors.supplierLeadTime}
-          />
-          <FormField
-            id="product-margin"
-            name="minimumMargin"
-            label="Minimum margin (%)"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step={0.1}
-            value={values.minimumMargin}
-            placeholder="18"
-            onChange={handleChange}
-            error={errors.minimumMargin}
-          />
-        </div>
-
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : submitLabel}
-        </Button>
+        </aside>
       </fieldset>
     </form>
+  )
+}
+
+const selectClass =
+  "h-11 w-full rounded-xl border border-border/70 bg-card/70 px-3 text-sm text-foreground outline-none transition focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/30"
+
+function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="glass-panel space-y-4 p-5">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function SelectField({
+  id,
+  label,
+  error,
+  children,
+}: {
+  id: string
+  label: string
+  error?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground" htmlFor={id}>
+        {label}
+      </label>
+      {children}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
+  )
+}
+
+function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-semibold tabular-nums text-foreground">{value}</dd>
+    </div>
   )
 }

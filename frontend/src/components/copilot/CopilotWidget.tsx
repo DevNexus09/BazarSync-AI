@@ -642,12 +642,19 @@ export function CopilotWidget() {
         subtitle={t(uiLanguage, "subtitle")}
         actions={headerActions}
       >
+        <div className={cn("flex min-h-0 flex-1 flex-col", expanded && "sm:flex-row")}>
         {historyOpen ? (
           <nav
             id="copilot-history"
             aria-label={t(uiLanguage, "history")}
-            className="max-h-56 overflow-y-auto border-b border-border/60 bg-background/70 p-2"
+            className={cn(
+              "copilot-scroll max-h-56 shrink-0 overflow-y-auto border-b border-border/60 bg-background/70 p-2",
+              expanded && "sm:max-h-none sm:w-64 sm:border-b-0 sm:border-r sm:p-3"
+            )}
           >
+            <p className="px-2 pb-1.5 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t(uiLanguage, "history")}
+            </p>
             {conversations.data?.items?.length ? (
               <ul className="space-y-1">
                 {conversations.data.items.map((item) => (
@@ -657,7 +664,7 @@ export function CopilotWidget() {
                       onClick={() => openConversation(item.id)}
                       aria-current={item.id === conversationId ? "true" : undefined}
                       className={cn(
-                        "w-full truncate rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                        "w-full truncate rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
                         item.id === conversationId ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground"
                       )}
                     >
@@ -673,7 +680,7 @@ export function CopilotWidget() {
         ) : null}
         <div data-testid="copilot-message-area" className="flex min-h-0 flex-1 flex-col">
           {messages.length === 0 ? (
-            <div className="copilot-scroll flex-1 overflow-y-auto p-3">
+            <div className="copilot-scroll flex flex-1 flex-col justify-center overflow-y-auto p-3">
               <div className="copilot-column">
                 <CopilotEmptyState />
                 {errorBox ? <div className="mt-3">{errorBox}</div> : null}
@@ -706,6 +713,7 @@ export function CopilotWidget() {
             hint={t(uiLanguage, "inputHint")}
             restore={restore}
           />
+        </div>
         </div>
       </CopilotChatPanel>
     </>
