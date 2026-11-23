@@ -56,7 +56,7 @@ export function ProductSelector({
       <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
         <span>Product selector</span>
         {selected ? (
-          <span className="text-[10px] uppercase text-emerald-600">Selected</span>
+          <span className="text-[10px] uppercase text-success">Selected</span>
         ) : null}
       </div>
       <div className="relative">
@@ -107,7 +107,7 @@ export function ProductSelector({
                   ))}
                 </div>
               ) : isError ? (
-                <div className="px-3 py-4 text-xs text-rose-600">
+                <div className="px-3 py-4 text-xs text-danger">
                   Unable to load products right now.
                 </div>
               ) : filtered.length === 0 ? (
@@ -145,7 +145,7 @@ export function ProductSelector({
         ) : null}
       </div>
       {!isOpen && isError ? (
-        <p className="text-xs text-rose-600">
+        <p className="text-xs text-danger">
           Unable to load products right now.
         </p>
       ) : null}

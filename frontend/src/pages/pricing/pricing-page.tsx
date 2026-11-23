@@ -437,7 +437,7 @@ function ScenarioRow({ scenario }: { scenario: RevenueSimulationScenario }) {
             {scenario.rejectionReasons[0]?.replaceAll("_", " ") ?? "Blocked"}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
             <ShieldCheck className="size-3.5" aria-hidden="true" />
             Allowed
           </span>

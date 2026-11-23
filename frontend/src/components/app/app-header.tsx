@@ -45,7 +45,7 @@ export default function AppHeader({
   return (
     <div className="sticky top-0 z-30">
       <div className="px-4 pt-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border/60 bg-card/75 p-4 shadow-[0_0_0_1px_rgb(var(--primary)/.12),_0_20px_50px_rgb(var(--overlay)/.38)] backdrop-blur-2xl">
+        <div className="glass-surface relative rounded-[24px] p-4 lg:py-2.5">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex min-w-[180px] items-center gap-3">
               <Button
@@ -61,7 +61,7 @@ export default function AppHeader({
                 <Menu className="size-4" aria-hidden="true" />
               </Button>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary">
+                <p className="text-[11px] font-semibold uppercase leading-4 tracking-[0.3em] text-primary">
                   BazarSync AI
                 </p>
                 <h1 className="heading-font text-lg font-semibold text-foreground">
@@ -82,7 +82,7 @@ export default function AppHeader({
               <Link
                 to={telegramNavItem.path}
                 title="Open Telegram alerts"
-                className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="surface-light flex items-center gap-2 rounded-xl border border-border bg-[rgb(213_196_174)] px-3 py-2 text-xs text-muted-foreground shadow-sm transition hover:border-primary/60 hover:bg-[rgb(226_214_197)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="hidden font-semibold text-foreground sm:inline">Telegram</span>
                 <TelegramStatusBadge state={telegramState} />

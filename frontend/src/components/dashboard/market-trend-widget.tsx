@@ -103,23 +103,23 @@ export function MarketTrendWidget({
               dataKey="demandIndex"
               name="Demand"
               stroke="rgb(var(--chart-2))"
-              strokeWidth={2}
+              strokeWidth={2.5}
               dot={false}
             />
             <Line
               type="monotone"
               dataKey="urgencyIndex"
               name="Urgency"
-              stroke="rgb(var(--warning))"
-              strokeWidth={2}
+              stroke="rgb(var(--chart-3))"
+              strokeWidth={2.5}
               dot={false}
             />
             <Line
               type="monotone"
               dataKey="opportunityIndex"
               name="Opportunity"
-              stroke="rgb(var(--success))"
-              strokeWidth={2}
+              stroke="rgb(var(--chart-4))"
+              strokeWidth={2.5}
               dot={false}
             />
           </LineChart>

@@ -14,17 +14,17 @@ const statusConfig: Record<
   },
   connecting: {
     label: "Connecting",
-    tone: "bg-amber-500/15 text-amber-300",
+    tone: "bg-amber-500/15 text-warning",
     Icon: Clock,
   },
   connected: {
     label: "Connected",
-    tone: "bg-emerald-500/15 text-emerald-300",
+    tone: "bg-emerald-500/15 text-success",
     Icon: CheckCircle2,
   },
   error: {
     label: "Error",
-    tone: "bg-rose-500/15 text-rose-300",
+    tone: "bg-rose-500/15 text-danger",
     Icon: AlertTriangle,
   },
 }

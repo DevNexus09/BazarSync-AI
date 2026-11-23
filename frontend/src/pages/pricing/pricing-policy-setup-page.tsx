@@ -51,8 +51,8 @@ export default function PricingPolicySetupPage() {
     <div className="space-y-6">
       <PageHeader title="Pricing policy setup" description="Define minimum margin, discount limits, and price increments so MarginGuard can evaluate recovery pricing safely." />
       <div className="glass-panel max-w-2xl space-y-4 p-4">
-        {mutation.isSuccess ? <p className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm text-emerald-100">Pricing policy saved. Run dead stock analysis to refresh recommendations.</p> : null}
-        {mutation.isError ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-100">Could not save pricing policy. Please check rates and price bounds.</p> : null}
+        {mutation.isSuccess ? <p className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm text-success">Pricing policy saved. Run dead stock analysis to refresh recommendations.</p> : null}
+        {mutation.isError ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-danger">Could not save pricing policy. Please check rates and price bounds.</p> : null}
         <ProductSelect products={products} value={productId} onChange={setProductId} />
         <Field label="Marketplace" value={marketplace} onChange={setMarketplace} />
         <Field label="Currency" value={currency} onChange={setCurrency} />

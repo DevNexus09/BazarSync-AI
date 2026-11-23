@@ -68,10 +68,10 @@ const eventIcons = {
 } satisfies Record<CompetitorEventType, typeof TrendingDown>
 
 const eventBadgeStyles: Record<CompetitorEventType, string> = {
-  PRICE_DROP: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
-  PRICE_RISE: "border-amber-400/40 bg-amber-400/10 text-amber-200",
-  OUT_OF_STOCK: "border-red-400/40 bg-red-400/10 text-red-200",
-  BACK_IN_STOCK: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+  PRICE_DROP: "border-emerald-400/40 bg-emerald-400/10 text-success",
+  PRICE_RISE: "border-amber-400/40 bg-amber-400/10 text-warning",
+  OUT_OF_STOCK: "border-red-400/40 bg-red-400/10 text-danger",
+  BACK_IN_STOCK: "border-cyan-400/40 bg-cyan-400/10 text-info",
   NEW_COMPETITOR: "border-info/40 bg-info/10 text-info",
   COMPETITOR_REMOVED: "border-border-strong/40 bg-muted/60 text-muted-foreground",
 }

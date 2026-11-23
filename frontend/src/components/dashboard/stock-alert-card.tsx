@@ -33,10 +33,10 @@ const severityIcons = {
 }
 
 const severityTone = {
-  [AlertSeverity.Low]: "text-emerald-300",
-  [AlertSeverity.Medium]: "text-amber-300",
-  [AlertSeverity.High]: "text-rose-300",
-  [AlertSeverity.Critical]: "text-rose-200",
+  [AlertSeverity.Low]: "text-success",
+  [AlertSeverity.Medium]: "text-warning",
+  [AlertSeverity.High]: "text-danger",
+  [AlertSeverity.Critical]: "text-danger",
 }
 
 const severityLabel: Record<AlertSeverity, string> = {

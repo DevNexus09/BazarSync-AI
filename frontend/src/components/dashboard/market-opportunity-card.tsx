@@ -9,9 +9,9 @@ type MarketOpportunityCardProps = {
 }
 
 const urgencyTone = (score: number) => {
-  if (score >= 80) return "text-rose-300 bg-rose-500/15"
-  if (score >= 60) return "text-amber-300 bg-amber-500/15"
-  return "text-emerald-300 bg-emerald-500/15"
+  if (score >= 80) return "text-danger bg-rose-500/15"
+  if (score >= 60) return "text-warning bg-amber-500/15"
+  return "text-success bg-emerald-500/15"
 }
 
 export function MarketOpportunityCard({ opportunity }: MarketOpportunityCardProps) {

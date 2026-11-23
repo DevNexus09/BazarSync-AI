@@ -60,10 +60,10 @@ export const STATUS_MAP: Record<StatusKind, Record<string, StatusStyle>> = {
 }
 
 export const TONE_CLASSES: Record<StatusTone, string> = {
-  success: "border-success/40 bg-success/10 text-success",
-  warning: "border-warning/40 bg-warning/10 text-warning",
-  danger: "border-danger/40 bg-danger/10 text-danger",
-  info: "border-info/40 bg-info/10 text-info",
+  success: "border-success bg-success/10 text-success font-semibold",
+  warning: "border-warning bg-warning/10 text-warning font-semibold",
+  danger: "border-danger bg-danger/10 text-danger font-semibold",
+  info: "border-info bg-info/10 text-info font-semibold",
   neutral: "border-border bg-muted/40 text-muted-foreground",
 }
 

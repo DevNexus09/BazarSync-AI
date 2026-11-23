@@ -13,12 +13,12 @@ export function RevenueOpportunityCard({
 }: RevenueOpportunityCardProps) {
   return (
     <div className={className}>
-      <div className="rounded-xl border bg-gradient-to-br from-primary/5 via-background to-emerald-50/60 p-4 shadow-sm">
+      <div className="glass-surface relative rounded-[20px] p-4">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Revenue opportunity
           </p>
-          <Sparkles className="size-4 text-emerald-500" />
+          <Sparkles className="size-4 text-success" />
         </div>
         <div className="mt-3 text-2xl font-semibold text-foreground">
           {formatOptionalCurrency(value)}

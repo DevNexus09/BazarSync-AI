@@ -42,7 +42,7 @@ export function PublicAuthLayout({
           initial={shouldReduceMotion ? false : { opacity: 0, y: 8, scale: 0.99 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.24, ease: "easeOut" }}
-          className="w-full max-w-[420px] rounded-2xl border border-primary/15 bg-card/[0.78] p-5 shadow-[0_24px_80px_rgb(var(--overlay)/.24)] backdrop-blur-2xl sm:p-7"
+          className="glass-surface relative w-full max-w-[420px] rounded-[28px] p-5 sm:p-7"
         >
           <div className="mb-6 space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary">

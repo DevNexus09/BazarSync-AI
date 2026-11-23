@@ -47,7 +47,7 @@ export function CopilotActionProposalCard({
           <p className="mt-1 text-muted-foreground">
             {proposal.summary ?? "Review this proposal before any future execution."}
           </p>
-          <p className="mt-2 rounded-md border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-amber-200">
+          <p className="mt-2 rounded-md border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-warning">
             Approval does not execute live marketplace changes yet.
           </p>
           {proposal.expected_impact ? (
@@ -83,7 +83,7 @@ export function CopilotActionProposalCard({
       ) : null}
       {message ? <p className="mt-2 text-muted-foreground">{message}</p> : null}
       {approve.isError || reject.isError ? (
-        <p className="mt-2 text-amber-200">
+        <p className="mt-2 text-warning">
           Action proposal could not be updated. Please try again.
         </p>
       ) : null}

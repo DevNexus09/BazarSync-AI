@@ -13,13 +13,13 @@ type CompetitorHeatmapProps = {
 
 const getHeatTone = (gap: number) => {
   if (gap <= -200) {
-    return "bg-rose-500/20 text-rose-200"
+    return "bg-rose-500/20 text-danger"
   }
   if (gap <= -50) {
-    return "bg-amber-500/20 text-amber-200"
+    return "bg-amber-500/20 text-warning"
   }
   if (gap >= 200) {
-    return "bg-emerald-500/20 text-emerald-200"
+    return "bg-emerald-500/20 text-success"
   }
   return "bg-muted/60 text-muted-foreground"
 }

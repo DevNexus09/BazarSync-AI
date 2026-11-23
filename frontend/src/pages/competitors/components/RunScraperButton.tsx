@@ -21,7 +21,7 @@ export function RunScraperButton({
   if (isSuccess) {
     return (
       <div className={cn("space-y-2", className)}>
-        <div className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-4 text-sm font-semibold text-emerald-300 shadow-sm">
+        <div className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-4 text-sm font-semibold text-success shadow-sm">
           Success
         </div>
       </div>

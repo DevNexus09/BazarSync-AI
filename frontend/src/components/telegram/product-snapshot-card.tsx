@@ -102,7 +102,7 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
       </div>
 
       {!isConnected ? (
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-warning">
           <ShieldAlert className="mt-0.5 size-4" />
           Connect your Telegram account first to send product alerts.
         </div>
@@ -113,8 +113,8 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
           className={cn(
             "mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
             toast.tone === "success"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-200"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-success"
+              : "border-rose-500/30 bg-rose-500/10 text-danger"
           )}
           role="status"
           aria-live="polite"
@@ -213,8 +213,8 @@ export function ProductSnapshotCard({ isConnected }: ProductSnapshotCardProps) {
                 className={cn(
                   "font-semibold",
                   lastSnapshot.tone === "success"
-                    ? "text-emerald-300"
-                    : "text-rose-300"
+                    ? "text-success"
+                    : "text-danger"
                 )}
               >
                 {lastSnapshot.message}

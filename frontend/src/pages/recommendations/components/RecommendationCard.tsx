@@ -25,7 +25,7 @@ export function RecommendationCard({
   evidence,
 }: RecommendationCardProps) {
   return (
-    <div className={cn("min-w-0 rounded-xl border bg-background p-5 shadow-sm", className)}>
+    <div className={cn("glass-surface relative min-w-0 rounded-[24px] p-5", className)}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

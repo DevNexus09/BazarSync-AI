@@ -112,8 +112,8 @@ export function CompetitorPriceChart({
               type="monotone"
               dataKey="competitorPrice"
               name="Competitor"
-              stroke="rgb(var(--warning))"
-              strokeWidth={2}
+              stroke="rgb(var(--chart-3))"
+              strokeWidth={2.5}
               dot={false}
             />
             <Line
@@ -129,7 +129,7 @@ export function CompetitorPriceChart({
               dataKey="marketAverage"
               name="Market avg"
               stroke="rgb(var(--chart-1))"
-              strokeWidth={2}
+              strokeWidth={2.5}
               strokeDasharray="4 4"
               dot={false}
             />

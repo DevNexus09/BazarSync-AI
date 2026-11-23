@@ -358,7 +358,7 @@ export default function ForgotPasswordPage() {
 
       {step === "success" ? (
         <div className="space-y-5 text-center" aria-live="polite">
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-success">
             Password reset successful. Please log in using your new password.
           </div>
           <Button

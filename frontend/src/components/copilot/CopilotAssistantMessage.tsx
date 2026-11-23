@@ -44,7 +44,7 @@ export function CopilotAssistantMessage({
   }
 
   return (
-    <article className="rounded-2xl rounded-tl-md border border-border/60 bg-card px-4 py-3.5 text-sm leading-6 text-foreground shadow-[0_1px_2px_rgb(var(--overlay)/.25)]">
+    <article className="glass-surface relative rounded-[22px] rounded-tl-md px-4 py-3.5 text-sm leading-6 text-foreground">
       <div lang={langAttribute(message.replyLanguage, message.content)}>
         {headline ? (
           <p data-testid="copilot-headline" className="mb-1.5 text-2xl font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground">

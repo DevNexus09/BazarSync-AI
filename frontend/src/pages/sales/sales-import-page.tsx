@@ -45,8 +45,8 @@ export default function SalesImportPage() {
     <div className="space-y-6">
       <PageHeader title="Import sales record" description="Only COMPLETED and FULFILLED sales are used for dead stock and velocity calculations. Pending, cancelled, failed-payment, and test orders are excluded." />
       <div className="glass-panel max-w-2xl space-y-4 p-4">
-        {mutation.isSuccess ? <p className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm text-emerald-100">Sales record imported. Run dead stock analysis to refresh last sale and velocity.</p> : null}
-        {mutation.isError ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-100">Could not import sales record. Check product, date, and source reference.</p> : null}
+        {mutation.isSuccess ? <p className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm text-success">Sales record imported. Run dead stock analysis to refresh last sale and velocity.</p> : null}
+        {mutation.isError ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-danger">Could not import sales record. Check product, date, and source reference.</p> : null}
         <ProductSelect products={products} value={productId} onChange={setProductId} />
         <Field label="Quantity" type="number" value={quantity} onChange={setQuantity} />
         <Field label="Sold date" type="datetime-local" value={soldAt} onChange={setSoldAt} />
@@ -55,7 +55,7 @@ export default function SalesImportPage() {
             {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
-        <p className={counts && !isTestOrder ? "text-sm text-emerald-200" : "text-sm text-amber-200"}>
+        <p className={counts && !isTestOrder ? "text-sm text-success" : "text-sm text-warning"}>
           {counts && !isTestOrder ? "This record will count toward last sale and velocity." : "This record will be stored but excluded from Phase 6 and Phase 9 calculations."}
         </p>
         <Field label="Unit price" type="number" value={unitPrice} onChange={setUnitPrice} />

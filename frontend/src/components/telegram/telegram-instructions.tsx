@@ -104,7 +104,7 @@ export function TelegramInstructions({
 
       <div className="mt-4 rounded-lg border border-border/60 bg-card/60 p-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <CheckCircle2 className="size-4 text-emerald-300" />
+          <CheckCircle2 className="size-4 text-success" />
           Send this command in Telegram
         </div>
         <div className="mt-2 flex flex-col gap-2 rounded-md border border-border/60 bg-background/60 p-3">

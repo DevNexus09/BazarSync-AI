@@ -29,14 +29,14 @@ type CompetitorTableProps = {
 }
 
 const stockTone: Record<StockStatus, string> = {
-  [StockStatus.InStock]: "bg-emerald-500/15 text-emerald-300",
-  [StockStatus.LowStock]: "bg-amber-500/15 text-amber-300",
-  [StockStatus.OutOfStock]: "bg-rose-500/15 text-rose-300",
+  [StockStatus.InStock]: "bg-emerald-500/15 text-success",
+  [StockStatus.LowStock]: "bg-amber-500/15 text-warning",
+  [StockStatus.OutOfStock]: "bg-rose-500/15 text-danger",
 }
 
 const trendTone: Record<CompetitorTrend, string> = {
-  [CompetitorTrend.Up]: "text-rose-300",
-  [CompetitorTrend.Down]: "text-emerald-300",
+  [CompetitorTrend.Up]: "text-danger",
+  [CompetitorTrend.Down]: "text-success",
   [CompetitorTrend.Flat]: "text-muted-foreground",
 }
 
@@ -101,7 +101,7 @@ export function CompetitorTable({
         header: "Price gap",
         cell: ({ row }) => {
           const gap = row.original.priceGap
-          const tone = gap >= 0 ? "text-rose-600" : "text-emerald-600"
+          const tone = gap >= 0 ? "text-danger" : "text-success"
           return (
             <div className={cn("text-sm font-semibold", tone)}>
               {gap >= 0 ? "+" : ""}

@@ -130,7 +130,7 @@ export function InventorySnapshotCard({
                 count.value == null
                   ? "text-muted-foreground"
                   : count.value > 0
-                    ? "text-rose-300"
+                    ? "text-danger"
                     : "text-foreground"
               )}
             >

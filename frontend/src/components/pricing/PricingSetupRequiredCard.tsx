@@ -29,11 +29,11 @@ export function PricingSetupRequiredCard({
     <section className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex gap-3">
-          <span className="mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
+          <span className="mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-warning">
             <ShieldAlert className="size-5" aria-hidden="true" />
           </span>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-warning">
               Pricing setup incomplete
             </p>
             <h3 className="mt-1 text-base font-semibold text-foreground">

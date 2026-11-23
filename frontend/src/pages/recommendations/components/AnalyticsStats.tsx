@@ -58,7 +58,7 @@ export function AnalyticsStats({ analytics, className }: AnalyticsStatsProps) {
         return (
           <div
             key={stat.label}
-            className="rounded-xl border bg-background p-4 shadow-sm"
+            className="glass-surface relative rounded-[20px] p-4"
           >
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -21,8 +21,8 @@ type DashboardSummaryHeaderProps = {
 }
 
 const trendStyles: Record<KpiTrend, string> = {
-  [KpiTrend.Up]: "text-emerald-600",
-  [KpiTrend.Down]: "text-rose-600",
+  [KpiTrend.Up]: "text-success",
+  [KpiTrend.Down]: "text-danger",
   [KpiTrend.Flat]: "text-muted-foreground",
 }
 

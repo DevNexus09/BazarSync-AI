@@ -9,9 +9,9 @@ type UrgencyScoreWidgetProps = {
 }
 
 const scoreTone = (score: number) => {
-  if (score >= 80) return "text-rose-300"
-  if (score >= 60) return "text-amber-300"
-  return "text-emerald-300"
+  if (score >= 80) return "text-danger"
+  if (score >= 60) return "text-warning"
+  return "text-success"
 }
 
 export function UrgencyScoreWidget({

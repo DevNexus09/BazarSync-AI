@@ -21,9 +21,9 @@ const categoryIcons: Record<ActivityItem["category"], typeof Activity> = {
 }
 
 const severityTone: Record<ActivitySeverity, string> = {
-  [ActivitySeverity.Info]: "text-emerald-300",
-  [ActivitySeverity.Warning]: "text-amber-300",
-  [ActivitySeverity.Critical]: "text-rose-300",
+  [ActivitySeverity.Info]: "text-success",
+  [ActivitySeverity.Warning]: "text-warning",
+  [ActivitySeverity.Critical]: "text-danger",
 }
 
 export function RealtimeActivityFeed({

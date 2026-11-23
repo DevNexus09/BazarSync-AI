@@ -54,10 +54,10 @@ import { formatCurrency, formatDateTime, formatNumber } from "@/utils/formatters
 const PAGE_LIMIT = 8
 
 const riskStyles: Record<InventoryRiskLevel, string> = {
-  LOW: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
-  MEDIUM: "border-amber-400/40 bg-amber-400/10 text-amber-200",
-  HIGH: "border-orange-400/40 bg-orange-400/10 text-orange-200",
-  CRITICAL: "border-red-400/40 bg-red-400/10 text-red-200",
+  LOW: "border-emerald-400/40 bg-emerald-400/10 text-success",
+  MEDIUM: "border-amber-400/40 bg-amber-400/10 text-warning",
+  HIGH: "border-orange-400/40 bg-orange-400/10 text-warning",
+  CRITICAL: "border-red-400/40 bg-red-400/10 text-danger",
 }
 
 const formatOptionalNumber = (value?: number | null, suffix = "") => {
@@ -398,7 +398,7 @@ function DeadStockTable({
                           fallback="Add inventory receipt, lot, goods-received date, or stock-in transaction."
                         />
                       ) : `${formatNumber(row.inventoryAgeDays)} days`}
-                      {row.inventoryAgeIsEstimated ? <span className="ml-2 rounded border border-amber-400/40 px-1.5 py-0.5 text-xs text-amber-200">Estimated age</span> : null}
+                      {row.inventoryAgeIsEstimated ? <span className="ml-2 rounded border border-amber-400/40 px-1.5 py-0.5 text-xs text-warning">Estimated age</span> : null}
                       <div className="text-xs text-muted-foreground">{labelize(row.ageSource)}</div>
                     </td>
                     <td className="py-3 pr-3">
@@ -472,7 +472,7 @@ function AgeDistribution({ data }: { data?: Record<string, number> }) {
             <XAxis dataKey="bucket" tickLine={false} axisLine={false} />
             <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
             <Tooltip />
-            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" fill="rgb(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -579,10 +579,10 @@ function RecoveryPanel({
           </Button>
         </div>
         {simulationBlocker ? (
-          <p className="mt-3 text-sm text-amber-100">{simulationBlocker}</p>
+          <p className="mt-3 text-sm text-warning">{simulationBlocker}</p>
         ) : null}
         {simulation.isError ? (
-          <p className="mt-3 text-sm text-red-200">Simulation unavailable. Check cost and marketplace fee setup.</p>
+          <p className="mt-3 text-sm text-danger">Simulation unavailable. Check cost and marketplace fee setup.</p>
         ) : simulated ? (
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <Detail label="Locked capital" value={currency(simulated.lockedCapital)} />
@@ -617,8 +617,8 @@ function DataQualityPanel({
           <QualityGroup title="Pending calculations" items={pending} />
           {estimated ? (
             <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm">
-              <div className="flex items-center gap-2 font-medium text-amber-100"><FileWarning className="size-4" />Estimated age</div>
-              <p className="mt-1 text-amber-50/80">Inventory age is estimated from the earliest available stock record.</p>
+              <div className="flex items-center gap-2 font-medium text-warning"><FileWarning className="size-4" />Estimated age</div>
+              <p className="mt-1 text-foreground">Inventory age is estimated from the earliest available stock record.</p>
             </div>
           ) : null}
         </div>
@@ -762,7 +762,7 @@ export default function InventoryIntelligencePage() {
       />
 
       {workflowSuccess ? (
-        <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-success">
           Inventory workflow has been queued. The dashboard will refresh as records are
           written.
         </div>
@@ -920,7 +920,7 @@ export default function InventoryIntelligencePage() {
           ) : deadStockIntelligence.isLoading ? (
             <div className="mt-3 h-20 rounded-lg bg-muted/30" />
           ) : deadStockIntelligence.isError ? (
-            <p className="mt-3 text-sm text-red-200">Product dead-stock intelligence is unavailable.</p>
+            <p className="mt-3 text-sm text-danger">Product dead-stock intelligence is unavailable.</p>
           ) : (
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
               <div className="rounded-lg border border-border/70 bg-muted/20 p-3">

@@ -35,9 +35,9 @@ const actionMetaMap: Record<RecommendationAction, ActionMeta> = {
 }
 
 const confidenceToneMap: Record<RecommendationConfidence, string> = {
-  HIGH: "text-emerald-600",
-  MEDIUM: "text-amber-600",
-  LOW: "text-rose-600",
+  HIGH: "text-success",
+  MEDIUM: "text-warning",
+  LOW: "text-danger",
 }
 
 export const getActionMeta = (action: RecommendationAction) => actionMetaMap[action]

@@ -248,7 +248,7 @@ export default function MarketplaceFeeSetupPage() {
       </form>
 
       {successMessage ? (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-600">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-success">
           <div className="flex items-center gap-2 font-semibold">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Returning to Pricing Analytics...

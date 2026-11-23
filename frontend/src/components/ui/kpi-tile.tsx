@@ -41,7 +41,7 @@ export function KpiTile({
       {delta ? <span className="mt-0.5 block text-xs text-muted-foreground">{delta}</span> : null}
     </>
   )
-  const classes = cn("group/tile glass-panel-muted block w-full p-3 text-left", className)
+  const classes = cn("group/tile glass-surface relative block w-full rounded-[20px] p-3 text-left", className)
   return onClick ? (
     <button
       type="button"

@@ -15,9 +15,9 @@ type AlertHistoryPanelProps = {
 }
 
 const statusStyles: Record<AlertStatus, string> = {
-  [AlertStatus.New]: "bg-rose-500/15 text-rose-300",
-  [AlertStatus.Acknowledged]: "bg-amber-500/15 text-amber-300",
-  [AlertStatus.Resolved]: "bg-emerald-500/15 text-emerald-300",
+  [AlertStatus.New]: "bg-rose-500/15 text-danger",
+  [AlertStatus.Acknowledged]: "bg-amber-500/15 text-warning",
+  [AlertStatus.Resolved]: "bg-emerald-500/15 text-success",
 }
 
 export function AlertHistoryPanel({

@@ -14,7 +14,7 @@ export function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-3 glass-panel-muted border-dashed px-6 py-10 text-center">
+    <div className="flex w-full flex-col items-center justify-center gap-3 glass-surface relative rounded-[24px] px-6 py-10 text-center">
       <div className="text-sm font-semibold text-foreground">{title}</div>
       <div className="text-sm text-muted-foreground">{message}</div>
       {onAction ? (

@@ -42,7 +42,7 @@ export function RecommendationCard({
   action,
 }: RecommendationCardProps) {
   return (
-    <div className="flex h-full flex-col rounded-xl border border-border/60 bg-card/70 p-4 shadow-[0_0_0_1px_rgb(var(--accent)/.15)]">
+    <div className="glass-surface relative flex h-full flex-col rounded-[22px] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p

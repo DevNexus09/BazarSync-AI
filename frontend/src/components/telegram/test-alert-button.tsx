@@ -51,6 +51,8 @@ export function TestAlertButton({ enabled }: TestAlertButtonProps) {
         </div>
         <Button
           size="sm"
+          // Espresso button on the sand card; still dark when disabled.
+          className="[--primary-active:12_8_6] [--primary-foreground:244_238_230] [--primary-hover:58_36_24] [--primary:26_18_14] disabled:opacity-80"
           onClick={() => mutation.mutate()}
           disabled={!enabled || mutation.isPending}
         >
@@ -73,8 +75,8 @@ export function TestAlertButton({ enabled }: TestAlertButtonProps) {
           className={cn(
             "mt-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
             toast.tone === "success"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-200"
+              ? "border-emerald-500/30 bg-emerald-500/10 text-success"
+              : "border-rose-500/30 bg-rose-500/10 text-danger"
           )}
           role="status"
           aria-live="polite"

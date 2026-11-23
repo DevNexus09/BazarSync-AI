@@ -220,7 +220,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <AuthFormAlert message={formError} />
             {successMessage ? (
-              <div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+              <div role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-success">
                 {successMessage}
               </div>
             ) : null}
@@ -389,7 +389,7 @@ export default function ProfilePage() {
                 className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
                 <span className="text-foreground">{label}</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-success">
                   <span aria-hidden className="size-1.5 rounded-full bg-emerald-400" />
                   Enabled
                 </span>
@@ -441,7 +441,7 @@ export default function ProfilePage() {
     <Card className="border-rose-500/30">
       <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-10">
         <div className="space-y-1">
-          <h2 className="text-base font-semibold text-rose-300">Delete account</h2>
+          <h2 className="text-base font-semibold text-danger">Delete account</h2>
           <p className="text-sm text-muted-foreground">
             Permanently removes your seller profile, products, alerts, and history.
           </p>
@@ -489,7 +489,7 @@ export default function ProfilePage() {
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-success">
           <span aria-hidden className="size-1.5 rounded-full bg-emerald-400" />
           Account status: Active
         </span>

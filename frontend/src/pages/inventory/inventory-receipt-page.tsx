@@ -76,5 +76,5 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
 }
 
 function SetupPanel({ children, message, error }: { children: ReactNode; message: string | null; error: unknown }) {
-  return <div className="glass-panel max-w-2xl space-y-4 p-4">{message ? <p className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm text-emerald-100">{message}</p> : null}{error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-100">Could not save setup data. Please check the values.</p> : null}{children}</div>
+  return <div className="glass-panel max-w-2xl space-y-4 p-4">{message ? <p className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 p-3 text-sm text-success">{message}</p> : null}{error ? <p className="rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-danger">Could not save setup data. Please check the values.</p> : null}{children}</div>
 }

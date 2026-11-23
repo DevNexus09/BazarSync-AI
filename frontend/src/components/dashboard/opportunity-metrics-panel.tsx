@@ -12,8 +12,8 @@ type OpportunityMetricsPanelProps = {
 }
 
 const trendStyles: Record<KpiTrend, string> = {
-  [KpiTrend.Up]: "text-emerald-300",
-  [KpiTrend.Down]: "text-rose-300",
+  [KpiTrend.Up]: "text-success",
+  [KpiTrend.Down]: "text-danger",
   [KpiTrend.Flat]: "text-muted-foreground",
 }
 

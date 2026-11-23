@@ -59,7 +59,7 @@ export function DeadStockReadinessPanel({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <AlertTriangle className="size-4 text-amber-200" />
+            <AlertTriangle className="size-4 text-warning" />
             Dead stock analysis setup incomplete
           </h3>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">

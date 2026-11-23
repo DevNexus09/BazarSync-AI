@@ -18,133 +18,165 @@
   }
 }
 
+/*
+ * Palette: espresso #1A120E · roast #3A2418 · walnut #6B4A2E · caramel #A88462 · sand #D5C4AE · charcoal #4A4A46
+ * Three surface scopes redefine the same tokens, so any content inside adapts automatically:
+ *   dark  (:root)              – page canvas, sidebar, header, dialogs
+ *   light (.surface-light)     – content cards (Card / .glass-panel): sand with espresso text
+ *   walnut (.surface-walnut)    – KPI tiles and secondary panels (.glass-panel-muted): walnut with cream text
+ */
 @layer base {
   .theme {
     --font-heading: "Space Grotesk", "Inter Variable", sans-serif;
     --font-sans: "Inter Variable", sans-serif;
   }
 
-:root {
+  :root {
     color-scheme: dark;
     --background: 26 18 14;
-    --background-secondary: 38 27 21;
+    --background-secondary: 36 25 19;
     --background-elevated: 58 36 24;
     --surface: 58 36 24;
     --surface-hover: 74 74 70;
     --surface-active: 107 74 46;
-    --surface-muted: 45 33 27;
+    --surface-muted: 40 28 21;
     --foreground: 244 238 230;
     --foreground-muted: 213 196 174;
-    --foreground-subtle: 168 132 98;
-    --foreground-disabled: 107 74 46;
-    --card: 47 31 22;
-    --card-foreground: 244 238 230;
-    --popover: 58 36 24;
-    --popover-foreground: 244 238 230;
-    --primary: 168 132 98;
-    --primary-hover: 213 196 174;
-    --primary-active: 107 74 46;
-    --primary-foreground: 26 18 14;
-    --secondary: 74 74 70;
-    --secondary-foreground: 244 238 230;
-    --muted: 58 36 24;
-    --muted-foreground: 213 196 174;
-    --accent: 213 196 174;
-    --accent-soft: 58 36 24;
-    --accent-glow: 168 132 98;
-    --accent-foreground: 26 18 14;
-    --destructive: 244 63 94;
-    --success: 16 185 129;
-    --warning: 245 158 11;
-    --danger: 244 63 94;
-    --info: 56 189 248;
-    --border: 107 74 46;
-    --border-strong: 168 132 98;
-    --border-subtle: 74 74 70;
-    --input: 58 36 24;
-    --input-background: 38 27 21;
-    --input-border: 107 74 46;
-    --input-placeholder: 168 132 98;
-    --ring: 213 196 174;
-    --chart-1: 168 132 98;
-    --chart-2: 213 196 174;
-    --chart-3: 107 74 46;
-    --chart-4: 185 154 124;
-    --chart-5: 141 105 76;
-    --tooltip-background: 58 36 24;
-    --tooltip-foreground: 244 238 230;
-    --tooltip-border: 168 132 98;
-    --overlay: 16 11 8;
-    --radius: 0.75rem;
-    --sidebar: 26 18 14;
-    --sidebar-foreground: 244 238 230;
-    --sidebar-primary: 168 132 98;
-    --sidebar-primary-foreground: 26 18 14;
-    --sidebar-accent: 58 36 24;
-    --sidebar-accent-foreground: 244 238 230;
-    --sidebar-border: 107 74 46;
-    --sidebar-ring: 213 196 174;
-  }
-
-  /* Product workspace refinements derived from the same espresso palette. */
-.app-theme {
-    color-scheme: dark;
-    --background: 26 18 14;
-    --background-secondary: 58 36 24;
-    --background-elevated: 213 196 174;
-    --surface: 58 36 24;
-    --surface-hover: 107 74 46;
-    --surface-active: 168 132 98;
-    --surface-muted: 74 74 70;
-    --foreground: 244 238 230;
-    --foreground-muted: 213 196 174;
-    --foreground-subtle: 168 132 98;
+    --foreground-subtle: 184 160 132;
     --foreground-disabled: 107 74 46;
     --card: 58 36 24;
     --card-foreground: 244 238 230;
     --popover: 213 196 174;
     --popover-foreground: 26 18 14;
-    --primary: 168 132 98;
+    --primary: 182 145 110;
     --primary-hover: 213 196 174;
-    --primary-active: 107 74 46;
+    --primary-active: 140 105 74;
     --primary-foreground: 26 18 14;
-    --button-primary: 185 149 116;
+    --button-primary: 168 132 98;
     --button-primary-hover: 213 196 174;
-    --button-primary-active: 168 132 98;
+    --button-primary-active: 140 105 74;
     --button-primary-foreground: 26 18 14;
-    --secondary: 213 196 174;
-    --secondary-foreground: 26 18 14;
+    --secondary: 74 74 70;
+    --secondary-foreground: 244 238 230;
     --muted: 74 74 70;
     --muted-foreground: 213 196 174;
     --accent: 213 196 174;
     --accent-soft: 58 36 24;
     --accent-glow: 168 132 98;
     --accent-foreground: 26 18 14;
-    --border: 168 132 98;
-    --border-strong: 213 196 174;
-    --border-subtle: 107 74 46;
-    --input: 58 36 24;
-    --input-background: 38 27 21;
-    --input-border: 168 132 98;
-    --input-placeholder: 213 196 174;
+    --destructive: 251 113 133;
+    --success: 74 222 128;
+    --warning: 251 191 36;
+    --danger: 251 113 133;
+    --info: 125 211 252;
+    --border: 107 74 46;
+    --border-strong: 168 132 98;
+    --border-subtle: 74 74 70;
+    --input: 44 31 24;
+    --input-background: 36 25 19;
+    --input-border: 107 74 46;
+    --input-placeholder: 184 160 132;
     --ring: 213 196 174;
-    --chart-1: 168 132 98;
-    --chart-2: 213 196 174;
-    --chart-3: 107 74 46;
-    --chart-4: 185 154 124;
-    --chart-5: 141 105 76;
-    --tooltip-background: 58 36 24;
+    --chart-1: 255 166 77;
+    --chart-2: 94 200 255;
+    --chart-3: 255 214 102;
+    --chart-4: 74 222 128;
+    --chart-5: 244 114 182;
+    --tooltip-background: 74 74 70;
     --tooltip-foreground: 244 238 230;
     --tooltip-border: 168 132 98;
-    --overlay: 16 11 8;
-    --sidebar: 26 18 14;
+    --overlay: 12 8 6;
+    --radius: 0.75rem;
+    --sidebar: 58 36 24;
     --sidebar-foreground: 244 238 230;
     --sidebar-primary: 168 132 98;
     --sidebar-primary-foreground: 26 18 14;
-    --sidebar-accent: 58 36 24;
+    --sidebar-accent: 74 74 70;
     --sidebar-accent-foreground: 244 238 230;
-    --sidebar-border: 168 132 98;
+    --sidebar-border: 107 74 46;
     --sidebar-ring: 213 196 174;
+  }
+
+  /* Sand surface: every text token is dark espresso/roast so it reads clearly on the light background. */
+  .surface-light,
+  .glass-panel {
+    color-scheme: light;
+    --background: 236 228 216;
+    --background-secondary: 226 214 197;
+    --background-elevated: 242 236 227;
+    --surface: 226 214 197;
+    --surface-hover: 216 201 181;
+    --surface-active: 200 182 158;
+    --surface-muted: 228 217 201;
+    --foreground: 10 7 5;
+    --foreground-muted: 40 28 20;
+    --foreground-subtle: 52 38 28;
+    --foreground-disabled: 140 125 108;
+    --card: 228 217 201;
+    --card-foreground: 10 7 5;
+    --popover: 58 36 24;
+    --popover-foreground: 244 238 230;
+    --primary: 92 61 34;
+    --primary-hover: 107 74 46;
+    --primary-active: 58 36 24;
+    --primary-foreground: 250 245 238;
+    --secondary: 74 74 70;
+    --secondary-foreground: 244 238 230;
+    --muted: 205 188 165;
+    --muted-foreground: 40 28 20;
+    --accent: 58 36 24;
+    --accent-soft: 222 208 189;
+    --accent-glow: 168 132 98;
+    --accent-foreground: 244 238 230;
+    --destructive: 200 30 30;
+    --success: 0 150 60;
+    --warning: 190 90 0;
+    --danger: 200 30 30;
+    --info: 29 78 216;
+    --border: 184 160 132;
+    --border-strong: 107 74 46;
+    --border-subtle: 205 188 165;
+    --input: 242 236 227;
+    --input-background: 246 241 234;
+    --input-border: 168 132 98;
+    --input-placeholder: 72 56 44;
+    --ring: 92 61 34;
+    --chart-1: 225 80 0;
+    --chart-2: 29 84 226;
+    --chart-3: 205 125 0;
+    --chart-4: 0 160 64;
+    --chart-5: 205 0 115;
+    --tooltip-background: 26 18 14;
+    --tooltip-foreground: 244 238 230;
+    --tooltip-border: 107 74 46;
+    --overlay: 60 40 25;
+  }
+
+  .surface-walnut,
+  .glass-panel-muted {
+    color-scheme: dark;
+    --background: 58 36 24;
+    --card: 74 50 33;
+    --card-foreground: 248 243 236;
+    --foreground: 248 243 236;
+    --foreground-muted: 230 218 202;
+    --muted: 58 36 24;
+    --muted-foreground: 230 218 202;
+    --primary: 213 196 174;
+    --primary-hover: 232 220 204;
+    --primary-foreground: 26 18 14;
+    --accent: 213 196 174;
+    --accent-foreground: 26 18 14;
+    --border: 168 132 98;
+    --border-strong: 213 196 174;
+    --ring: 213 196 174;
+    --success: 134 239 172;
+    --warning: 253 224 71;
+    --danger: 254 205 211;
+    --info: 186 230 253;
+    --chart-1: 255 214 160;
+    --chart-2: 255 166 77;
+    --chart-3: 150 215 255;
   }
 
   * {
@@ -186,84 +218,79 @@
     color: rgb(var(--foreground));
   }
 
+  /* Caramel glows at the edges over espresso – echoes the palette swatch. */
   .app-shell-canvas {
     background-image:
-      radial-gradient(circle at 14% 3%, rgb(var(--primary) / 0.2), transparent 28rem),
-      radial-gradient(circle at 92% 16%, rgb(var(--accent) / 0.18), transparent 30rem),
-      linear-gradient(145deg, rgb(var(--background)), rgb(var(--background-secondary)) 52%, rgb(var(--background)));
+      radial-gradient(circle at 6% 30%, rgb(168 132 98 / 0.22), transparent 28rem),
+      radial-gradient(circle at 96% 20%, rgb(168 132 98 / 0.16), transparent 30rem),
+      radial-gradient(circle at 90% 95%, rgb(74 74 70 / 0.35), transparent 30rem),
+      linear-gradient(160deg, rgb(26 18 14), rgb(36 25 19) 55%, rgb(26 18 14));
+    background-attachment: fixed;
   }
 
   .app-shell-grid {
     background-image:
-      linear-gradient(rgb(var(--foreground) / 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(var(--foreground) / 0.025) 1px, transparent 1px);
+      linear-gradient(rgb(213 196 174 / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(213 196 174 / 0.03) 1px, transparent 1px);
     background-size: 42px 42px;
     mask-image: linear-gradient(to bottom, black, transparent 72%);
   }
 
-  .app-theme [data-slot="button"][data-variant="default"] {
-    color: rgb(var(--button-primary-foreground));
+  [data-slot="button"][data-variant="default"] {
+    color: rgb(var(--primary-foreground));
     background: linear-gradient(
       135deg,
-      rgb(var(--button-primary-hover)),
-      rgb(var(--button-primary)) 58%,
-      rgb(var(--button-primary-active))
+      rgb(var(--primary-hover)),
+      rgb(var(--primary)) 58%,
+      rgb(var(--primary-active, var(--primary)))
     );
-    box-shadow: 0 0 0 1px rgb(var(--button-primary-hover) / 0.38),
-      0 12px 32px rgb(var(--button-primary) / 0.3);
+    box-shadow: 0 0 0 1px rgb(var(--primary-hover) / 0.35),
+      0 10px 26px rgb(var(--primary) / 0.28);
   }
 
-  .app-theme [data-slot="button"][data-variant="default"]:hover {
-    background: linear-gradient(
-      135deg,
-      rgb(var(--button-primary-hover)),
-      rgb(var(--button-primary))
-    );
-    box-shadow: 0 0 0 1px rgb(var(--button-primary-hover) / 0.55),
-      0 14px 38px rgb(var(--button-primary) / 0.4);
+  [data-slot="button"][data-variant="default"]:hover {
+    background: linear-gradient(135deg, rgb(var(--primary-hover)), rgb(var(--primary)));
+    box-shadow: 0 0 0 1px rgb(var(--primary-hover) / 0.5),
+      0 12px 32px rgb(var(--primary) / 0.36);
   }
 
+  /* Light sand content card. */
   .glass-panel {
-    @apply rounded-xl border border-border/70 bg-card/70 backdrop-blur-xl;
-    box-shadow: 0 0 0 1px rgb(var(--primary) / 0.1),
-      0 18px 46px rgb(var(--overlay) / 0.24);
+    @apply rounded-xl border;
+    color: rgb(var(--foreground));
+    border-color: rgb(244 238 230 / 0.6);
+    background-image: linear-gradient(
+      160deg,
+      rgb(232 222 208),
+      rgb(213 196 174) 75%,
+      rgb(203 184 160)
+    );
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6),
+      0 1px 2px rgb(12 8 6 / 0.3),
+      0 18px 44px rgb(12 8 6 / 0.45);
     transition: border-color 180ms ease, box-shadow 180ms ease,
       transform 180ms ease;
   }
 
+  /* Walnut tile. */
   .glass-panel-muted {
-    @apply rounded-xl border border-border/60 bg-card/50 backdrop-blur-xl;
-    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.08),
-      0 12px 32px rgb(var(--overlay) / 0.18);
-  }
-
-  .app-theme .glass-panel {
+    @apply rounded-xl border;
+    color: rgb(var(--foreground));
+    border-color: rgb(168 132 98 / 0.35);
     background-image: linear-gradient(
-      145deg,
-      rgb(var(--card) / 0.9),
-      rgb(var(--primary) / 0.14) 68%,
-      rgb(var(--accent) / 0.08)
+      150deg,
+      rgb(107 74 46),
+      rgb(74 50 33) 55%,
+      rgb(58 36 24)
     );
-    box-shadow: inset 0 1px 0 rgb(var(--accent) / 0.12),
-      0 0 0 1px rgb(var(--primary) / 0.18),
-      0 20px 48px rgb(var(--overlay) / 0.3);
-  }
-
-  .app-theme .glass-panel-muted {
-    background-image: linear-gradient(
-      145deg,
-      rgb(var(--card) / 0.68),
-      rgb(var(--primary) / 0.1),
-      rgb(var(--accent) / 0.06)
-    );
-    box-shadow: inset 0 1px 0 rgb(var(--accent) / 0.1),
-      0 12px 32px rgb(var(--overlay) / 0.22);
+    box-shadow: inset 0 1px 0 rgb(213 196 174 / 0.2),
+      0 14px 34px rgb(12 8 6 / 0.4);
   }
 
   .glow-border {
     @apply border border-transparent bg-clip-padding;
-    box-shadow: 0 0 0 1px rgb(var(--primary) / 0.25),
-      0 0 24px rgb(var(--primary) / 0.15);
+    box-shadow: 0 0 0 1px rgb(var(--primary) / 0.3),
+      0 0 24px rgb(var(--primary) / 0.18);
   }
 
   .heading-font {
@@ -279,5 +306,69 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Liquid-glass surface (sidebar, top bar, auth card): colors come from theme tokens; only light/shadow layers are added here. */
+@layer components {
+  .glass-surface {
+    isolation: isolate;
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.10) 0%, rgb(255 255 255 / 0.02) 38%, rgb(255 255 255 / 0) 60%, rgb(255 255 255 / 0.04) 100%),
+      rgb(var(--card) / 0.55);
+    -webkit-backdrop-filter: blur(28px) saturate(145%);
+    backdrop-filter: blur(28px) saturate(145%);
+    border: 1px solid rgb(255 255 255 / 0.14);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      inset 0 -1px 0 rgb(255 255 255 / 0.05),
+      inset 1px 0 0 rgb(255 255 255 / 0.06),
+      0 1px 2px rgb(var(--overlay) / 0.18),
+      0 12px 32px rgb(var(--overlay) / 0.30),
+      0 30px 70px rgb(var(--overlay) / 0.34);
+  }
+
+  /* Outer reflection: a faint lit rim following the curved edge (masked to the 1px ring). */
+  .glass-surface::before {
+    content: "";
+    z-index: -1;
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(170deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.06) 32%, rgb(255 255 255 / 0) 55%, rgb(255 255 255 / 0.16) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Ambient diffusion: soft top glow blending into the frosted body. */
+  .glass-surface::after {
+    content: "";
+    z-index: -1;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(120% 40% at 30% 0%, rgb(255 255 255 / 0.10), transparent 70%);
+    pointer-events: none;
+  }
+
+  .glass-pill {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.22) 0%, rgb(255 255 255 / 0.04) 50%, rgb(255 255 255 / 0.10) 100%),
+      rgb(var(--primary) / 0.30);
+    border: 1px solid rgb(255 255 255 / 0.26);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.38),
+      inset 0 -1px 1px rgb(255 255 255 / 0.08),
+      inset 0 0 12px rgb(255 255 255 / 0.06),
+      0 6px 16px rgb(var(--overlay) / 0.30),
+      0 1px 2px rgb(var(--overlay) / 0.25);
+  }
+
+  .glass-hover {
+    background: rgb(255 255 255 / 0.07);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.10);
   }
 }

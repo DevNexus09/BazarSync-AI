@@ -10,6 +10,7 @@ import { CompetitorPriceChart } from "@/components/dashboard/competitor-price-ch
 import { MarketTrendWidget } from "@/components/dashboard/market-trend-widget"
 import { MarketOpportunityCard } from "@/components/dashboard/market-opportunity-card"
 import { RealtimeActivityFeed } from "@/components/dashboard/realtime-feed"
+import { cn } from "@/lib/utils"
 import { StockAlertCard } from "@/components/dashboard/stock-alert-card"
 import { CompetitorTable } from "@/components/dashboard/competitor-table"
 import { CompetitorHeatmap } from "@/components/dashboard/competitor-heatmap"
@@ -45,6 +46,7 @@ type DashboardSectionProps = {
   description: string
   action?: ReactNode
   children: ReactNode
+  className?: string
 }
 
 // One titled group of related widgets; spacing, not boxes, separates groups.
@@ -54,9 +56,10 @@ function DashboardSection({
   description,
   action,
   children,
+  className,
 }: DashboardSectionProps) {
   return (
-    <section aria-labelledby={id} className="space-y-4">
+    <section aria-labelledby={id} className={cn("space-y-4", className)}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id={id} className="text-base font-semibold text-foreground">
@@ -226,6 +229,7 @@ export default function DashboardPage() {
         <div className="min-w-0 xl:col-span-8">
           <DashboardSection
             id="next-actions"
+            className="flex h-full flex-col"
             title="Next actions"
             description="Your most urgent recommendations, with where to act on them."
             action={
@@ -264,7 +268,7 @@ export default function DashboardPage() {
                 to="/app/recommendations"
               />
             ) : (
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid flex-1 gap-3 md:grid-cols-3">
                 {recommendations.data.map((recommendation) => {
                   const target = recommendationTarget(recommendation.action)
                   return (

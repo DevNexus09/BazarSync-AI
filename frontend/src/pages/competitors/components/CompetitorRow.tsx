@@ -29,12 +29,12 @@ const getSimilarityTone = (score: number | null) => {
     return "text-muted-foreground"
   }
   if (score >= 0.8) {
-    return "text-emerald-600"
+    return "text-success"
   }
   if (score >= 0.6) {
-    return "text-amber-500"
+    return "text-warning"
   }
-  return "text-rose-600"
+  return "text-danger"
 }
 
 const getStockBadgeStyle = (status: string) => {
