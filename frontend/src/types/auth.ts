@@ -13,6 +13,7 @@ export type User = {
   city: string | null
   country: string | null
   createdAt?: string
+  isDemo?: boolean
 }
 
 export type LoginInput = {
@@ -62,6 +63,7 @@ export type AuthState = {
 export type AuthContextValue = AuthState & {
   isAuthenticating: boolean
   login: (input: LoginInput) => Promise<void>
+  startDemo: () => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   updateProfile: (input: ProfileInput) => Promise<void>
   deleteAccount: (input: DeleteAccountInput) => Promise<void>

@@ -281,7 +281,7 @@ Changes:
   - `sales_records.customer_reference` and `sales_records.delivery_district`
   - `product_marketplace_listings.rating` and `product_marketplace_listings.review_count`
   - new tables `business_expenses` and `marketplace_store_metrics`
-- `scripts/seed_copilot_demo_extras.py` fills these for demo1@gmail.com only. It is idempotent and tracked in `demo_seed_records` under seed `demo-copilot-extras-v1`.
+- `scripts/seed_copilot_demo_extras.py` fills these for the demo seller (bazardemo@gmail.com) only. It is idempotent and tracked in `demo_seed_records` under seed `demo-copilot-extras-v1`.
 
 | Run | Code | Score | Notes |
 | --- | --- | --- | --- |

@@ -256,20 +256,16 @@ Open `http://127.0.0.1:5173`.
 
 Seeding writes only to a local `development` or `test` database and performs no scraping, marketplace update or Telegram delivery.
 
-1. **Catalog seed.** Creates the demo footwear seller and its 15 products. See [demo data seeding](docs/demo-data-seeding.md).
+The demo seller is **Watch Wise - Choice** (`bazardemo@gmail.com`), modelled on the public [Daraz store](https://www.daraz.com.bd/blzdnq-selection/) with 25 of its watch and clock listings. Business data (stock, costs, orders, receipts, fees, visibility) is synthetic. See [demo data seeding](docs/demo-data-seeding.md).
 
-   ```bash
-   cd backend
-   PYTHONPATH=. venv/bin/python scripts/seed_demo_footwear_store.py --dry-run
-   ```
-
-2. **Comprehensive seed.** Adds sales, inventory, pricing, competitor, recommendation and RAG evidence for that seller. It is a dry run unless you pass `--apply`. See [comprehensive demo seeding](docs/comprehensive-demo-seeding.md).
-
-   ```bash
-   cd backend
-   PYTHONPATH=. venv/bin/python scripts/seed_comprehensive_demo.py \
-     --apply --email demo1@gmail.com --as-of 2026-11-21 --skip-external-services
-   ```
+```bash
+cd backend
+read -s DEMO_SELLER_PASSWORD && export DEMO_SELLER_PASSWORD
+PYTHONPATH=. venv/bin/python scripts/seed_demo_store.py --apply
+unset DEMO_SELLER_PASSWORD
+PYTHONPATH=. venv/bin/python scripts/seed_comprehensive_demo.py --apply --as-of 2026-11-24 --skip-external-services
+PYTHONPATH=. venv/bin/python scripts/seed_copilot_demo_extras.py --apply --as-of 2026-11-24
+```
 
 ## Configuration
 

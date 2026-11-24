@@ -13,6 +13,7 @@ import {
   deleteAccount as deleteAccountService,
   login as loginService,
   register as registerService,
+  startDemo as startDemoService,
   updateProfile as updateProfileService,
 } from "@/services/auth-service"
 import {
@@ -63,6 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [applyAuthSuccess]
   )
+
+  const startDemo = React.useCallback(async () => {
+    setIsAuthenticating(true)
+
+    try {
+      applyAuthSuccess(await startDemoService())
+    } finally {
+      setIsAuthenticating(false)
+    }
+  }, [applyAuthSuccess])
 
   const register = React.useCallback(
     async (input: RegisterInput) => {
@@ -121,12 +132,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...state,
       isAuthenticating,
       login,
+      startDemo,
       register,
       updateProfile,
       deleteAccount,
       logout,
     }),
-    [state, isAuthenticating, login, register, updateProfile, deleteAccount, logout]
+    [state, isAuthenticating, login, startDemo, register, updateProfile, deleteAccount, logout]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

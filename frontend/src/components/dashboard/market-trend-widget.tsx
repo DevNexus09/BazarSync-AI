@@ -69,6 +69,11 @@ export function MarketTrendWidget({
       <p className="text-xs text-muted-foreground">
         Demand, urgency, and opportunity indices.
       </p>
+      {data.length < 2 && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Only one day of data so far. The line appears from the second day.
+        </p>
+      )}
       <div className="mt-3 h-48">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

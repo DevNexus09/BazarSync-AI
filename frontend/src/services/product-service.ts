@@ -57,8 +57,16 @@ const mapProduct = (product: ApiProduct): Product => ({
 })
 
 export async function getProducts(): Promise<Product[]> {
-  const { data } = await apiClient.get<ProductListResponse>("/products")
-  return data.items.map(mapProduct)
+  // The API pages (default 20, max 100); callers expect the full catalog.
+  const items: ApiProduct[] = []
+  for (;;) {
+    const { data } = await apiClient.get<ProductListResponse>("/products", {
+      params: { limit: 100, offset: items.length },
+    })
+    items.push(...data.items)
+    if (data.items.length === 0 || items.length >= data.total) break
+  }
+  return items.map(mapProduct)
 }
 
 export async function getProduct(productId: string): Promise<Product> {

@@ -4,14 +4,53 @@
     {
       "name": "backend",
       "runtimeExecutable": "/Users/cipherpirate/Projects/BazarSync-AI/backend/venv/bin/python",
-      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "/Users/cipherpirate/Projects/BazarSync-AI/backend", "--host", "127.0.0.1", "--port", "8000"],
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--app-dir",
+        "/Users/cipherpirate/Projects/BazarSync-AI/backend",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
       "port": 8000
     },
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "/Users/cipherpirate/Projects/BazarSync-AI/frontend", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173"],
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/cipherpirate/Projects/BazarSync-AI/frontend",
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5173"
+      ],
       "port": 5173
+    },
+    {
+      "name": "backend-demo",
+      "runtimeExecutable": "/Users/cipherpirate/Projects/BazarSync-AI/backend/venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--app-dir",
+        "/Users/cipherpirate/Projects/BazarSync-AI/backend",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "port": 8000,
+      "env": {
+        "DEMO_MODE_ENABLED": "true"
+      }
     }
   ]
 }

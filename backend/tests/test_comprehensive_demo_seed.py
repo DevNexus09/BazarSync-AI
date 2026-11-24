@@ -21,8 +21,12 @@ from app.services.demand_response_service import (
 )
 
 
-def test_scenario_matrix_has_stable_complete_p01_to_p15_assignment():
-    assert [item.code for item in SCENARIOS] == [f"P{index:02d}" for index in range(1, 16)]
+def test_scenario_matrix_has_stable_complete_p01_to_p25_assignment():
+    assert [item.code for item in SCENARIOS] == [f"P{index:02d}" for index in range(1, 26)]
+    assert sum(item.age_days >= 150 for item in SCENARIOS) >= 3
+    assert {"medium", "increasing", "declining", "seasonal", "intermittent", "no_recent"} <= {
+        item.demand for item in SCENARIOS
+    }
     assert {item.pricing_intent for item in SCENARIOS} == {
         "LOWER",
         "RAISE",
@@ -111,3 +115,13 @@ def test_sales_loader_uses_transaction_price_and_marks_promotion_overlap():
     assert rows[0].price == Decimal("899.00")
     assert rows[0].promotion_active is True
 
+
+
+def test_order_numbers_are_deterministic_15_digit_and_distinct():
+    from app.services.comprehensive_demo_seed_service import _order_number
+
+    seller, product = uuid4(), uuid4()
+    first = _order_number(seller, product, date(2026, 9, 1), 0)
+    assert first == _order_number(seller, product, date(2026, 9, 1), 0)
+    assert len(first) == 15 and first.isdigit()
+    assert first != _order_number(seller, product, date(2026, 9, 1), 1)

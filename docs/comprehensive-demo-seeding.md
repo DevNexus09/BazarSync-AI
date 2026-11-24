@@ -1,15 +1,15 @@
 # Comprehensive demo seeding
 
-The comprehensive seed augments the existing `demo1@gmail.com` seller and its
-15 existing products. It preserves product and seller IDs, assigns products to
-the stable `P01`–`P15` scenario matrix by `(sku, id)`, and writes only local,
+The comprehensive seed augments the existing `bazardemo@gmail.com` seller
+(Watch Wise - Choice) and its 25 products. It preserves product and seller IDs,
+assigns products to the stable `P01`–`P25` scenario matrix by `(sku, id)`, and writes only local,
 seller-scoped synthetic evidence. Synthetic marketplace URLs use
 `https://demo.invalid/`; the command performs no scrape, marketplace update,
 Telegram delivery, or external action.
 
 ## Safety
 
-- The catalog seed must already have created the demo seller and exactly 15
+- The catalog seed must already have created the demo seller and exactly 25
   products. Run [the catalog seed](demo-data-seeding.md) first on a new local
   database.
 - Writes are refused outside `development`/`test` and on non-local PostgreSQL
@@ -29,8 +29,8 @@ From `backend/`:
 ```bash
 PYTHONPATH=. venv/bin/python scripts/seed_comprehensive_demo.py \
   --apply \
-  --email demo1@gmail.com \
-  --as-of 2026-11-21 \
+  --email bazardemo@gmail.com \
+  --as-of 2026-11-24 \
   --skip-external-services
 ```
 
@@ -42,8 +42,8 @@ Validate the current database without writing:
 ```bash
 PYTHONPATH=. venv/bin/python scripts/seed_comprehensive_demo.py \
   --validate-only \
-  --email demo1@gmail.com \
-  --as-of 2026-11-21 \
+  --email bazardemo@gmail.com \
+  --as-of 2026-11-24 \
   --skip-external-services
 ```
 
@@ -58,10 +58,11 @@ Override either location with `--report` or `--markdown-report`.
 
 The command performs these dependency-ordered stages:
 
-1. Resolve the existing demo seller and exactly 15 products.
-2. Apply the centralized P01–P15 inventory, demand, pricing, and evidence
+1. Resolve the existing demo seller and exactly 25 products.
+2. Apply the centralized P01–P25 inventory, demand, pricing, and evidence
    scenarios without renaming products.
-3. Reconcile 120 days of transaction-price sales and coverage, 45 daily
+3. Reconcile 120 days of order lines (one line per Daraz order with a 15-digit
+   order number, plus cancelled/failed-payment orders that are excluded) and coverage, PO-numbered receipts, 45 daily
    inventory snapshots, receipts, seller price history, completed promotion
    evidence, and one clearly synthetic scheduled promotion proposal.
 4. Reconcile four completed synthetic competitor runs per product (five for

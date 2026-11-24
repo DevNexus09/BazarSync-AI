@@ -10,8 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.competitor import Competitor
-from app.models.price_history import PriceHistory
+from app.models.competitor_snapshot import CompetitorSnapshot
 from app.models.product import Product
 from app.schemas.dashboard.price_trend_schema import CompetitorPriceTrendPoint
 from app.services.dashboard.exceptions import DashboardDatabaseError
@@ -31,19 +30,24 @@ class CompetitorPriceTrendService:
     ) -> list[CompetitorPriceTrendPoint]:
         start = time.monotonic()
         window_start = datetime.now(timezone.utc) - timedelta(days=days)
-        bucket = func.date_trunc("day", PriceHistory.observed_at).label("bucket")
+        # Snapshots are written for every scrape run (including seeded history);
+        # price_history only covers live scrapes, which left the chart with one day.
+        observed_at = func.coalesce(
+            CompetitorSnapshot.price_observed_at, CompetitorSnapshot.captured_at
+        )
+        bucket = func.date_trunc("day", observed_at).label("bucket")
 
         stmt = (
             select(
                 bucket,
-                func.min(PriceHistory.observed_price).label("competitor_price"),
-                func.avg(PriceHistory.observed_price).label("market_average"),
+                func.min(CompetitorSnapshot.price).label("competitor_price"),
+                func.avg(CompetitorSnapshot.price).label("market_average"),
                 func.avg(Product.selling_price).label("seller_price"),
             )
-            .join(Competitor, PriceHistory.competitor_id == Competitor.id)
-            .join(Product, Competitor.product_id == Product.id)
+            .join(Product, CompetitorSnapshot.product_id == Product.id)
             .where(Product.seller_id == seller_id)
-            .where(PriceHistory.observed_at >= window_start)
+            .where(CompetitorSnapshot.price.is_not(None))
+            .where(observed_at >= window_start)
             .group_by(bucket)
             .order_by(bucket)
         )

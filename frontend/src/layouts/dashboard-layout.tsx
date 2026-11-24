@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom"
 
 import AppHeader from "@/components/app/app-header"
 import AppSidebar from "@/components/app/app-sidebar"
+import { DemoBanner } from "@/components/app/demo-banner"
 import { CopilotWidget } from "@/components/copilot/CopilotWidget"
 import { RealtimeProvider } from "@/context/realtime-context"
 import { useAuth } from "@/hooks/use-auth"
@@ -58,6 +59,7 @@ export default function DashboardLayout() {
             onMenuClick={() => setSidebarExpanded(true)}
             mobileMenuButtonRef={mobileToggleRef}
           />
+          <DemoBanner />
           <main className="flex-1 px-4 pb-12 pt-6 sm:px-6 lg:px-8">
             <div className="mx-auto w-full max-w-[1600px]">
               <Outlet />

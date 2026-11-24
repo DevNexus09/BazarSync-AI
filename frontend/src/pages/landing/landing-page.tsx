@@ -1,10 +1,14 @@
+import * as React from "react"
+import { isAxiosError } from "axios"
 import { motion, useReducedMotion } from "framer-motion"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import {
   Activity,
   Bot,
   Cpu,
   LayoutDashboard,
+  Loader2,
+  PlayCircle,
   MessagesSquare,
   Sparkles,
   Zap,
@@ -100,10 +104,32 @@ function FeaturePreview({
 }
 
 export default function LandingPage() {
-  const { status } = useAuth()
+  const { status, startDemo } = useAuth()
+  const navigate = useNavigate()
   const reducedMotion = Boolean(useReducedMotion())
   const isAuthenticated = status === "authenticated"
   const getStartedPath = isAuthenticated ? "/app/dashboard" : "/login"
+  const [demoState, setDemoState] = React.useState<"idle" | "opening" | "waking">("idle")
+  const [demoError, setDemoError] = React.useState<string | null>(null)
+
+  const handleExperience = async () => {
+    setDemoError(null)
+    setDemoState("opening")
+    // The free demo server sleeps when idle; tell visitors why the first open is slow.
+    const wakeTimer = window.setTimeout(() => setDemoState("waking"), 4000)
+    try {
+      await startDemo()
+      navigate("/app/dashboard")
+    } catch (error) {
+      const detail = isAxiosError<{ detail?: unknown }>(error) ? error.response?.data?.detail : null
+      setDemoError(
+        typeof detail === "string" ? detail : "The demo is not reachable right now. Please try again shortly."
+      )
+      setDemoState("idle")
+    } finally {
+      window.clearTimeout(wakeTimer)
+    }
+  }
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-background">
@@ -147,12 +173,35 @@ export default function LandingPage() {
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
             Understand products, inventory, pricing, competitors, revenue, and opportunities from one intelligent platform.
           </p>
-          <Button asChild size="lg" className="mt-6 px-6">
-            <Link to={getStartedPath}>
-              Get Started
-              <Zap className="size-4" aria-hidden="true" />
-            </Link>
-          </Button>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <Button asChild size="lg" className="px-6">
+              <Link to={getStartedPath}>
+                Get Started
+                <Zap className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="px-6"
+              onClick={handleExperience}
+              disabled={demoState !== "idle"}
+            >
+              {demoState === "idle" ? (
+                <PlayCircle className="size-4" aria-hidden="true" />
+              ) : (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              )}
+              Experience BazarSync
+            </Button>
+            <p className="min-h-5 max-w-sm text-xs text-muted-foreground" role="status" aria-live="polite">
+              {demoState === "opening" && "Opening the demo store…"}
+              {demoState === "waking" && "Waking up the demo server. The first visit can take up to a minute."}
+              {demoState === "idle" && !demoError && "No sign-up needed. Explore a live demo store."}
+              {demoState === "idle" && demoError && <span className="text-destructive">{demoError}</span>}
+            </p>
+          </div>
         </motion.div>
 
         <div className="mt-8 grid w-full max-w-5xl grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">

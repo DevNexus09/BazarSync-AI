@@ -46,6 +46,17 @@ celery_app.autodiscover_tasks(["app.tasks"])
 # started with this Celery application registers every task before it begins
 # consuming messages.
 import app.tasks  # noqa: E402,F401
+from celery import signals  # noqa: E402
+
+from app.db.async_session import use_null_pool  # noqa: E402
+
+
+# worker_init covers --pool=solo; worker_process_init covers prefork children.
+@signals.worker_init.connect
+@signals.worker_process_init.connect
+def _null_pool_for_worker(**_: object) -> None:
+    use_null_pool()
+
 
 beat_schedule = {}
 if settings.durable_recommendation_jobs_enabled:

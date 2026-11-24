@@ -212,6 +212,36 @@ class DemandResponseServiceTests(unittest.TestCase):
         self.assertEqual(first.quality_metrics["r_squared"], second.quality_metrics["r_squared"])
 
 
+def test_order_level_rows_estimate_like_daily_totals() -> None:
+    seller_id, product_id = uuid4(), uuid4()
+    service = DemandResponseService(config=_config())
+    daily = _observations(seller_id, product_id)
+    orders = [
+        DemandObservation(
+            seller_id=seller_id,
+            product_id=product_id,
+            observed_date=obs.observed_date,
+            price=obs.price,
+            units_sold=1,
+            source_reference=f"order-{obs.observed_date}-{n}",
+        )
+        for obs in daily
+        for n in range(obs.units_sold)
+    ]
+
+    by_day = service.estimate_from_observations(
+        seller_id=seller_id, product_id=product_id, observations=daily, as_of_date=date(2026, 6, 30)
+    )
+    by_order = service.estimate_from_observations(
+        seller_id=seller_id, product_id=product_id, observations=orders, as_of_date=date(2026, 6, 30)
+    )
+
+    assert by_order.method == DemandEstimationMethod.HISTORICAL_ELASTICITY
+    assert by_order.sample_count == 6
+    assert by_order.elasticity == by_day.elasticity
+    assert by_order.baseline_units == by_day.baseline_units
+
+
 def _observations(seller_id, product_id):
     return [
         _obs(seller_id, product_id, date(2026, 6, 1), Decimal("90.00"), 19),

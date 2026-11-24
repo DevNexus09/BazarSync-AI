@@ -61,6 +61,11 @@ class Settings(BaseModel):
     bootstrap_db_on_startup: bool = False
     scraper_schedule_enabled: bool = False
     recommendation_jobs_enabled: bool = False
+    demo_mode_enabled: bool = False
+    demo_token_expire_minutes: int = 120
+    demo_max_sessions_per_ip_per_hour: int = 20
+    demo_max_actions_per_ip_per_hour: int = 40
+    demo_max_actions_per_hour: int = 400
     recommendation_validation_enabled: bool = False
     recommendation_dashboard_evidence_enabled: bool = False
     recommendation_explanation_enabled: bool = False
@@ -367,6 +372,11 @@ class Settings(BaseModel):
                 default=scraper_schedule_default,
             ),
             "recommendation_jobs_enabled": _parse_bool(os.getenv("RECOMMENDATION_JOBS_ENABLED")),
+            "demo_mode_enabled": _parse_bool(os.getenv("DEMO_MODE_ENABLED")),
+            "demo_token_expire_minutes": int(os.getenv("DEMO_TOKEN_EXPIRE_MINUTES", "120")),
+            "demo_max_sessions_per_ip_per_hour": int(os.getenv("DEMO_MAX_SESSIONS_PER_IP_PER_HOUR", "20")),
+            "demo_max_actions_per_ip_per_hour": int(os.getenv("DEMO_MAX_ACTIONS_PER_IP_PER_HOUR", "40")),
+            "demo_max_actions_per_hour": int(os.getenv("DEMO_MAX_ACTIONS_PER_HOUR", "400")),
             "recommendation_orchestration_enabled": _parse_bool(os.getenv("RECOMMENDATION_ORCHESTRATION_ENABLED")),
             "recommendation_orchestration_shadow_enabled": _parse_bool(os.getenv("RECOMMENDATION_ORCHESTRATION_SHADOW_ENABLED")),
             "historical_dataset_export_enabled": _parse_bool(os.getenv("HISTORICAL_DATASET_EXPORT_ENABLED")),

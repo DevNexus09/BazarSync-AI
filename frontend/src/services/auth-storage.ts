@@ -67,6 +67,7 @@ export function getStoredUser(): User | null {
       city,
       country,
       createdAt,
+      isDemo: parsed.isDemo === true,
     }
   } catch (error) {
     console.error("Invalid stored user payload.", error)

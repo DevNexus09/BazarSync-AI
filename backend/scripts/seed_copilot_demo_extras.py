@@ -1,7 +1,7 @@
 """Fill the demo seller's data gaps the Copilot needs: listings + ratings, buyer/district on sales,
 search visibility, expenses and supplier bills, and the store scorecard.
 
-Only demo1@gmail.com is touched. Re-running is safe: every created row is tracked in
+Only the demo seller (bazardemo@gmail.com) is touched. Re-running is safe: every created row is tracked in
 demo_seed_records (seed "demo-copilot-extras-v1") and skipped when it already exists; sales rows
 only get customer/district filled where those columns are still NULL. Values are deterministic.
 
@@ -30,19 +30,20 @@ from app.models.demo_seed_record import DemoSeedRecord  # noqa: E402
 from app.models.inventory_stock_in import InventoryStockIn  # noqa: E402
 from app.models.product import Product, ProductMarketplaceListing, ProductMarketplaceListingStatus  # noqa: E402
 from app.models.product_visibility_metric import ProductVisibilityMetric  # noqa: E402
-from app.models.sales_record import SalesRecord  # noqa: E402
+from app.models.sales_record import SalesRecord, SalesRecordStatus  # noqa: E402
 from app.models.seller import Seller  # noqa: E402
 
 SEED = "demo-copilot-extras-v1"
-EMAIL = "demo1@gmail.com"
+EMAIL = "bazardemo@gmail.com"
 MARKETPLACE = "Daraz Bangladesh"
 DHAKA = ZoneInfo("Asia/Dhaka")
-SUPPLIER = "Bata Bangladesh Distributor (demo)"
-# Delivery districts weighted roughly like a Dhaka-based footwear shop.
+SUPPLIER = "Patuatuli Watch Wholesale, Dhaka"
+VISIBILITY_DAYS = 90
+# Delivery districts weighted roughly like a Dhaka-based Daraz shop.
 DISTRICTS = (("Dhaka", 38), ("Chattogram", 14), ("Gazipur", 10), ("Narayanganj", 8), ("Sylhet", 7), ("Khulna", 6), ("Rajshahi", 6), ("Cumilla", 5), ("Rangpur", 3), ("Barishal", 3))
 CUSTOMER_POOL = 520
 # Ratings by SKU suffix; three listings are deliberately weak so "low rating" questions have an answer.
-LOW_RATED = {"DEMO-BATA-351440540": (Decimal("3.40"), 12), "DEMO-BATA-557618536": (Decimal("3.60"), 5), "DEMO-BATA-1575185161": (Decimal("3.80"), 21)}
+LOW_RATED = {"WW-009-CLK-FOLD": (Decimal("3.40"), 26), "WW-020-MEN-LUX": (Decimal("3.60"), 41), "WW-016-LADY-MAG": (Decimal("3.80"), 88)}
 
 
 def _unit(*parts: object) -> float:
@@ -92,28 +93,43 @@ class Seeder:
     def listings(self, products: list[Product]) -> None:
         for product in products:
             sku = product.sku or str(product.id)
+            specs = product.specifications or {}
             rating, reviews = LOW_RATED.get(sku, (Decimal(str(round(4.1 + 0.8 * _unit(sku, "rating"), 1))), 18 + int(160 * _unit(sku, "reviews"))))
             self._create("LISTING", sku, ProductMarketplaceListing(
                 seller_id=self.seller.id, product_id=product.id, marketplace=MARKETPLACE,
-                marketplace_listing_id=f"DRZ-{sku}", listing_url=f"https://www.daraz.com.bd/products/demo-{sku.lower()}.html",
+                marketplace_listing_id=specs.get("source_listing_id", sku), listing_url=specs.get("source_listing_url"),
                 listing_status=ProductMarketplaceListingStatus.OUT_OF_STOCK if (product.stock_quantity or 0) == 0 else ProductMarketplaceListingStatus.ACTIVE,
                 currency="BDT", selling_price=product.selling_price, category_on_marketplace=product.category, title_on_marketplace=product.title,
                 is_primary=True, rating=rating, review_count=reviews,
-                published_at=datetime(2026, 6, 15, 12, tzinfo=DHAKA), last_synced_at=datetime.combine(self.as_of, time(9), tzinfo=DHAKA),
+                published_at=datetime(2026, 5, 18, 12, tzinfo=DHAKA), last_synced_at=datetime.combine(self.as_of, time(9), tzinfo=DHAKA),
             ))
 
     def visibility(self, products: list[Product]) -> None:
-        for offset in (7, 0):
-            metric_date = self.as_of - timedelta(days=offset + 1)
-            for product in products:
-                pick = _unit(product.sku, metric_date)
-                impressions = 800 + int(4200 * pick)
-                views = int(impressions * (0.06 + 0.06 * _unit(product.sku, "ctr")))
+        start = self.as_of - timedelta(days=VISIBILITY_DAYS)
+        for product in products:
+            # Traffic follows the product's own order volume so visibility and sales tell the same story.
+            orders = defaultdict(int)
+            for sold_at, units in self.db.execute(select(SalesRecord.sold_at, SalesRecord.quantity_sold).where(
+                SalesRecord.product_id == product.id, SalesRecord.status.in_((SalesRecordStatus.COMPLETED, SalesRecordStatus.FULFILLED)), SalesRecord.sold_at >= datetime.combine(start, time(0), tzinfo=DHAKA),
+            )):
+                orders[sold_at.astimezone(DHAKA).date()] += units
+            reach = 0.6 + 0.8 * _unit(product.sku, "reach")
+            base_rank = 3 + int(40 * _unit(product.sku, "rank"))
+            quality = 62 + 33 * _unit(product.sku, "quality")
+            for offset in range(VISIBILITY_DAYS):
+                metric_date = start + timedelta(days=offset)
+                units = orders.get(metric_date, 0)
+                jitter = 0.8 + 0.4 * _unit(product.sku, metric_date)
+                impressions = int((350 + 420 * units) * reach * jitter)
+                views = max(units, int(impressions * (0.05 + 0.05 * _unit(product.sku, "ctr", metric_date))))
+                clicks = max(units, int(views * (0.35 + 0.15 * _unit(product.sku, "click", metric_date))))
+                rank = max(1, base_rank - 2 * units + int(6 * _unit(product.sku, "rank", metric_date)) - 3)
                 self._create("VISIBILITY", f"{product.sku}:{metric_date}", ProductVisibilityMetric(
                     seller_id=self.seller.id, product_id=product.id, marketplace=MARKETPLACE, metric_date=metric_date,
-                    impressions=impressions, views=views, clicks=int(views * 0.4), search_rank=1 + int(45 * _unit(product.sku, "rank", offset)),
-                    listing_quality_score=Decimal(str(round(62 + 33 * _unit(product.sku, "quality"), 2))),
-                    conversion_rate=Decimal(str(round(0.015 + 0.03 * _unit(product.sku, "cvr", offset), 6))), source=SEED,
+                    impressions=impressions, views=views, clicks=clicks, search_rank=rank,
+                    listing_quality_score=Decimal(str(round(quality + 2 * _unit(product.sku, metric_date, "q"), 2))),
+                    conversion_rate=Decimal(units / views).quantize(Decimal("0.000001")) if views else Decimal("0"),
+                    source="DARAZ_SELLER_CENTER_EXPORT", source_reference=f"business-advisor:{metric_date}",
                 ))
 
     def sales_buyers(self) -> None:
@@ -127,7 +143,7 @@ class Seeder:
                 row.delivery_district = row.delivery_district or _weighted(_unit(row.id, "district"), DISTRICTS)
 
     def expenses(self) -> None:
-        month = date(2026, 7, 1)
+        month = date(2026, 7, 1)  # first full month of the 120-day history
         while month <= self.as_of:
             month_end = min((month.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1), self.as_of)
             for kind, base, counterparty in ((BusinessExpenseType.ADVERTISING, 9000, "Daraz Sponsored Solutions"), (BusinessExpenseType.SHIPPING, 14000, "Daraz Logistics"), (BusinessExpenseType.PACKAGING, 3500, "Local packaging supplier")):

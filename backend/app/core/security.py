@@ -69,10 +69,13 @@ def create_access_token(
     subject: str,
     expires_minutes: int | None = None,
     auth_version: int = 0,
+    demo: bool = False,
 ) -> str:
     expires_in = expires_minutes or settings.access_token_expire_minutes
     expire_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in)
-    payload = {"sub": subject, "exp": expire_at, "auth_version": auth_version}
+    payload: dict[str, Any] = {"sub": subject, "exp": expire_at, "auth_version": auth_version}
+    if demo:
+        payload["demo"] = True
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 

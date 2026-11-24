@@ -17,9 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import get_password_hash, validate_password
 from app.models.demo_seed_record import DemoSeedRecord
-from app.models.inventory_aging import InventoryAgeSource, InventoryAgingSnapshot
 from app.models.inventory_history import InventoryHistory, InventorySnapshotSource
-from app.models.inventory_stock_in import InventoryStockIn
 from app.models.marketplace_fee_policy import MarketplaceFeePolicy
 from app.models.pricing_policy import PricingObjective, PricingPolicy
 from app.models.product import Product, ProductStatus
@@ -27,14 +25,18 @@ from app.models.product_price_history import ProductPriceHistory, ProductPriceHi
 from app.models.sales_data_coverage import SalesDataCompletenessStatus, SalesDataCoverage
 from app.models.sales_record import SalesRecord, SalesRecordPriceSource, SalesRecordStatus
 from app.models.seller import Seller
-from app.schemas.demo_seed import DemoFootwearManifest, DemoProductListing
+from app.schemas.demo_seed import DemoProductListing, DemoStoreManifest
 
-SEED_NAME = "demo-footwear-store-v1"
-DEMO_EMAIL = "demo1@gmail.com"
-DEMO_PHONE_E164 = "+8801870211787"
+SEED_NAME = "demo-watch-wise-v1"
+DEMO_EMAIL = "bazardemo@gmail.com"
+DEMO_PHONE_E164 = "+8801617390260"
+DEMO_SHOP_NAME = "Watch Wise - Choice"
+CLOCK_CATEGORY = "Table & Alarm Clocks"
+# One product deliberately has no fee evidence so MarginGuard shows the missing-evidence path.
+FEE_EVIDENCE_WITHHELD_SKUS = frozenset({"WW-002-OLV-2872"})
 MARKETPLACE = "Daraz Bangladesh"
 DEFAULT_MANIFEST = (
-    Path(__file__).resolve().parents[2] / "seed_data" / "demo_footwear_products.json"
+    Path(__file__).resolve().parents[2] / "seed_data" / "demo_watch_wise_products.json"
 )
 SALES_DAYS = 150
 SALES_RANDOM_SEED = 1622
@@ -74,7 +76,7 @@ class DemoSeedReport:
     manifest_path: str
     manifest_valid: bool = False
     verified_products: int = 0
-    target_products: int = 15
+    target_products: int = 25
     seller_status: str = "NOT_INSPECTED"
     products_created: int = 0
     products_existing: int = 0
@@ -113,8 +115,8 @@ SCENARIOS: tuple[InventoryScenario, ...] = (
 )
 
 
-def load_demo_manifest(path: Path = DEFAULT_MANIFEST) -> DemoFootwearManifest:
-    return DemoFootwearManifest.model_validate_json(path.read_text(encoding="utf-8"))
+def load_demo_manifest(path: Path = DEFAULT_MANIFEST) -> DemoStoreManifest:
+    return DemoStoreManifest.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def assert_safe_seed_environment(*, apply: bool) -> None:
@@ -130,7 +132,7 @@ def assert_safe_seed_environment(*, apply: bool) -> None:
         )
 
 
-class DemoFootwearSeedService:
+class DemoStoreSeedService:
     def __init__(self, db: Session, *, now: datetime | None = None) -> None:
         self._db = db
         self._now = _ensure_utc(now or datetime.now(timezone.utc))
@@ -138,7 +140,7 @@ class DemoFootwearSeedService:
     def run(
         self,
         *,
-        manifest: DemoFootwearManifest,
+        manifest: DemoStoreManifest,
         manifest_path: Path,
         apply: bool,
         password: str | None,
@@ -203,8 +205,7 @@ class DemoFootwearSeedService:
                     report.tables_affected.extend(
                         [
                             "sellers", "products", "demo_seed_records",
-                            "inventory_history", "inventory_stock_in",
-                            "inventory_aging_snapshots", "pricing_policies",
+                            "inventory_history", "pricing_policies",
                             "marketplace_fee_policies", "product_price_history",
                         ]
                     )
@@ -220,7 +221,7 @@ class DemoFootwearSeedService:
         return report
 
     def _inspect_dry_run(
-        self, manifest: DemoFootwearManifest, report: DemoSeedReport
+        self, manifest: DemoStoreManifest, report: DemoSeedReport
     ) -> None:
         seller = self._seller_by_email()
         if seller is None:
@@ -229,7 +230,7 @@ class DemoFootwearSeedService:
             return
         if not self._managed("SELLER", DEMO_EMAIL, entity_id=seller.id):
             raise DemoSeedConflictError(
-                "demo1@gmail.com exists but is not owned by this seed system."
+                f"{DEMO_EMAIL} exists but is not owned by this seed system."
             )
         report.seller_status = "EXISTING_MANAGED"
         for item in manifest.products:
@@ -249,7 +250,7 @@ class DemoFootwearSeedService:
         if seller is not None:
             if not self._managed("SELLER", DEMO_EMAIL, entity_id=seller.id):
                 raise DemoSeedConflictError(
-                    "demo1@gmail.com exists but was not created by this seed system; aborting."
+                    f"{DEMO_EMAIL} exists but was not created by this seed system; aborting."
                 )
             return seller, False
         if not password:
@@ -261,11 +262,11 @@ class DemoFootwearSeedService:
             email=DEMO_EMAIL,
             password_hash=get_password_hash(password),
             phone=DEMO_PHONE_E164,
-            full_name="Demo Footwear Store",
-            business_name="Demo Footwear Store",
-            industry="Footwear and Fashion Retail",
-            website=None,
-            address_line=None,
+            full_name=DEMO_SHOP_NAME,
+            business_name=DEMO_SHOP_NAME,
+            industry="Watches & Clocks",
+            website="https://www.daraz.com.bd/blzdnq-selection/",
+            address_line="Mirpur 10",
             city="Dhaka",
             country="Bangladesh",
         )
@@ -278,7 +279,7 @@ class DemoFootwearSeedService:
             entity_id=seller.id,
             provenance={
                 "synthetic_demo_business": True,
-                "business_category": "Shoes & Footwear",
+                "business_category": "Watches & Clocks",
                 "currency": "BDT",
                 "marketplace_reference": MARKETPLACE,
                 "independent_from_reference_retailer": True,
@@ -295,7 +296,7 @@ class DemoFootwearSeedService:
         update_managed_records: bool,
     ) -> tuple[Product, str]:
         marker = self._marker("PRODUCT", listing.listing_id)
-        sku = f"DEMO-BATA-{listing.listing_id}"
+        sku = listing.sku
         if marker is not None:
             product = self._db.get(Product, marker.entity_id)
             if product is None or product.seller_id != seller.id or product.sku != sku:
@@ -374,43 +375,7 @@ class DemoFootwearSeedService:
         self._db.flush()
         report.inventory_records_created += 1
 
-        received_at = self._now - timedelta(days=scenario.age_days)
-        stock_in = InventoryStockIn(
-            seller_id=seller.id,
-            product_id=product.id,
-            quantity=max(1, scenario.on_hand),
-            received_at=received_at,
-            unit_cost=product.cost_price,
-            currency="BDT",
-            source_reference=f"{SEED_NAME}:stock-in:{listing.listing_id}",
-            notes="Synthetic demo opening inventory; not a Bata wholesale record.",
-        )
-        self._db.add(stock_in)
-
-        aging = InventoryAgingSnapshot(
-            seller_id=seller.id,
-            product_id=product.id,
-            inventory_snapshot_id=inventory.id,
-            as_of_date=business_date,
-            quantity_on_hand=scenario.on_hand,
-            quantity_reserved=scenario.reserved,
-            quantity_available=available,
-            eligible_unsold_quantity=max(0, available),
-            oldest_age_days=scenario.age_days if scenario.on_hand else None,
-            newest_age_days=scenario.age_days if scenario.on_hand else None,
-            weighted_average_age_days=(Decimal(scenario.age_days) if scenario.on_hand else None),
-            age_source=InventoryAgeSource.PURCHASE_RECEIPT,
-            is_estimated=False,
-            confidence_score=Decimal("100.00"),
-            age_buckets={"synthetic_demo_age_days": scenario.age_days},
-            evidence={
-                "data_class": "SYNTHETIC_DEMO_BUSINESS_DATA",
-                "stock_in_source_reference": stock_in.source_reference,
-            },
-            calculation_version="demo-seed-v1",
-            calculated_at=self._now,
-        )
-        self._db.add(aging)
+        # Receipts (purchase orders) and aging are seeded by the comprehensive stage.
 
         minimum_allowed = _money(product.cost_price / Decimal("0.78"))
         pricing = PricingPolicy(
@@ -432,31 +397,14 @@ class DemoFootwearSeedService:
                 else PricingObjective.MAXIMIZE_EXPECTED_PROFIT
             ),
             is_active=True,
-            effective_from=self._now,
+            effective_from=self._now - timedelta(days=150),
         )
         self._db.add(pricing)
         report.pricing_policies_created += 1
 
-        fee = MarketplaceFeePolicy(
-            seller_id=seller.id,
-            product_id=product.id,
-            marketplace=MARKETPLACE,
-            category=None,
-            currency="BDT",
-            percentage_commission_rate=Decimal("0.08"),
-            payment_fee_rate=Decimal("0.02"),
-            fixed_per_order_fee=Decimal("0.00"),
-            fixed_per_unit_fee=Decimal("0.00"),
-            fulfilment_fee=Decimal("0.00"),
-            shipping_subsidy=Decimal("0.00"),
-            other_variable_cost=Decimal("0.00"),
-            source="SYNTHETIC_DEMO_ASSUMPTION",
-            version="demo-seed-v1",
-            is_active=True,
-            effective_from=self._now,
-        )
-        self._db.add(fee)
-        report.fee_policies_created += 1
+        fee = self._fee_policy(seller=seller, product=product)
+        if fee is not None:
+            report.fee_policies_created += 1
 
         price_history = ProductPriceHistory(
             seller_id=seller.id,
@@ -467,8 +415,8 @@ class DemoFootwearSeedService:
             new_price=product.selling_price,
             currency="BDT",
             reason=(
-                "Demo seller opening price equals the verified public Bata listing reference; "
-                "this does not represent a seller-authorized marketplace listing."
+                "Opening price matches the public Watch Wise - Choice listing on Daraz; "
+                "demo account, not a seller-authorized marketplace listing."
             ),
             source=ProductPriceHistorySource.IMPORT,
             changed_at=listing.price_observed_at,
@@ -479,7 +427,42 @@ class DemoFootwearSeedService:
 
         self._mark(seller, "INVENTORY", listing.listing_id, inventory.id, {"synthetic": True})
         self._mark(seller, "PRICING_POLICY", listing.listing_id, pricing.id, {"synthetic": True})
-        self._mark(seller, "FEE_POLICY", listing.listing_id, fee.id, {"synthetic": True})
+        if fee is not None:
+            self._mark(seller, "FEE_POLICY", listing.listing_id, fee.id, {"synthetic": True})
+
+    def _fee_policy(self, *, seller: Seller, product: Product) -> MarketplaceFeePolicy | None:
+        """Daraz-style fees: product-level for watches, one shared category policy for clocks."""
+        if product.sku in FEE_EVIDENCE_WITHHELD_SKUS:
+            return None
+        is_clock = product.category == CLOCK_CATEGORY
+        if is_clock and self._db.execute(
+            select(MarketplaceFeePolicy.id).where(
+                MarketplaceFeePolicy.seller_id == seller.id,
+                MarketplaceFeePolicy.product_id.is_(None),
+                MarketplaceFeePolicy.category == CLOCK_CATEGORY,
+            )
+        ).first():
+            return None
+        fee = MarketplaceFeePolicy(
+            seller_id=seller.id,
+            product_id=None if is_clock else product.id,
+            marketplace=MARKETPLACE,
+            category=CLOCK_CATEGORY if is_clock else None,
+            currency="BDT",
+            percentage_commission_rate=Decimal("0.120000") if is_clock else Decimal("0.100000"),
+            payment_fee_rate=Decimal("0.015000"),
+            fixed_per_order_fee=Decimal("0.00"),
+            fixed_per_unit_fee=Decimal("5.00"),
+            fulfilment_fee=Decimal("0.00"),
+            shipping_subsidy=Decimal("0.00"),
+            other_variable_cost=Decimal("3.00"),
+            source="SELLER_ENTERED",
+            version="2026-07",
+            is_active=True,
+            effective_from=self._now - timedelta(days=150),
+        )
+        self._db.add(fee)
+        return fee
 
     def _create_synthetic_sales(
         self,
@@ -545,7 +528,7 @@ class DemoFootwearSeedService:
             invalid_or_excluded_count=0,
             last_imported_at=self._now,
             notes=(
-                "Deterministic synthetic demo sales; not actual Bata or Daraz transactions "
+                "Deterministic synthetic demo sales; not actual Daraz transactions "
                 f"(pattern={scenario.demand_pattern}, seed={SALES_RANDOM_SEED + product_index})."
             ),
         )

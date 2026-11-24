@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token
 from app.core.config import settings
+from app.core.demo_mode import client_ip, consume_demo_quota
 from app.dependencies.auth import get_current_seller
 from app.dependencies.db import get_db
 from app.models.seller import Seller
@@ -30,6 +32,7 @@ from app.services.auth_service import (
     InvalidCredentialsError,
     InvalidPasswordError,
 )
+from app.services.demo_seed_service import DEMO_EMAIL
 from app.services.password_reset_rate_limiter import PasswordResetRateLimitExceeded
 from app.services.password_reset_service import (
     PasswordResetError,
@@ -84,6 +87,32 @@ def login_seller(
         subject=str(seller.id), auth_version=seller.auth_version
     )
     return LoginResponse(access_token=access_token, seller=seller)
+
+
+@router.post("/demo", response_model=LoginResponse)
+def start_demo_session(request: Request, db: Session = Depends(get_db)) -> LoginResponse:
+    """Issue a restricted token for the seeded demo seller; no password is exposed."""
+    if not settings.demo_mode_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    if not consume_demo_quota("sessions", client_ip(request), settings.demo_max_sessions_per_ip_per_hour):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many demo sessions. Please try again later.",
+            headers={"Retry-After": "3600"},
+        )
+    seller = db.scalar(select(Seller).where(func.lower(Seller.email) == DEMO_EMAIL))
+    if seller is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The demo store is not ready yet.",
+        )
+    access_token = create_access_token(
+        subject=str(seller.id),
+        expires_minutes=settings.demo_token_expire_minutes,
+        auth_version=seller.auth_version,
+        demo=True,
+    )
+    return LoginResponse(access_token=access_token, seller=SellerResponse.model_validate(seller))
 
 
 @router.get("/me", response_model=SellerResponse)

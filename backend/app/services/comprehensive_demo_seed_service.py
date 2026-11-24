@@ -80,6 +80,7 @@ from app.services.demand_response_service import DemandResponseService
 from app.services.demo_seed_service import (
     DEMO_EMAIL,
     MARKETPLACE,
+    SEED_NAME as CATALOG_SEED_NAME,
     DemoSeedConflictError,
     DemoSeedSafetyError,
     assert_safe_seed_environment,
@@ -97,6 +98,10 @@ from app.services.stockout_prediction_service import StockoutPredictionService
 
 
 SEED_NAMESPACE = "demo-comprehensive-v1"
+DEMO_SUPPLIER = "Patuatuli Watch Wholesale, Dhaka"
+# Generic demo seller labels; competitor URLs stay on demo.invalid so nothing looks like a real observed listing.
+COMPETITOR_STORES = ("Time Square BD", "Watch Hub Dhaka", "Ghori Bazar", "Classic Time Store")
+COMPETITOR_VARIANTS = ("similar model", "alternate colour", "copy model", "older stock")
 RANDOM_SEED = 1622
 HISTORY_DAYS = 120
 INVENTORY_DAYS = 45
@@ -138,6 +143,16 @@ SCENARIOS: tuple[DemoScenario, ...] = (
         "P15", "insufficient_sales_evidence", "sparse", 38, 2, 0, 10, 12, 6, 55,
         "INSUFFICIENT_DATA", SalesDataCompletenessStatus.UNKNOWN,
     ),
+    DemoScenario("P16", "steady_budget_seller", "medium", 64, 3, 0, 6, 24, 12, 30, "HOLD"),
+    DemoScenario("P17", "rising_demand_healthy", "increasing", 45, 2, 12, 9, 12, 6, 42, "HOLD"),
+    DemoScenario("P18", "seasonal_gift_clock", "seasonal", 40, 1, 0, 12, 12, 6, 60, "HOLD"),
+    DemoScenario("P19", "declining_aged_premium", "declining", 58, 1, 0, 14, 12, 6, 160, "LOWER"),
+    DemoScenario("P20", "intermittent_gift_box", "intermittent", 22, 1, 0, 10, 12, 6, 70, "HOLD"),
+    DemoScenario("P21", "best_seller_price_raise", "high", 30, 3, 0, 8, 12, 6, 26, "RAISE"),
+    DemoScenario("P22", "low_stock_reorder_now", "high", 6, 1, 0, 11, 24, 12, 50, "HOLD"),
+    DemoScenario("P23", "healthy_steady_mid_range", "medium", 38, 2, 0, 8, 12, 6, 36, "HOLD"),
+    DemoScenario("P24", "dead_stock_no_recent_sales", "no_recent", 72, 0, 0, 12, 12, 6, 200, "LOWER"),
+    DemoScenario("P25", "new_arrival_rising", "increasing", 80, 4, 0, 7, 24, 12, 10, "HOLD"),
 )
 
 
@@ -210,7 +225,7 @@ class ComprehensiveDemoSeedService:
         )
         if seller is None:
             raise DemoSeedSafetyError(
-                "Run the catalog demo seed first so the demo seller and its 15 products exist."
+                f"Run the catalog demo seed first so the demo seller and its {len(SCENARIOS)} products exist."
             )
         products = list(
             self.db.scalars(
@@ -219,9 +234,9 @@ class ComprehensiveDemoSeedService:
                 .order_by(Product.sku.asc().nulls_last(), Product.id.asc())
             )
         )
-        if len(products) != 15:
+        if len(products) != len(SCENARIOS):
             raise DemoSeedConflictError(
-                f"Expected exactly 15 existing demo products; found {len(products)}."
+                f"Expected exactly {len(SCENARIOS)} existing demo products; found {len(products)}."
             )
         return seller, products
 
@@ -297,42 +312,11 @@ class ComprehensiveDemoSeedService:
         index: int,
         report: ComprehensiveDemoReport,
     ) -> None:
+        """One SalesRecord per Daraz order line, keyed by a deterministic order number."""
         rng = random.Random(RANDOM_SEED + index)
         start = self.as_of - timedelta(days=HISTORY_DAYS)
         base_price = Decimal(product.selling_price)
-        if scenario.code == "P15":
-            target_dates = {
-                start + timedelta(days=offset) for offset in {10, 41, 60, 73}
-            }
-            managed_rows = list(
-                self.db.scalars(
-                    select(SalesRecord).where(
-                        SalesRecord.seller_id == seller.id,
-                        SalesRecord.product_id == product.id,
-                        SalesRecord.source_reference.like(
-                            f"{SEED_NAMESPACE}:sale:{self.as_of}:{scenario.code}:%"
-                        ),
-                    )
-                )
-            )
-            for row in managed_rows:
-                if row.sold_at.astimezone(timezone(timedelta(hours=6))).date() not in target_dates:
-                    self.db.delete(row)
-        if scenario.demand == "no_recent":
-            managed_recent = list(
-                self.db.scalars(
-                    select(SalesRecord).where(
-                        SalesRecord.seller_id == seller.id,
-                        SalesRecord.product_id == product.id,
-                        SalesRecord.sold_at >= _dhaka_noon(self.as_of - timedelta(days=35)),
-                        SalesRecord.source_reference.like(
-                            f"{SEED_NAMESPACE}:sale:{self.as_of}:{scenario.code}:%"
-                        ),
-                    )
-                )
-            )
-            for row in managed_recent:
-                self.db.delete(row)
+        listing_id = (product.specifications or {}).get("source_listing_id")
         price_factors = (
             Decimal("0.94"), Decimal("0.97"), Decimal("1.00"), Decimal("1.03"),
             Decimal("0.96"), Decimal("1.02"), Decimal("0.90"), Decimal("1.00"),
@@ -349,94 +333,64 @@ class ComprehensiveDemoSeedService:
                     quantity = max(3, quantity + 2)
                 elif factor >= Decimal("1.02") and quantity:
                     quantity = 1
-            if quantity <= 0:
-                continue
-            price = _money(base_price * factor)
-            # P08 contains a clearly labelled promotion period.  The demand
-            # estimator excludes it through the source reference contract.
-            promo = scenario.code == "P08" and 98 <= offset <= 106
-            if promo:
-                price = _money(base_price * Decimal("0.82"))
+            # Marketplace prices are whole taka.
+            price = _money((base_price * factor).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            # P08 contains a labelled promotion period (see _seed_promotions).
+            if scenario.code == "P08" and 98 <= offset <= 106:
+                price = _money((base_price * Decimal("0.82")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
                 quantity += 2
-            source_reference = (
-                f"{SEED_NAMESPACE}:sale:{self.as_of}:{scenario.code}:{day}:"
-                f"{'promo' if promo else 'regular'}"
-            )
-            existing = self.db.scalar(
-                select(SalesRecord).where(
-                    SalesRecord.seller_id == seller.id,
-                    SalesRecord.product_id == product.id,
-                    SalesRecord.source_reference.like(
-                        f"{SEED_NAMESPACE}:sale:{self.as_of}:{scenario.code}:{day}:%"
-                    ),
+            lines: list[tuple[int, SalesRecordStatus]] = []
+            remaining = quantity
+            while remaining > 0:
+                units = 2 if remaining >= 2 and rng.random() < 0.15 else 1
+                lines.append(
+                    (units, SalesRecordStatus.FULFILLED if rng.random() < 0.35 else SalesRecordStatus.COMPLETED)
                 )
-            )
-            returned = 1 if quantity > 2 and offset % 29 == 0 else 0
-            restocked = 1 if returned and offset % 58 == 0 else 0
-            if existing:
-                existing.source_reference = source_reference
-                existing.status = (
-                    SalesRecordStatus.FULFILLED if offset % 3 == 0 else SalesRecordStatus.COMPLETED
+                remaining -= units
+            # Roughly 4% of orders are cancelled or fail payment; they must not count as demand.
+            if rng.random() < 0.04 * max(1, quantity) and scenario.code != "P15":
+                lines.append(
+                    (1, SalesRecordStatus.CANCELLED if rng.random() < 0.6 else SalesRecordStatus.FAILED_PAYMENT)
                 )
-                existing.quantity_sold = quantity
-                existing.unit_price = price
-                existing.line_total = _money(price * quantity)
-                existing.returned_units = returned
-                existing.refunded_restocked_units = restocked
-                valid_count += 1
-                continue
-            self.db.add(
-                SalesRecord(
-                    seller_id=seller.id,
-                    product_id=product.id,
-                    source_reference=source_reference,
-                    status=(
-                        SalesRecordStatus.FULFILLED
-                        if offset % 3 == 0
-                        else SalesRecordStatus.COMPLETED
-                    ),
-                    sold_at=_dhaka_noon(day),
-                    quantity_sold=quantity,
-                    unit_price=price,
-                    line_total=_money(price * quantity),
-                    currency="BDT",
-                    marketplace_listing_id=None,
-                    price_source=SalesRecordPriceSource.IMPORTED_TRANSACTION,
-                    returned_units=returned,
-                    refunded_restocked_units=restocked,
-                    is_test_order=False,
+            for line_no, (units, status) in enumerate(lines):
+                order_number = _order_number(seller.id, product.id, day, line_no)
+                sold_at = datetime.combine(
+                    day,
+                    time(hour=rng.randint(8, 23), minute=rng.randint(0, 59), second=rng.randint(0, 59)),
+                    tzinfo=timezone(timedelta(hours=6)),
+                ).astimezone(timezone.utc)
+                excluded = status in {SalesRecordStatus.CANCELLED, SalesRecordStatus.FAILED_PAYMENT}
+                returned = 1 if not excluded and units >= 2 and offset % 29 == 0 else 0
+                if excluded:
+                    invalid_count += 1
+                else:
+                    valid_count += 1
+                if self.db.scalar(
+                    select(SalesRecord.id).where(
+                        SalesRecord.seller_id == seller.id,
+                        SalesRecord.source_reference == order_number,
+                    )
+                ):
+                    continue
+                self.db.add(
+                    SalesRecord(
+                        seller_id=seller.id,
+                        product_id=product.id,
+                        source_reference=order_number,
+                        status=status,
+                        sold_at=sold_at,
+                        quantity_sold=units,
+                        unit_price=price,
+                        line_total=_money(price * units),
+                        currency="BDT",
+                        marketplace_listing_id=listing_id,
+                        price_source=SalesRecordPriceSource.IMPORTED_TRANSACTION,
+                        returned_units=returned,
+                        refunded_restocked_units=returned if offset % 58 == 0 else 0,
+                        is_test_order=False,
+                    )
                 )
-            )
-            report.bump("sales_records")
-            valid_count += 1
-
-        # One excluded record demonstrates that invalid coverage is not demand.
-        invalid_ref = f"{SEED_NAMESPACE}:excluded:{self.as_of}:{scenario.code}"
-        if not self.db.scalar(
-            select(SalesRecord.id).where(
-                SalesRecord.seller_id == seller.id,
-                SalesRecord.source_reference == invalid_ref,
-            )
-        ):
-            self.db.add(
-                SalesRecord(
-                    seller_id=seller.id,
-                    product_id=product.id,
-                    source_reference=invalid_ref,
-                    status=SalesRecordStatus.CANCELLED,
-                    sold_at=_dhaka_noon(self.as_of - timedelta(days=5)),
-                    quantity_sold=1,
-                    unit_price=base_price,
-                    line_total=base_price,
-                    currency="BDT",
-                    price_source=SalesRecordPriceSource.IMPORTED_TRANSACTION,
-                    returned_units=0,
-                    refunded_restocked_units=0,
-                    is_test_order=False,
-                )
-            )
-            report.bump("excluded_sales_records")
-        invalid_count = 1
+                report.bump("excluded_sales_records" if excluded else "sales_records")
 
         coverage_source = f"{SEED_NAMESPACE}:{self.as_of}:{scenario.code}"
         coverage = self.db.scalar(
@@ -460,8 +414,11 @@ class ComprehensiveDemoSeedService:
                     invalid_or_excluded_count=invalid_count,
                     last_imported_at=self.timestamp,
                     notes=(
-                        "Synthetic demo coverage. Complete days include observed zero-sales "
-                        "days; P15 is intentionally sparse and must not be treated as zero demand."
+                        f"Daraz Seller Center order export, {start:%d %b} to "
+                        f"{self.as_of - timedelta(days=1):%d %b %Y}. Days without orders are "
+                        "observed zero-sales days."
+                        if scenario.coverage == SalesDataCompletenessStatus.COMPLETE
+                        else "Partial order export; coverage unknown, so gaps are not zero demand."
                     ),
                 )
             self.db.add(coverage)
@@ -518,12 +475,13 @@ class ComprehensiveDemoSeedService:
                     )
                 )
                 report.bump("inventory_history")
-            elif (existing.source_reference or "").startswith((SEED_NAMESPACE, "demo-footwear-store-v1")):
+            elif (existing.source_reference or "").startswith((SEED_NAMESPACE, CATALOG_SEED_NAME)):
                 for key, value in values.items():
                     setattr(existing, key, value)
 
         for sequence, days_ago in enumerate((scenario.age_days, min(scenario.age_days, 35))):
-            ref = f"{SEED_NAMESPACE}:stock-in:{self.as_of}:{scenario.code}:{sequence}"
+            received_at = self.timestamp - timedelta(days=days_ago)
+            ref = f"PO-WW-{received_at:%y%m%d}-{index + 1:02d}{sequence + 1}"
             if self.db.scalar(
                 select(InventoryStockIn.id).where(
                     InventoryStockIn.seller_id == seller.id,
@@ -537,11 +495,11 @@ class ComprehensiveDemoSeedService:
                     seller_id=seller.id,
                     product_id=product.id,
                     quantity=quantity,
-                    received_at=self.timestamp - timedelta(days=days_ago),
+                    received_at=received_at,
                     unit_cost=product.cost_price,
                     currency="BDT",
                     source_reference=ref,
-                    notes="Synthetic demo receipt; no external purchase order or supplier claim.",
+                    notes=f"Received from {DEMO_SUPPLIER}; counted and shelved.",
                 )
             )
             report.bump("inventory_stock_in")
@@ -716,7 +674,9 @@ class ComprehensiveDemoSeedService:
                     ScrapeRun.run_key == run_key,
                 )
             )
-            observed_at = self.timestamp - timedelta(
+            # Never future-date runs: the latest finished_at wins in the competitor list,
+            # so a seeded "today 18:00" run would hide real scrapes made earlier today.
+            observed_at = min(self.timestamp, datetime.now(timezone.utc)) - timedelta(
                 days=(run_count - 1 - run_index) * 7
             )
             if run is None:
@@ -760,17 +720,17 @@ class ComprehensiveDemoSeedService:
                     competitor = Competitor(
                         scrape_run_id=run.id,
                         product_id=product.id,
-                        competitor_title=f"Demo comparison listing {competitor_index + 1} for {product.title}",
-                        competitor_description="Synthetic marketplace comparison; not an observed Daraz listing.",
+                        competitor_title=f"{product.title} ({COMPETITOR_VARIANTS[competitor_index]})",
+                        competitor_description="Comparable listing from another Daraz seller (demo data).",
                         competitor_category=product.category,
-                        competitor_brand=f"DemoBrand{competitor_index + 1}",
+                        competitor_brand=(product.specifications or {}).get("brand"),
                         competitor_attributes={"data_class": "DEMO_SYNTHETIC"},
                         competitor_price=base,
                         original_price=_money(base * Decimal("1.10")),
                         discount_percentage=10,
                         competitor_rating=4.0 + competitor_index * 0.2,
                         rating_count=80 + index * 5 + competitor_index * 30,
-                        competitor_store=f"Demo Synthetic Store {competitor_index + 1}",
+                        competitor_store=COMPETITOR_STORES[competitor_index],
                         stock_status="IN_STOCK",
                         similarity_score=0.91 - competitor_index * 0.03,
                         title_similarity=0.93,
@@ -1351,6 +1311,11 @@ def _dhaka_noon(value: date) -> datetime:
 
 def _dhaka_evening(value: date) -> datetime:
     return datetime.combine(value, time(hour=18), tzinfo=timezone(timedelta(hours=6))).astimezone(timezone.utc)
+
+
+def _order_number(*values: object) -> str:
+    """Deterministic 15-digit Daraz-style order number."""
+    return str(600_000_000_000_000 + int(_hash(*values)[:13], 16) % 100_000_000_000_000)
 
 
 def _hash(*values: object) -> str:

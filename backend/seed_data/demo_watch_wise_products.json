@@ -1,0 +1,1002 @@
+{
+  "manifest_version": "1.0",
+  "seed_name": "demo-watch-wise-v1",
+  "generated_at": "2026-11-24T10:30:00Z",
+  "currency": "BDT",
+  "source_store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+  "products": [
+    {
+      "listing_id": "539039984",
+      "sku": "WW-001-AURA-CF",
+      "title": "Arabic Aura Watch – Carbon Fiber Look Body with Sleek & Modern Design",
+      "brand": "Aura",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "195.00",
+      "original_price_bdt": "503.00",
+      "discount_percent": "61",
+      "concise_description": "Octagon-case analog watch with a carbon-fiber look body, Arabic numeral dial, crystal glass and buckle strap. 42mm dial, about 46g, splash resistant for daily wear.",
+      "material": "Polycarbonate",
+      "color": "Black",
+      "available_sizes": null,
+      "specifications": {
+        "case_shape": "Octagon",
+        "dial_diameter": "42mm",
+        "case_thickness": "11mm",
+        "band_width": "20mm",
+        "band_length": "25cm",
+        "clasp": "Buckle",
+        "glass": "Crystal, semi scratch resistant",
+        "water_resistance": "Splash resistant",
+        "weight": "46g"
+      },
+      "image_url": "https://video-play.daraz.com.bd/cover/8332058.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/arabic-aura-watch-carbon-fiber-look-body-with-sleek-modern-design-i539039984.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537934073",
+      "sku": "WW-002-OLV-2872",
+      "title": "OLEVS 2872 Stylish Men's Watch – Perfect for Casual and Formal Wear",
+      "brand": "OLEVS",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "225.00",
+      "original_price_bdt": "378.00",
+      "discount_percent": "40",
+      "concise_description": "OLEVS model 2872 men's watch with stainless steel case, week display and hardlex dial cover. 40mm round dial, 12mm case, 24cm buckle band for office or casual wear.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "2872",
+        "case_material": "Stainless Steel",
+        "case_shape": "Round",
+        "dial_diameter": "40mm",
+        "case_thickness": "12mm",
+        "band_width": "20mm",
+        "band_length": "24cm",
+        "clasp": "Buckle",
+        "dial_cover": "Hardlex",
+        "water_resistance": "Yes"
+      },
+      "image_url": "https://video-play.daraz.com.bd/cover/8308063.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/olevs-2872-stylish-mens-watch-perfect-for-casual-and-formal-wear-i537934073.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537948154",
+      "sku": "WW-003-CUR-8301",
+      "title": "Curren 8301 Men's Watch – Stylish and Durable",
+      "brand": "Curren",
+      "category": "Men's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "285.00",
+      "original_price_bdt": "919.00",
+      "discount_percent": "69",
+      "concise_description": "Curren 8301 quartz watch with a bold 47mm alloy case, complete calendar and artificial leather strap. Water and shock resistant with a hardlex window.",
+      "material": "Alloy",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "8301",
+        "movement": "Quartz",
+        "case_material": "Alloy",
+        "dial_diameter": "47mm",
+        "case_thickness": "14mm",
+        "band_material": "Artificial Leather",
+        "band_width": "24mm",
+        "band_length": "24cm",
+        "clasp": "Buckle",
+        "features": "Water resistant, complete calendar, shock resistant"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S4d042713d80646efaa31ea99a598e0f9W.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/curren-8301-mens-watch-stylish-and-durable-i537948154.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537918494",
+      "sku": "WW-004-OLV-9931M",
+      "title": "OLEVS Stainless Steel Watch for Men – Model 9931, Elegant & Robust",
+      "brand": "OLEVS",
+      "category": "Men's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "299.00",
+      "original_price_bdt": "480.00",
+      "discount_percent": "38",
+      "concise_description": "OLEVS 9931 business-style quartz watch for men with stainless steel bracelet, alloy round case and coated glass. Water resistant with a bracelet clasp.",
+      "material": "Stainless Steel",
+      "color": "Silver",
+      "available_sizes": null,
+      "specifications": {
+        "model": "9931",
+        "movement": "Quartz",
+        "style": "Business",
+        "case_material": "Alloy",
+        "band_material": "Stainless Steel",
+        "clasp": "Bracelet Clasp",
+        "dial_cover": "Coated Glass",
+        "water_resistance": "Yes"
+      },
+      "image_url": "https://video-play.daraz.com.bd/cover/8330072.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/olevs-stainless-steel-watch-for-men-model-9931-elegant-robust-i537918494.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "534534616",
+      "sku": "WW-005-PDG-930",
+      "title": "POEDAGAR 930 Men's Stainless Steel Watch – Water Resistant, Luminous Display, Date & Day Feature",
+      "brand": "POEDAGAR",
+      "category": "Men's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "429.00",
+      "original_price_bdt": "683.00",
+      "discount_percent": "37",
+      "concise_description": "POEDAGAR 930 quartz watch with stainless steel case and band, luminous hands, date and day display. 40mm dial, 11mm case, push-button hidden clasp. CE/RoHS certified.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "930",
+        "movement": "Quartz",
+        "case_material": "Stainless Steel",
+        "band_material": "Stainless Steel",
+        "dial_diameter": "40mm",
+        "case_thickness": "11mm",
+        "band_width": "23mm",
+        "band_length": "26cm",
+        "clasp": "Push Button Hidden Clasp",
+        "features": "Water resistant, luminous, auto date"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S1d8a04fed9904dc0b0e8e45c8430ee6d2.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/poedagar-930-mens-stainless-steel-watch-water-resistant-luminous-display-date-day-feature-i534534616.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537946438",
+      "sku": "WW-006-KIDS-SPT",
+      "title": "Children’s Sports Wristwatch – Lightweight & Easy to Use",
+      "brand": "No Brand",
+      "category": "Kids' Watches",
+      "product_type": "Digital Sports Watch",
+      "audience": "CHILDREN",
+      "current_price_bdt": "99.00",
+      "original_price_bdt": "255.00",
+      "discount_percent": "61",
+      "concise_description": "Lightweight digital sports watch for children with a soft rubber strap, date and time display. Easy to wear and remove for school and play.",
+      "material": "Rubber",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "display": "Digital",
+        "band_material": "Rubber",
+        "features": "Date and time"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S1c687703b3fd4924871e48a1c58db672j.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/childrens-sports-wristwatch-lightweight-easy-to-use-i537946438.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "1579577923",
+      "sku": "WW-007-COUPLE-5003",
+      "title": "Couple Combo Watch Set – CRRJU 5003 Silver Blue Dial Men’s Watch with Date + Dior Magnetic Ladies Watch",
+      "brand": "CRRJU",
+      "category": "Couple Watches",
+      "product_type": "Watch Gift Set",
+      "audience": "UNISEX",
+      "current_price_bdt": "499.00",
+      "original_price_bdt": "630.00",
+      "discount_percent": "21",
+      "concise_description": "Gift combo of a CRRJU 5003 men's watch with silver case, blue dial and date window, paired with a magnetic-strap ladies watch. 43mm men's dial, 24cm band.",
+      "material": "Stainless Steel",
+      "color": "Silver / Blue",
+      "available_sizes": null,
+      "specifications": {
+        "set_contents": "1 men's watch + 1 ladies watch",
+        "men_model": "CRRJU 5003",
+        "dial_diameter": "43mm",
+        "case_thickness": "10mm",
+        "band_width": "20mm",
+        "band_length": "24cm"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S12e9ba42b1e7498a9d0d6789f4a43e297.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/couple-combo-watch-set-crrju-5003-silver-blue-dial-mens-watch-with-date-dior-magnetic-ladies-watch-i1579577923.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "529915946",
+      "sku": "WW-008-MEN-FASH",
+      "title": "Men's Fashion Analog Watch – Classic Design with Quartz Movement",
+      "brand": "No Brand",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "159.00",
+      "original_price_bdt": "333.00",
+      "discount_percent": "52",
+      "concise_description": "Classic round analog watch for men with quartz movement, stainless steel case and artificial leather strap in a standard men's size.",
+      "material": "Artificial Leather",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "movement": "Quartz",
+        "case_material": "Stainless Steel",
+        "case_shape": "Round",
+        "band_material": "Artificial Leather"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/Sb75424b967564a23aaa826c72d2c7093U.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/mens-fashion-analog-watch-classic-design-with-quartz-movement-i529915946.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537934379",
+      "sku": "WW-009-CLK-FOLD",
+      "title": "Folding Alarm Clock – Silent, Loud Hammer, Glow Hands, Steel Shell – Multicolor",
+      "brand": "No Brand",
+      "category": "Table & Alarm Clocks",
+      "product_type": "Alarm Clock",
+      "audience": "UNISEX",
+      "current_price_bdt": "249.00",
+      "original_price_bdt": "430.00",
+      "discount_percent": "42",
+      "concise_description": "Compact folding alarm clock with silent sweep movement, loud hammer alarm and glow-in-the-dark hands. Small travel size; battery not included.",
+      "material": "Steel / Plastic",
+      "color": "Multicolor",
+      "available_sizes": null,
+      "specifications": {
+        "alarm": "Yes",
+        "hands": "Glow",
+        "size": "Small",
+        "battery_included": "No"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S5b7f12797cc14f59be89267dd314f1f7Q.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/folding-alarm-clock-silent-loud-hammer-glow-hands-steel-shell-multicolor-i537934379.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "534541573",
+      "sku": "WW-010-CLK-TWIN",
+      "title": "Twin Bell Alarm Clock – Loud Heavy Alarm Clock",
+      "brand": "No Brand",
+      "category": "Table & Alarm Clocks",
+      "product_type": "Twin Bell Alarm Clock",
+      "audience": "UNISEX",
+      "current_price_bdt": "385.00",
+      "original_price_bdt": "555.00",
+      "discount_percent": "31",
+      "concise_description": "Retro twin bell analogue table clock with a loud, heavy alarm for deep sleepers. Silver finish, 13 x 9 x 4.4 cm. Wipe with a dry cloth to clean.",
+      "material": "Metal / Plastic",
+      "color": "Silver",
+      "available_sizes": null,
+      "specifications": {
+        "type": "Analogue table clock",
+        "shape": "Round",
+        "dimensions": "13 x 9 x 4.4 cm",
+        "alarm": "Twin bell"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S7caf972621a94fcf98f83380c24526f5f.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/twin-bell-alarm-clock-loud-heavy-alarm-clock-i534541573.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537900751",
+      "sku": "WW-011-OLV-6898",
+      "title": "O'levs 6898 Men's Analog Wrist Watch – PU Leather Strap",
+      "brand": "OLEVS",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "215.00",
+      "original_price_bdt": "441.00",
+      "discount_percent": "51",
+      "concise_description": "Slim OLEVS 6898 quartz watch for men with a 9mm stainless steel case, hardlex window and PU leather buckle strap. 3 bar water resistance.",
+      "material": "PU Leather",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "6898",
+        "movement": "Quartz",
+        "case_material": "Stainless Steel",
+        "case_thickness": "9mm",
+        "band_material": "PU Leather",
+        "band_length": "22cm",
+        "clasp": "Buckle",
+        "water_resistance": "3 Bar"
+      },
+      "image_url": "https://video-play.daraz.com.bd/cover/8328058.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/olevs-6898-mens-analog-wrist-watch-pu-leather-strap-i537900751.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "530152345",
+      "sku": "WW-012-CLK-STAR",
+      "title": "Star Shaped Bell Table Alarm Clock – Retro Twin Bell Design",
+      "brand": "No Brand",
+      "category": "Table & Alarm Clocks",
+      "product_type": "Twin Bell Alarm Clock",
+      "audience": "UNISEX",
+      "current_price_bdt": "289.00",
+      "original_price_bdt": "504.00",
+      "discount_percent": "43",
+      "concise_description": "Star-shaped retro twin bell table alarm clock for bedrooms and study desks. Analogue display, 13 x 9 x 4.4 cm plastic body in assorted colours.",
+      "material": "Plastic",
+      "color": "Multicolor",
+      "available_sizes": null,
+      "specifications": {
+        "type": "Analogue table clock",
+        "shape": "Star",
+        "dimensions": "13 x 9 x 4.4 cm",
+        "alarm": "Twin bell"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S79a57e4cd9c9424f92a883363fe85374o.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/star-shaped-bell-table-alarm-clock-retro-twin-bell-design-i530152345.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "529919870",
+      "sku": "WW-013-LADY-BRC",
+      "title": "Stylish Women's Bracelet-Type Analog Wristwatch - Elegant Design",
+      "brand": "No Brand",
+      "category": "Women's Watches",
+      "product_type": "Bracelet Watch",
+      "audience": "WOMEN",
+      "current_price_bdt": "135.00",
+      "original_price_bdt": "350.00",
+      "discount_percent": "61",
+      "concise_description": "Vintage round-dial bracelet watch for girls and women with a multi-layered faux leather band and bronze butterfly charm. Lightweight and adjustable.",
+      "material": "Faux Leather",
+      "color": "Dark Chocolate",
+      "available_sizes": null,
+      "specifications": {
+        "dial": "Vintage round, clear numerals",
+        "band_material": "Multi-layer faux leather",
+        "charm": "Bronze butterfly",
+        "fit": "Adjustable"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S5786b971e0b744789316e6ba623c07efc.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/stylish-womens-bracelet-type-analog-wristwatch-elegant-design-i529919870.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537914797",
+      "sku": "WW-014-CUR-9081",
+      "title": "Curren Model 9081 Ladies Wristwatch – Classic Design",
+      "brand": "Curren",
+      "category": "Women's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "WOMEN",
+      "current_price_bdt": "229.00",
+      "original_price_bdt": "473.00",
+      "discount_percent": "52",
+      "concise_description": "Curren 9081 ladies quartz watch with a 33mm round alloy case, 8mm slim profile and 12mm stainless steel bracelet. Water resistant, hardlex window.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "9081",
+        "movement": "Quartz",
+        "case_material": "Alloy",
+        "dial_diameter": "33mm",
+        "case_thickness": "8mm",
+        "band_material": "Stainless Steel",
+        "band_width": "12mm",
+        "band_length": "25cm",
+        "clasp": "Bracelet Clasp"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S4bd97336483b4b53923059d1f0d2e02aO.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/curren-model-9081-ladies-wristwatch-classic-design-i537914797.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "526891684",
+      "sku": "WW-015-OLV-1020",
+      "title": "OLEVS Model 1020 Men's Stainless Steel Watch",
+      "brand": "OLEVS",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "379.00",
+      "original_price_bdt": "555.00",
+      "discount_percent": "32",
+      "concise_description": "OLEVS 1020 men's stainless steel watch with a 41mm round dial and slim 12mm bracelet, 19cm band length.",
+      "material": "Stainless Steel",
+      "color": "Silver",
+      "available_sizes": null,
+      "specifications": {
+        "model": "1020",
+        "dial_diameter": "41mm",
+        "case_shape": "Round",
+        "band_width": "12mm",
+        "band_length": "19cm"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S967ba135ffa3412a8e5dc7487a32df07a.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/olevs-model-1020-mens-stainless-steel-watch-i526891684.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "534542483",
+      "sku": "WW-016-LADY-MAG",
+      "title": "Magnetic Wrist Watch for girls and women - Watch For Women - Ladies Watch",
+      "brand": "No Brand",
+      "category": "Women's Watches",
+      "product_type": "Magnetic Strap Watch",
+      "audience": "WOMEN",
+      "current_price_bdt": "99.00",
+      "original_price_bdt": "285.00",
+      "discount_percent": "65",
+      "concise_description": "Fashion analog ladies watch with a magnetic mesh strap, stainless steel case and super mineral glass mirror.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "strap": "Magnetic",
+        "case_material": "Stainless Steel",
+        "glass": "Super mineral glass"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S23d0fa39062c40ac886c0b703c3d3444y.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/magnetic-wrist-watch-for-girls-and-women-watch-for-women-ladies-watch-i534542483.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "526924390",
+      "sku": "WW-017-SKM-1260",
+      "title": "SKMEI Model 1260 Men's Stainless Steel Watch",
+      "brand": "SKMEI",
+      "category": "Men's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "339.00",
+      "original_price_bdt": "520.00",
+      "discount_percent": "35",
+      "concise_description": "SKMEI 1260 stainless steel watch for men, slim 9mm case with a 39mm dial and 20mm band. Suits everyday wear and special occasions.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "1260",
+        "case_material": "Stainless Steel",
+        "dial_diameter": "39mm",
+        "case_thickness": "9mm",
+        "band_width": "20mm"
+      },
+      "image_url": "https://video-play.daraz.com.bd/cover/8314097.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/skmei-model-1260-mens-stainless-steel-watch-i526924390.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "530162198",
+      "sku": "WW-018-CLK-APPLE",
+      "title": "Classic Bell Alarm Clock – Apple Shape Desktop Timepiece",
+      "brand": "No Brand",
+      "category": "Table & Alarm Clocks",
+      "product_type": "Bell Alarm Clock",
+      "audience": "UNISEX",
+      "current_price_bdt": "289.00",
+      "original_price_bdt": "504.00",
+      "discount_percent": "43",
+      "concise_description": "Apple-shaped classic bell alarm clock for desks and bedside tables. Analogue display, 13 x 9 x 4.4 cm plastic body in assorted colours.",
+      "material": "Plastic",
+      "color": "Multicolor",
+      "available_sizes": null,
+      "specifications": {
+        "type": "Analogue table clock",
+        "shape": "Apple",
+        "dimensions": "13 x 9 x 4.4 cm",
+        "alarm": "Bell"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S3ceb5e6c7b7346fdb086002a26a4bb5as.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/classic-bell-alarm-clock-apple-shape-desktop-timepiece-i530162198.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537938235",
+      "sku": "WW-019-PDG-613",
+      "title": "Poedagar 613 Quartz Wristwatch for Men – Stainless Steel, Elegant Design",
+      "brand": "POEDAGAR",
+      "category": "Men's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "509.00",
+      "original_price_bdt": "650.00",
+      "discount_percent": "22",
+      "concise_description": "POEDAGAR 613 quartz watch for men with a 43mm alloy case, pointer dial, hardlex window and 24mm stainless steel band with push-button hidden clasp.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "613",
+        "movement": "Quartz",
+        "case_material": "Alloy",
+        "dial_diameter": "43mm",
+        "case_thickness": "10.5mm",
+        "band_material": "Stainless Steel",
+        "band_width": "24mm",
+        "band_length": "20cm",
+        "clasp": "Push Button Hidden Clasp"
+      },
+      "image_url": "https://video-play.daraz.com.bd/cover/8304141.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/poedagar-613-quartz-wristwatch-for-men-stainless-steel-elegant-design-i537938235.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537938053",
+      "sku": "WW-020-MEN-LUX",
+      "title": "Men’s Luxury Analog Watch – Premium Design",
+      "brand": "No Brand",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "349.00",
+      "original_price_bdt": "503.00",
+      "discount_percent": "31",
+      "concise_description": "Premium-look analog watch for men supplied with a free watch box and spare battery. One-year guarantee on the watch movement; open-box check on delivery.",
+      "material": null,
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "warranty": "1 year movement",
+        "in_the_box": "Watch, gift box, spare battery"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S8bd3e1eb93754c78a2793885308f3fc0F.png_720x720q80.png",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color",
+        "material"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/mens-luxury-analog-watch-premium-design-i537938053.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537908720",
+      "sku": "WW-021-OLV-9931W",
+      "title": "OLEVS 9931 Women's Fashion Watch – Perfect for Daily Wear",
+      "brand": "OLEVS",
+      "category": "Women's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "WOMEN",
+      "current_price_bdt": "299.00",
+      "original_price_bdt": "517.00",
+      "discount_percent": "42",
+      "concise_description": "OLEVS 9931 women's quartz watch with alloy case, stainless steel bracelet, luminous hands and coated glass. Water and shock resistant for daily wear.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "9931",
+        "movement": "Quartz",
+        "case_material": "Alloy",
+        "band_material": "Stainless Steel",
+        "clasp": "Bracelet Clasp",
+        "dial_cover": "Coated Glass",
+        "features": "Shock resistant, luminous, water resistant"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/Sb1d3b182f192482facc12f1cc522dfeb8.png_720x720q80.png",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/olevs-9931-womens-fashion-watch-perfect-for-daily-wear-i537908720.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "537914885",
+      "sku": "WW-022-MEN-PU",
+      "title": "Men’s Analog Wrist Watch – Durable and Lightweight",
+      "brand": "No Brand",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "169.00",
+      "original_price_bdt": "407.00",
+      "discount_percent": "58",
+      "concise_description": "Lightweight men's analog watch with date view, stainless steel round case and brown PU leather belt. Dial colours: blue, black or coffee.",
+      "material": "PU Leather",
+      "color": "Brown",
+      "available_sizes": null,
+      "specifications": {
+        "case_material": "Stainless Steel",
+        "case_shape": "Round",
+        "band_material": "PU Leather",
+        "date_view": "Yes",
+        "dial_colors": "Blue / Black / Coffee"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/Sb125a61b2f2a497ebdd3181bbd21b405C.png_720x720q80.png",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/mens-pu-leather-analog-wrist-watch-durable-and-lightweight-i537914885.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "529962953",
+      "sku": "WW-023-PDG-810",
+      "title": "Luxury Watch Model 810 WATCH",
+      "brand": "POEDAGAR",
+      "category": "Men's Watches",
+      "product_type": "Analog Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "309.00",
+      "original_price_bdt": "480.00",
+      "discount_percent": "36",
+      "concise_description": "Model 810 analog watch with stainless steel bracelet, 41mm dial, slim 11mm case and luminous hands and markers. 3ATM water resistance for daily wear.",
+      "material": "Stainless Steel",
+      "color": null,
+      "available_sizes": null,
+      "specifications": {
+        "model": "810",
+        "band_material": "Stainless Steel",
+        "dial_diameter": "41mm",
+        "case_thickness": "11mm",
+        "band_width": "22mm",
+        "water_resistance": "3ATM (30m)",
+        "features": "Luminous hands and markers"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S061b1371f9bc46c0b70ca169ac6fca72Z.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes",
+        "color"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/poydagor-model-810-watch-i529962953.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "529903970",
+      "sku": "WW-024-SKM-9069",
+      "title": "SKMEI WATCH MODEL 9069",
+      "brand": "SKMEI",
+      "category": "Men's Watches",
+      "product_type": "Quartz Wristwatch",
+      "audience": "MEN",
+      "current_price_bdt": "369.00",
+      "original_price_bdt": "570.00",
+      "discount_percent": "35",
+      "concise_description": "SKMEI 9069 quartz watch with stainless steel strap, folding safety clasp, day and date display and luminous hands. 39mm dial, 12mm case, 30m splash-proof.",
+      "material": "Stainless Steel",
+      "color": "White / Blue",
+      "available_sizes": null,
+      "specifications": {
+        "model": "9069",
+        "movement": "Quartz",
+        "band_material": "Stainless Steel",
+        "clasp": "Folding safety clasp",
+        "dial_diameter": "39mm",
+        "case_thickness": "12mm",
+        "water_resistance": "30m",
+        "features": "Day and date, luminous"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/S9f47f031548d4a0e984ec4a99e6e5f46U.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/skmei-watch-model-9069-i529903970.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    },
+    {
+      "listing_id": "526902097",
+      "sku": "WW-025-MEN-SQR",
+      "title": "Men's Casual Waterproof Square Watch with Rubber Strap",
+      "brand": "No Brand",
+      "category": "Men's Watches",
+      "product_type": "Digital Watch",
+      "audience": "MEN",
+      "current_price_bdt": "185.00",
+      "original_price_bdt": "344.00",
+      "discount_percent": "46",
+      "concise_description": "Square digital watch (F-91W style) with rubber strap, micro light, daily alarm, 1/100 second stopwatch, hourly signal, auto calendar and 12/24 hour formats. 22g.",
+      "material": "Rubber",
+      "color": "Black",
+      "available_sizes": null,
+      "specifications": {
+        "model": "F-91W-1",
+        "display": "Digital",
+        "case_size": "38.2 x 35.2 x 8.5 mm",
+        "weight": "22g",
+        "features": "Alarm, stopwatch, light, auto calendar",
+        "water_resistance": "Water resistant"
+      },
+      "image_url": "https://img.drz.lazcdn.com/g/kf/Sf168a71585c845d5a4023be76aa67c3bp.jpg_720x720q80.jpg",
+      "availability_status": "IN_STOCK",
+      "price_observed_at": "2026-11-24T10:30:00Z",
+      "missing_fields": [
+        "available_sizes"
+      ],
+      "source": {
+        "marketplace": "Daraz Bangladesh",
+        "store_name": "Watch Wise - Choice",
+        "store_url": "https://www.daraz.com.bd/blzdnq-selection/",
+        "listing_url": "https://www.daraz.com.bd/products/mens-casual-waterproof-square-watch-with-rubber-strap-i526902097.html",
+        "acquired_at": "2026-11-24T10:30:00Z",
+        "acquisition_method": "Public Daraz store listing review",
+        "validation_status": "VERIFIED_PUBLIC_LISTING"
+      }
+    }
+  ]
+}

@@ -11,12 +11,12 @@ from zoneinfo import ZoneInfo
 
 from app.db.session import SessionLocal
 from app.services.comprehensive_demo_seed_service import ComprehensiveDemoSeedService
-from app.services.demo_seed_service import DemoSeedError
+from app.services.demo_seed_service import DEMO_EMAIL, DemoSeedError
 
 
 def parser() -> argparse.ArgumentParser:
     cli = argparse.ArgumentParser(description=__doc__)
-    cli.add_argument("--email", default="demo1@gmail.com")
+    cli.add_argument("--email", default=DEMO_EMAIL)
     cli.add_argument("--as-of", type=date.fromisoformat)
     cli.add_argument("--apply", action="store_true", help="Write seller-scoped demo data.")
     cli.add_argument("--dry-run", action="store_true", help="Inspect scope without writes (default).")
@@ -29,8 +29,8 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = parser().parse_args()
-    if args.email.casefold() != "demo1@gmail.com":
-        print("demo_seed_failed reason=only demo1@gmail.com is allowed", file=sys.stderr)
+    if args.email.casefold() != DEMO_EMAIL:
+        print("demo_seed_failed reason=only the demo seller email is allowed", file=sys.stderr)
         return 2
     as_of = args.as_of or datetime.now(ZoneInfo("Asia/Dhaka")).date()
     apply = bool(args.apply and not args.validate_only)

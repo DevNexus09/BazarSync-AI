@@ -59,6 +59,16 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   return { token: data.access_token, user: mapUser(data.seller) }
 }
 
+// The free demo backend may be asleep, so allow time for it to wake up.
+const DEMO_WAKE_TIMEOUT_MS = 120_000
+
+export async function startDemo(): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiAuthResponse>("/auth/demo", undefined, {
+    timeout: DEMO_WAKE_TIMEOUT_MS,
+  })
+  return { token: data.access_token, user: { ...mapUser(data.seller), isDemo: true } }
+}
+
 export async function register(input: RegisterInput): Promise<AuthResponse> {
   const { data } = await apiClient.post<ApiAuthResponse>("/auth/register", input)
   return { token: data.access_token, user: mapUser(data.seller) }

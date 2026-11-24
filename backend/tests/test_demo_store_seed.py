@@ -21,13 +21,14 @@ from app.models.product_price_history import ProductPriceHistory
 from app.models.sales_data_coverage import SalesDataCoverage
 from app.models.sales_record import SalesRecord
 from app.models.seller import Seller
-from app.schemas.demo_seed import DemoFootwearManifest
+from app.schemas.demo_seed import DemoStoreManifest
 from app.schemas.auth import SellerLogin
 from app.services.auth_service import AuthService
 from app.services.demo_seed_service import (
     DEFAULT_MANIFEST,
     DEMO_EMAIL,
-    DemoFootwearSeedService,
+    FEE_EVIDENCE_WITHHELD_SKUS,
+    DemoStoreSeedService,
     DemoSeedConflictError,
     DemoSeedSafetyError,
     load_demo_manifest,
@@ -58,13 +59,13 @@ def seed_db(db, monkeypatch):
     return db
 
 
-def _manifest() -> DemoFootwearManifest:
+def _manifest() -> DemoStoreManifest:
     return load_demo_manifest(DEFAULT_MANIFEST)
 
 
 def _run(seed_db, *, sales=False):
     with seed_db() as session:
-        return DemoFootwearSeedService(
+        return DemoStoreSeedService(
             session, now=datetime.now(timezone.utc) - timedelta(minutes=1)
         ).run(
             manifest=_manifest(),
@@ -75,12 +76,16 @@ def _run(seed_db, *, sales=False):
         )
 
 
-def test_manifest_has_15_distinct_verified_bata_store_listings():
+def test_manifest_has_25_distinct_watch_wise_listings_in_sku_order():
     manifest = _manifest()
-    assert len(manifest.products) == 15
-    assert len({item.listing_id for item in manifest.products}) == 15
-    assert {item.source.store_name for item in manifest.products} == {"Bata"}
-    assert {item.audience for item in manifest.products} == {"MEN", "WOMEN", "CHILDREN"}
+    assert len(manifest.products) == 25
+    assert len({item.listing_id for item in manifest.products}) == 25
+    assert {item.source.store_name for item in manifest.products} == {"Watch Wise - Choice"}
+    assert {item.audience for item in manifest.products} == {"MEN", "WOMEN", "CHILDREN", "UNISEX"}
+    # The comprehensive seed assigns P01-P25 scenarios by SKU order.
+    skus = [item.sku for item in manifest.products]
+    assert skus == sorted(skus)
+    assert all(len(item.concise_description) >= 10 for item in manifest.products)
 
 
 @pytest.mark.parametrize(
@@ -96,12 +101,12 @@ def test_manifest_rejects_duplicate_invalid_price_wrong_seller_and_missing_sourc
     data = _manifest().model_dump(mode="json")
     mutation(data)
     with pytest.raises(ValidationError):
-        DemoFootwearManifest.model_validate(data)
+        DemoStoreManifest.model_validate(data)
 
 
 def test_dry_run_makes_no_database_changes(seed_db):
     with seed_db() as session:
-        report = DemoFootwearSeedService(session).run(
+        report = DemoStoreSeedService(session).run(
             manifest=_manifest(),
             manifest_path=DEFAULT_MANIFEST,
             apply=False,
@@ -115,14 +120,15 @@ def test_dry_run_makes_no_database_changes(seed_db):
 def test_seed_creates_login_compatible_isolated_records_and_safe_margins(seed_db):
     report = _run(seed_db)
     assert report.seller_status == "CREATED"
-    assert report.products_created == 15
-    assert report.inventory_records_created == 15
+    assert report.products_created == 25
+    assert report.inventory_records_created == 25
     assert report.synthetic_sales_created == 0
 
     with seed_db() as session:
         seller = session.scalar(select(Seller).where(Seller.email == DEMO_EMAIL))
         assert seller is not None
-        assert seller.phone == "+8801870211787"
+        assert seller.phone == "+8801617390260"
+        assert seller.business_name == "Watch Wise - Choice"
         assert verify_password("local-demo-password", seller.password_hash)
         assert AuthService(session).authenticate_seller(
             SellerLogin(email=DEMO_EMAIL, password="local-demo-password")
@@ -130,12 +136,15 @@ def test_seed_creates_login_compatible_isolated_records_and_safe_margins(seed_db
         products = session.scalars(
             select(Product).where(Product.seller_id == seller.id).order_by(Product.sku)
         ).all()
-        assert len(products) == 15
+        assert len(products) == 25
         assert all(product.selling_price > 0 and product.cost_price > 0 for product in products)
-        assert session.scalar(select(func.count()).select_from(InventoryHistory)) == 15
-        assert session.scalar(select(func.count()).select_from(InventoryAgingSnapshot)) == 15
-        assert session.scalar(select(func.count()).select_from(PricingPolicy)) == 15
-        assert session.scalar(select(func.count()).select_from(MarketplaceFeePolicy)) == 15
+        assert session.scalar(select(func.count()).select_from(InventoryHistory)) == 25
+        assert session.scalar(select(func.count()).select_from(InventoryAgingSnapshot)) == 0
+        assert session.scalar(select(func.count()).select_from(PricingPolicy)) == 25
+        clocks = [p for p in products if p.category == "Table & Alarm Clocks"]
+        assert len(clocks) == 4
+        # 20 watches with product fees (one withheld) plus one shared clock category policy.
+        assert session.scalar(select(func.count()).select_from(MarketplaceFeePolicy)) == 21
         snapshots = session.scalars(select(InventoryHistory)).all()
         assert all(row.quantity_available == row.quantity_on_hand - row.quantity_reserved for row in snapshots)
         for product in products:
@@ -144,7 +153,10 @@ def test_seed_creates_login_compatible_isolated_records_and_safe_margins(seed_db
                 product=product,
                 candidate_price=Decimal(product.selling_price),
             )
-            assert guard.is_allowed, guard.rejection_reasons
+            if product.sku in FEE_EVIDENCE_WITHHELD_SKUS:
+                assert not guard.is_allowed
+            else:
+                assert guard.is_allowed, (product.sku, guard.rejection_reasons)
 
 
 def test_rerun_is_idempotent_and_does_not_reset_password(seed_db):
@@ -154,12 +166,12 @@ def test_rerun_is_idempotent_and_does_not_reset_password(seed_db):
         original_hash = seller.password_hash
     second = _run(seed_db)
     assert second.products_created == 0
-    assert second.products_existing == 15
+    assert second.products_existing == 25
     with seed_db() as session:
         seller = session.scalar(select(Seller).where(Seller.email == DEMO_EMAIL))
         assert seller.password_hash == original_hash
-        assert session.scalar(select(func.count()).select_from(Product)) == 15
-        assert session.scalar(select(func.count()).select_from(InventoryHistory)) == 15
+        assert session.scalar(select(func.count()).select_from(Product)) == 25
+        assert session.scalar(select(func.count()).select_from(InventoryHistory)) == 25
 
 
 def test_conflicting_normal_account_aborts_without_modification(seed_db):
@@ -168,7 +180,7 @@ def test_conflicting_normal_account_aborts_without_modification(seed_db):
         session.add(seller)
     with seed_db() as session:
         with pytest.raises(DemoSeedConflictError):
-            DemoFootwearSeedService(session).run(
+            DemoStoreSeedService(session).run(
                 manifest=_manifest(),
                 manifest_path=DEFAULT_MANIFEST,
                 apply=True,
@@ -192,7 +204,7 @@ def test_optional_sales_are_reproducible_idempotent_and_seller_scoped(seed_db):
         assert all(row.seller_id == seller.id and not row.is_test_order for row in rows)
         assert all(row.line_total == row.unit_price * row.quantity_sold for row in rows)
         assert all(row.sold_at <= datetime.now(timezone.utc) for row in rows)
-        assert session.scalar(select(func.count()).select_from(SalesDataCoverage)) == 15
+        assert session.scalar(select(func.count()).select_from(SalesDataCoverage)) == 25
     second = _run(seed_db, sales=True)
     assert second.synthetic_sales_created == 0
     with seed_db() as session:
@@ -249,14 +261,14 @@ def test_synthetic_sales_support_operations_but_are_blocked_from_ml_labels(seed_
 def test_production_and_remote_database_writes_are_refused(seed_db, monkeypatch):
     monkeypatch.setattr(settings, "env", "production")
     with seed_db() as session, pytest.raises(DemoSeedSafetyError):
-        DemoFootwearSeedService(session).run(
+        DemoStoreSeedService(session).run(
             manifest=_manifest(), manifest_path=Path("manifest.json"),
             apply=True, password="local-demo-password",
         )
     monkeypatch.setattr(settings, "env", "development")
     monkeypatch.setattr(settings, "database_url", "postgresql://db.example.com/bazarsync")
     with seed_db() as session, pytest.raises(DemoSeedSafetyError):
-        DemoFootwearSeedService(session).run(
+        DemoStoreSeedService(session).run(
             manifest=_manifest(), manifest_path=Path("manifest.json"),
             apply=True, password="local-demo-password",
         )

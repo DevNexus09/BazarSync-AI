@@ -64,6 +64,16 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+def use_null_pool() -> None:
+    """Celery runs each task in a fresh event loop (asyncio.run), so pooled asyncpg
+    connections from a finished loop break the next task. Open one per use instead."""
+    global async_engine
+    async_engine = create_async_engine(
+        ASYNC_DATABASE_URL, poolclass=NullPool, connect_args=ASYNC_CONNECT_ARGS
+    )
+    AsyncSessionLocal.configure(bind=async_engine)
+
+
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session

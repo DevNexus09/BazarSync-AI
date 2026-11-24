@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from math import exp, log
@@ -122,6 +122,7 @@ class DemandResponseService:
             observations=observations,
             as_of_date=as_of_date,
         )
+        clean = _daily_price_totals(clean)
         eligibility = self._eligibility(clean, rejected, as_of_date)
         if eligibility:
             return self._fallback_or_insufficient(
@@ -487,6 +488,31 @@ class DemandResponseService:
             calculation_version=self._config.calculation_version,
             evidence={"missing_required_evidence": reasons},
         )
+
+
+def _daily_price_totals(observations: list[DemandObservation]) -> list[DemandObservation]:
+    """Collapse order lines into one observation per (date, price).
+
+    The log-log fit models units per day at a price; regressing individual
+    order lines (usually one unit each) would hide the demand response.
+    """
+    groups: dict[tuple[date, Decimal], list[DemandObservation]] = {}
+    for obs in observations:
+        groups.setdefault((obs.observed_date, obs.price), []).append(obs)
+    totals = [
+        rows[0]
+        if len(rows) == 1
+        else replace(
+            rows[0],
+            units_sold=sum(row.units_sold for row in rows),
+            returned_units=sum(row.returned_units for row in rows),
+            refunded_restocked_units=sum(row.refunded_restocked_units for row in rows),
+            source_reference=f"daily:{len(rows)}",
+        )
+        for rows in groups.values()
+    ]
+    totals.sort(key=lambda item: (item.observed_date, item.price))
+    return totals
 
 
 def _money(value: Decimal) -> Decimal:

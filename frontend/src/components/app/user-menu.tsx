@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import type { User } from "@/types/auth"
 
-const requiredProfileFields: Array<keyof User> = [
+const requiredProfileFields: Array<Exclude<keyof User, "isDemo">> = [
   "fullName",
   "businessName",
   "profileImageUrl",

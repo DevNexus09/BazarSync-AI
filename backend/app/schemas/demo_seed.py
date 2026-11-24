@@ -8,14 +8,15 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 MARKETPLACE = "Daraz Bangladesh"
-SOURCE_STORE = "Bata"
+SOURCE_STORE = "Watch Wise - Choice"
+SOURCE_STORE_PATH = "/blzdnq-selection"
 
 
 class DemoProductSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     marketplace: Literal["Daraz Bangladesh"]
-    store_name: Literal["Bata"]
+    store_name: Literal["Watch Wise - Choice"]
     store_url: str
     listing_url: str
     acquired_at: datetime
@@ -36,8 +37,8 @@ class DemoProductSource(BaseModel):
     def validate_listing_shape(self) -> Self:
         if "/products/" not in urlparse(self.listing_url).path:
             raise ValueError("listing_url must identify a Daraz product page")
-        if "/shop/bata" not in urlparse(self.store_url).path.rstrip("/").lower():
-            raise ValueError("store_url must identify the Bata store")
+        if urlparse(self.store_url).path.rstrip("/").lower() != SOURCE_STORE_PATH:
+            raise ValueError("store_url must identify the Watch Wise - Choice store")
         return self
 
 
@@ -45,11 +46,12 @@ class DemoProductListing(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     listing_id: str = Field(pattern=r"^[0-9]+$")
+    sku: str = Field(pattern=r"^WW-[0-9]{3}-[A-Z0-9-]+$", max_length=120)
     title: str = Field(min_length=3, max_length=255)
     brand: str = Field(min_length=1, max_length=120)
     category: str = Field(min_length=1, max_length=120)
     product_type: str = Field(min_length=1, max_length=120)
-    audience: Literal["MEN", "WOMEN", "CHILDREN"]
+    audience: Literal["MEN", "WOMEN", "CHILDREN", "UNISEX"]
     current_price_bdt: Decimal = Field(gt=0, decimal_places=2)
     original_price_bdt: Decimal | None = Field(default=None, gt=0, decimal_places=2)
     discount_percent: Decimal | None = Field(default=None, ge=0, le=100)
@@ -91,15 +93,15 @@ class DemoProductListing(BaseModel):
         return self
 
 
-class DemoFootwearManifest(BaseModel):
+class DemoStoreManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     manifest_version: Literal["1.0"]
-    seed_name: Literal["demo-footwear-store-v1"]
+    seed_name: Literal["demo-watch-wise-v1"]
     generated_at: datetime
     currency: Literal["BDT"]
     source_store_url: str
-    products: list[DemoProductListing] = Field(min_length=1, max_length=15)
+    products: list[DemoProductListing] = Field(min_length=1, max_length=25)
 
     @model_validator(mode="after")
     def validate_manifest(self) -> Self:
@@ -107,6 +109,9 @@ class DemoFootwearManifest(BaseModel):
         urls = [item.source.listing_url for item in self.products]
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate Daraz listing IDs are not allowed")
+        skus = [item.sku for item in self.products]
+        if len(skus) != len(set(skus)):
+            raise ValueError("duplicate SKUs are not allowed")
         if len(urls) != len(set(urls)):
             raise ValueError("duplicate Daraz listing URLs are not allowed")
         if any(item.source.store_url != self.source_store_url for item in self.products):

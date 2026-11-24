@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from app.api.pricing_simulator_public import router as public_pricing_simulator_router
 from app.api.router import register_routers
+from app.core.demo_mode import install_demo_guard
 
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
@@ -97,6 +98,8 @@ def create_app() -> FastAPI:
             "CORS_ORIGINS cannot include '*' when allow_credentials=True. "
             "Use an explicit comma-separated list of origins."
         )
+    # Registered before CORS so CORS wraps it and blocked demo writes still reach the browser.
+    install_demo_guard(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

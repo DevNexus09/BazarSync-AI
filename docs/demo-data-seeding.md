@@ -1,118 +1,100 @@
-# Demo footwear data seeding
+# Demo store data seeding
 
-## Purpose and identity
+## Identity
 
-The demo seed creates an independent development/test seller named **Demo Footwear Store**. It uses public Bata-store listings on Daraz Bangladesh only as catalog and opening-price references. The demo seller is not Bata, is not affiliated with Bata, and does not contain Bata private business data, addresses, registrations, credentials or wholesale costs.
+The demo seller is **Watch Wise - Choice**, modelled on the public Daraz Bangladesh store
+<https://www.daraz.com.bd/blzdnq-selection/>.
 
-The seed is an explicit CLI operation. It is not imported by application startup, Alembic, Celery initialization or deployment hooks. It sends no email, OTP, SMS, marketplace request, order, payment, promotion or notification.
+| Field | Value |
+| --- | --- |
+| Email | `bazardemo@gmail.com` |
+| Phone | `+8801617390260` |
+| Shop / business name | Watch Wise - Choice |
+| Industry | Watches & Clocks, Dhaka |
+
+The password is never stored in the repository. Supply it through `DEMO_SELLER_PASSWORD` when
+creating the account. It is hashed with the production bcrypt implementation and never reset on
+reruns.
+
+Catalog fields (titles, brands, specifications, observed prices, listing IDs and URLs) come from 25
+public listings of that store, reviewed on 24 November 2026. Everything else is synthetic demo
+business data: stock, cost prices, orders, buyers, receipts, fees, visibility, expenses, competitor
+comparisons and promotions. No real order, customer or supplier data is used.
+
+The seed is an explicit CLI operation. It is not run by application startup, Alembic, Celery or
+deployment. It sends no email, OTP, SMS, Telegram message or marketplace request.
 
 ## Safety model
 
-- Dry-run is the default. Database writes require `--apply`.
-- Writes are allowed only when `APP_ENV` is `development` or `test` and the configured PostgreSQL host is local (localhost, loopback or a Unix socket). There is no production override.
-- The seed inspects `demo1@gmail.com` before writing. An existing account without the `demo_seed_records` ownership marker aborts the whole transaction.
-- The password is read only from `DEMO_SELLER_PASSWORD`. It is hashed with the production bcrypt implementation and never printed. Reruns never reset it.
-- Every seller/product/supporting batch is marked with `demo-footwear-store-v1`. Existing ordinary sellers, products and policies are not updated or deleted.
-- The import is one database transaction. Manifest validation happens before persistence.
-- `--update-managed-records` may update only products already owned by this seed. There is no global reset command.
+- Dry-run is the default. Writes require `--apply`.
+- Writes are allowed only when `APP_ENV` is `development` or `test` and PostgreSQL is local.
+- An existing `bazardemo@gmail.com` account without the `demo_seed_records` ownership marker
+  aborts the transaction.
+- Every seeded seller/product/policy is marked with `demo-watch-wise-v1`. Ordinary sellers are
+  never updated or deleted.
 
-Apply migration `m7a8b9c0d1e2` before database-backed dry runs or seeding:
+## Manifest
 
-```bash
-cd backend
-venv/bin/alembic upgrade head
-```
-
-The migration adds only `demo_seed_records`; it does not insert demo data.
-
-## Catalog acquisition and manifest
-
-The committed manifest is [demo_footwear_products.json](../backend/seed_data/demo_footwear_products.json). It contains 15 distinct footwear listings observed through BazarSync's authorized Daraz acquisition path on 20 November 2026 (Dhaka time). Each record has a stable listing ID, public listing URL, observed BDT price, timestamp, store identity, provenance, and an explicit missing-field list.
-
-Unverified sizes, colors and materials remain `null`; ratings, review counts and sold counts are deliberately not imported. Concise descriptions are derived from listing titles rather than copied long-form descriptions.
-
-Optional reacquisition is deliberately separate from seeding and produces review candidates, not a trusted manifest:
-
-```bash
-cd backend
-DARAZ_SCRAPING_AUTHORIZED=true \
-REDIS_BROKER_URL=redis://127.0.0.1:6379/0 \
-PYTHONPATH=. venv/bin/python scripts/acquire_demo_footwear_candidates.py \
-  --confirm-public-acquisition \
-  --output /tmp/bata-candidates.json
-```
-
-If Daraz blocks or challenges acquisition, stop and manually verify a JSON manifest. Do not bypass the control and do not invent replacement listings.
+[demo_watch_wise_products.json](../backend/seed_data/demo_watch_wise_products.json) holds the 25
+listings in SKU order (`WW-001-…` to `WW-025-…`). The comprehensive seed assigns scenarios
+`P01`–`P25` in that order, so keep it sorted. Categories: Men's, Women's, Kids' and Couple
+watches, and Table & Alarm Clocks. Unverified sizes, colours and materials are listed in
+`missing_fields`; ratings, review and sold counts are not imported.
 
 ## Commands
 
-Validate without opening the database:
+From `backend/`, in order:
 
 ```bash
-cd backend
-PYTHONPATH=. venv/bin/python scripts/seed_demo_footwear_store.py --validate
+PYTHONPATH=. venv/bin/python scripts/seed_demo_store.py --validate
+PYTHONPATH=. venv/bin/python scripts/seed_demo_store.py --dry-run
 ```
 
-Inspect the configured local database without changing it:
-
 ```bash
-cd backend
-PYTHONPATH=. venv/bin/python scripts/seed_demo_footwear_store.py --dry-run
-```
-
-Create or safely recognize the managed demo records. Enter the requested local value (`demo1622`) through the environment or a secure shell prompt; do not put it in a tracked file:
-
-```bash
-cd backend
 read -s DEMO_SELLER_PASSWORD
 export DEMO_SELLER_PASSWORD
-PYTHONPATH=. venv/bin/python scripts/seed_demo_footwear_store.py --apply
+PYTHONPATH=. venv/bin/python scripts/seed_demo_store.py --apply
 unset DEMO_SELLER_PASSWORD
 ```
 
-Optional deterministic sales history (150 closed business days):
-
 ```bash
-cd backend
-read -s DEMO_SELLER_PASSWORD
-export DEMO_SELLER_PASSWORD
-PYTHONPATH=. venv/bin/python scripts/seed_demo_footwear_store.py \
-  --apply --with-synthetic-sales
-unset DEMO_SELLER_PASSWORD
+PYTHONPATH=. venv/bin/python scripts/seed_comprehensive_demo.py \
+  --apply --as-of 2026-11-24 --skip-external-services
 ```
 
-The optional sales use fixed seed `1622` and stable source references, so reruns do not duplicate them. They are operationally visible inside this demo seller, but their coverage source is `SYNTHETIC_DEMO_SEED`; historical forecasting marks `SYNTHETIC_DEMO_SALES` and rejects those rows as ML training labels. They must not be cited as real Daraz activity or forecast accuracy.
+```bash
+PYTHONPATH=. venv/bin/python scripts/seed_copilot_demo_extras.py --apply --as-of 2026-11-24
+```
 
-Use `--report /safe/local/path/report.json` to save the non-secret result. Rerun the same command safely; omit `--update-managed-records` to preserve any later manual product edits.
+## What each stage writes
 
-## Synthetic business assumptions
+1. **Catalog** (`seed_demo_store.py`): seller profile, 25 ACTIVE products with description,
+   category, cost and selling price, stock, supplier lead time, minimum margin and specifications,
+   an opening inventory snapshot, per-product pricing policies (Daraz Bangladesh, BDT, 12% minimum
+   margin, ৳10 minimum unit profit, −15%/+20% movement limits, min/max price, ৳1 step, 24h
+   cooldown, objective, effective dates) and marketplace fees: product-level for watches (10%
+   commission, 1.5% payment fee, ৳5 per unit, ৳3 other variable cost) and one category-level
+   policy for Table & Alarm Clocks (12% commission). `WW-002-OLV-2872` deliberately has **no fee
+   policy** so MarginGuard shows the missing-evidence case.
+2. **Comprehensive** (`seed_comprehensive_demo.py`, see
+   [comprehensive demo seeding](comprehensive-demo-seeding.md)): 120 days of orders with 15-digit
+   order numbers, listing IDs, Dhaka timestamps and whole-taka prices at several price levels;
+   COMPLETED/FULFILLED plus CANCELLED and FAILED_PAYMENT orders that are excluded from demand;
+   COMPLETE coverage for 24 products and UNKNOWN coverage for `WW-015-OLV-1020` (insufficient
+   evidence case); the reorder keys `quantity_reserved`, `confirmed_incoming_quantity`,
+   `minimum_order_quantity` and `pack_size`; 45 daily inventory snapshots; two PO-numbered
+   receipts per product (four are 150–220 days old for dead-stock and capital recovery); price
+   history; promotions; competitor runs; and every analytics workflow.
+3. **Extras** (`seed_copilot_demo_extras.py`): Daraz listings with real listing IDs and URLs,
+   ratings, buyer references and delivery districts on orders, 90 days of daily visibility
+   metrics that track each product's orders, monthly expenses, supplier bills and the store
+   scorecard.
 
-Public listings provide product identity, source store, public price, availability signal and image URL. The following fields are synthetic and seller-scoped:
+Demand patterns differ by product: steady, rising, declining, seasonal, intermittent, no recent
+sales, out of stock, sparse and new arrival.
 
-- on-hand, reserved, incoming and inventory age scenarios;
-- cost rates (56%–70% of opening selling price), lead times, safety stock, MOQ, pack size and maximum stock;
-- a 12% minimum contribution-margin policy, BDT 10 minimum unit profit, 15%/20% change limits and BDT 1 increments;
-- an assumed 8% commission plus 2% payment fee, labelled `SYNTHETIC_DEMO_ASSUMPTION`, not an official Daraz fee schedule;
-- optional sales patterns and a BDT 0.50 holding-cost assumption.
+## Telegram
 
-The public Bata listing ID is stored as reference provenance in product specifications. It is not inserted as this independent seller's marketplace listing, and no competitor observation is fabricated.
-
-## Comprehensive feature showcase
-
-After this 15-product catalog exists, use
-[comprehensive-demo-seeding.md](comprehensive-demo-seeding.md) to populate the
-existing sales, inventory, competitor, promotion, pricing, recommendation,
-dead-stock, and local RAG workflows.
-
-## Login and verification
-
-After an applied local seed, use the existing frontend login form with `demo1@gmail.com` and the password supplied through `DEMO_SELLER_PASSWORD`. Authentication uses the normal JWT path and seller-scoped APIs. Products should appear in the existing product and inventory views. Basic catalog seeding does not generate recommendations or call Groq/Celery. The comprehensive local seed runs deterministic workflows while keeping Groq, Copilot, embeddings, alerts, scraping, and marketplace operations explicitly separate.
-
-## Troubleshooting and cleanup
-
-- `demo_seed_failed ... table demo_seed_records`: apply the additive migration first.
-- account conflict: do not rename, overwrite or reset the existing user. Use a different database or resolve ownership administratively.
-- remote/production refusal: expected safety behavior; there is no casual override.
-- fewer verified products after reacquisition: keep the verified shortfall and do not fabricate records.
-
-No cleanup command is provided. If cleanup is required, implement a separately reviewed administrative operation that verifies `demo_seed_records` ownership and deletes only this seed's seller cascade. Never reset the database.
+The seed does not create a Telegram connection, because alerts, daily snapshots and the test
+alert need a real chat. Log in as the demo seller, open **Profile → Telegram**, and follow the
+connect link to the BazarSync bot.

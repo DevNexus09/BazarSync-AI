@@ -1,4 +1,4 @@
-"""Validate or explicitly seed the local demo footwear seller."""
+"""Validate or explicitly seed the local Watch Wise - Choice demo seller."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from app.db.session import SessionLocal
 from app.services.demo_seed_service import (
     DEFAULT_MANIFEST,
-    DemoFootwearSeedService,
+    DemoStoreSeedService,
     DemoSeedError,
     load_demo_manifest,
 )
@@ -57,7 +57,7 @@ def main() -> int:
             password = getpass("Demo seller password: ")
     try:
         with SessionLocal() as session:
-            result = DemoFootwearSeedService(session).run(
+            result = DemoStoreSeedService(session).run(
                 manifest=manifest,
                 manifest_path=args.manifest,
                 apply=args.apply,
