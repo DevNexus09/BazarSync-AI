@@ -429,7 +429,7 @@ Checks:
 
 ## Pricing and inventory improvement plan, Phase 5 (2026-11-23)
 
-Model quality, backend only, every switch default-off. Migration `o9c0d1e2f3a4` (additive: one enum value) follows `n8b9c0d1e2f3` on `develop`.
+Model quality, backend only, every switch default-off. Migration `r2b3c4d5e6f7` (additive: one enum value) follows `q1a2b3c4d5e6`. It first shipped as `o9c0d1e2f3a4`, an ID the business-finance migration also used, so Alembic silently skipped it; it was re-chained on 2026-11-24.
 
 5.1 Category-pooled elasticity (`DEMAND_RESPONSE_POOLING_ENABLED`)
 - `app/services/pooled_elasticity.py` (pure): daily product panels (unit-weighted daily price), days that ended with no stock dropped as censored, within-product fixed effects, OLS on ln(price) with weekday and promotion controls (promotion days are kept as a control instead of being discarded), product slope estimated on price alone with the category's control effects held fixed, then shrunk toward the category slope with weight n / (n + `DEMAND_RESPONSE_POOLING_STRENGTH`=20). Clamped to the existing min/max elasticity.

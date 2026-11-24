@@ -1,0 +1,13 @@
+# Used by Docker for deploy/demo/Dockerfile (build context is the repo root): keep secrets and caches out.
+**/.env
+**/.env.*
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/.git
+**/node_modules
+frontend

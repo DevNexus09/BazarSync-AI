@@ -6,9 +6,6 @@ Revises: p0d1e2f3a4b5
 Additive only: one GIN expression index used by RAG_FULLTEXT_KEYWORD_ENABLED keyword search.
 The 'simple' config does no stemming, so SKUs, English words and Bengali-script tokens all match as typed.
 Built CONCURRENTLY so writes to rag_memory_chunks are not blocked while it builds.
-
-Two existing files share revision o9c0d1e2f3a4, so `alembic upgrade head` reports multiple heads.
-Apply this one by id: `alembic upgrade q1a2b3c4d5e6`.
 """
 
 from collections.abc import Sequence

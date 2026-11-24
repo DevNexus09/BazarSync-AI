@@ -1,0 +1,40 @@
+# Public demo stack for one VM: API, Celery worker, Redis and Caddy (automatic HTTPS).
+# Settings come from deploy/demo/.env, made by make_env.py; it is never committed.
+x-backend: &backend
+  build:
+    context: ../..
+    dockerfile: deploy/demo/Dockerfile
+  image: bazarsync-demo:latest
+  env_file: .env
+  depends_on: [redis]
+  restart: unless-stopped
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+
+  api:
+    <<: *backend
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "app.core.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=1", "--max-tasks-per-child=50"]
+
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?set DEMO_DOMAIN in deploy/demo/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,5 @@
+# Caddy gets and renews a free Let's Encrypt certificate for DEMO_DOMAIN (e.g. bazarsync-demo.eastus.cloudapp.azure.com).
+# No `encode`: compression can hold back the Copilot's streamed (SSE) answers.
+{$DEMO_DOMAIN} {
+	reverse_proxy api:8000
+}

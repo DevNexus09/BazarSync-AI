@@ -3,7 +3,7 @@
 The free demo runs on three services:
 
 - **Frontend:** Vercel.
-- **Backend:** one Hugging Face Docker Space running the API, one Celery worker and Redis.
+- **Backend:** one Azure for Students VM running the API, one Celery worker, Redis and Caddy.
 - **Database:** Neon Postgres.
 
 Visitors click **Experience BazarSync** on the landing page. That calls `POST /api/v1/auth/demo`,
@@ -42,18 +42,43 @@ access.
 
 ## 1. Database (Neon)
 
-1. Create a free Neon project and copy its connection string.
+The Alembic history starts from tables that already existed, so `alembic upgrade head` cannot
+build an empty database. Copy the schema from your migrated local database instead, then seed.
+
+1. Create a free Neon project in **AWS US East 1**, near the backend server. Turn
+   connection pooling off and copy the connection string.
 2. Remove the `?sslmode=require&channel_binding=require` suffix. Both psycopg2 and asyncpg
    negotiate TLS by default, and asyncpg rejects those query parameters.
-3. From `backend/` on your machine, migrate and seed. Run the commands one at a time:
-
-```bash
-export DATABASE_URL='postgresql://USER:PASSWORD@HOST/DBNAME'
-```
+3. Make sure your local database is current. From `backend/`, in a terminal where
+   `DATABASE_URL` is **not** exported:
 
 ```bash
 PYTHONPATH=. venv/bin/alembic upgrade head
 ```
+
+4. Dump the local schema only. This copies no data or accounts:
+
+```bash
+/opt/homebrew/opt/postgresql@17/bin/pg_dump --schema-only --no-owner --no-privileges "$(grep -E '^DATABASE_URL=' .env | cut -d= -f2-)" > /tmp/bazarsync-schema.sql
+```
+
+5. Point this terminal at Neon:
+
+```bash
+export DATABASE_URL='postgresql://USER:PASSWORD@HOST/neondb'
+```
+
+6. Load the schema, then record the migration version:
+
+```bash
+/opt/homebrew/opt/postgresql@17/bin/psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 -f /tmp/bazarsync-schema.sql
+```
+
+```bash
+PYTHONPATH=. venv/bin/alembic stamp head
+```
+
+7. Seed the demo store:
 
 ```bash
 read -s DEMO_SELLER_PASSWORD && export DEMO_SELLER_PASSWORD
@@ -71,59 +96,99 @@ PYTHONPATH=. venv/bin/python scripts/seed_comprehensive_demo.py --apply --as-of 
 PYTHONPATH=. venv/bin/python scripts/seed_copilot_demo_extras.py --apply --as-of 2026-11-24
 ```
 
-```bash
-unset DATABASE_URL DEMO_SELLER_PASSWORD
-```
-
-## 2. Backend (Hugging Face Space)
-
-1. Create a Space with SDK **Docker**, template **Blank** and the free **CPU basic** hardware.
-   Use a private Space if you prefer; the API URL still works.
-2. From `backend/`, copy the backend into the Space repository. Leave out local secrets and caches:
+8. Embed the Copilot memory. This takes about 15–30 minutes on an M-series Mac. Without it,
+   the Copilot answers "not enough seller-specific history":
 
 ```bash
-git clone https://huggingface.co/spaces/YOUR_USER/bazarsync-demo ../hf-space
+PYTHONPATH=. venv/bin/python -c "
+from app.tasks.rag_memory_tasks import rag_embed_pending_chunks as t
+while True:
+    r = t(limit=200); print(r['embedded_count'], 'embedded,', r['failed_count'], 'failed')
+    if not r['embedded_count']: break"
+```
+
+9. Clean up:
+
+```bash
+unset DATABASE_URL DEMO_SELLER_PASSWORD; rm /tmp/bazarsync-schema.sql
+```
+
+## 2. Backend (Azure for Students VM)
+
+One Azure VM runs the stack in `deploy/demo/`: the API, one Celery worker, Redis and Caddy.
+Caddy gets a free HTTPS certificate for the VM's Azure DNS name. Azure for Students needs no
+credit card. Its $100 credit covers about 2–3 months of a `Standard_B2s` VM. Stopping
+(deallocating) the VM in the portal pauses the compute charges.
+
+1. Activate Azure for Students with your university email.
+2. On your Mac, create an SSH key:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/azure_bazarsync -C bazarsync-demo
+```
+
+3. Create the VM with these settings:
+   - Ubuntu Server 24.04 LTS x64, size `Standard_B2s`, region **East US** (near Neon)
+   - user `azureuser` with the key from `~/.ssh/azure_bazarsync.pub`
+   - inbound ports 22, 80 and 443
+   - a 64 GB Standard SSD
+
+   Then, on its public IP, set the DNS name label `bazarsync-demo`. That gives
+   `bazarsync-demo.eastus.cloudapp.azure.com`.
+4. On the VM, add swap (the B2s has 4 GB of RAM) and install Docker:
+
+```bash
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 ```bash
-rsync -a --delete --exclude .git --exclude venv --exclude tests --exclude artifacts --exclude __pycache__ --exclude .env --exclude dump.rdb --exclude celerybeat-schedule --exclude graphify-out --exclude .mypy_cache --exclude .pytest_cache --exclude .ruff_cache ./ ../hf-space/
+sudo apt update && sudo apt install -y docker.io docker-compose-v2 rsync && sudo usermod -aG docker azureuser
+```
+
+5. From the repo root on your Mac, create the folders on the VM, then copy the code:
+
+```bash
+ssh -i ~/.ssh/azure_bazarsync azureuser@DOMAIN "mkdir -p ~/bazarsync/backend ~/bazarsync/deploy/demo"
 ```
 
 ```bash
-cp ../deploy/huggingface/Dockerfile ../deploy/huggingface/start.sh ../deploy/huggingface/README.md ../hf-space/
+rsync -az --delete -e "ssh -i ~/.ssh/azure_bazarsync" --exclude .git --exclude .DS_Store --exclude venv --exclude tests --exclude artifacts --exclude __pycache__ --exclude .env --exclude dump.rdb --exclude celerybeat-schedule --exclude graphify-out --exclude .mypy_cache --exclude .pytest_cache --exclude .ruff_cache backend/ azureuser@DOMAIN:~/bazarsync/backend/
 ```
 
-   Then commit and push inside `../hf-space`.
+```bash
+rsync -az -e "ssh -i ~/.ssh/azure_bazarsync" --exclude .env deploy/demo/ azureuser@DOMAIN:~/bazarsync/deploy/demo/
+```
 
-3. In the Space **Settings → Variables and secrets**, add the following.
+6. From `backend/` on your Mac, write the settings file and copy it to the VM. The script asks
+   for the Neon URL, generates a JWT secret and never prints secrets:
 
-   Secrets:
-   - `DATABASE_URL`: the Neon URL from step 1.
-   - `JWT_SECRET_KEY`: a new random value, not your local one.
-   - `GROQ_API_KEY`.
+```bash
+PYTHONPATH=. venv/bin/python ../deploy/demo/make_env.py --domain DOMAIN
+```
 
-   Variables:
-   - `APP_ENV=production`
-   - `DEMO_MODE_ENABLED=true`
-   - `CORS_ORIGINS=https://YOUR-APP.vercel.app`
-   - `FRONTEND_URL=https://YOUR-APP.vercel.app`
-   - `SCRAPER_SCHEDULE_ENABLED=false`
-   - `INVENTORY_INTELLIGENCE_SCHEDULE_ENABLED=false`
-   - `DEAD_STOCK_WORKFLOW_SCHEDULE_ENABLED=false`
-   - The non-secret `RAG_*`, `COPILOT_*` and `GROQ_*_MODEL` values from your local `.env`.
+```bash
+scp -i ~/.ssh/azure_bazarsync ~/bazarsync-demo.env azureuser@DOMAIN:~/bazarsync/deploy/demo/.env
+```
 
-   Do not set `TELEGRAM_*`, SMTP or OpenRouter keys.
-4. Once it builds, open `https://YOUR_USER-bazarsync-demo.hf.space/api/v1/health`.
+7. On the VM, build and start. The first build takes 15–30 minutes:
 
-The free Space sleeps after about 48 hours without traffic. The first visit after that takes
-about a minute while it wakes. The landing page tells visitors this after four seconds and
-waits up to two minutes.
+```bash
+cd ~/bazarsync/deploy/demo && docker compose up -d --build
+```
+
+8. Check `https://DOMAIN/api/v1/health`.
+
+To update the backend, repeat step 5, then run `docker compose up -d --build` on the VM. To
+change settings, repeat step 6, then run `docker compose up -d`.
 
 ## 3. Frontend (Vercel)
 
 Import the repository with **Root Directory** `frontend` and set:
 
-- `VITE_API_BASE_URL=https://YOUR_USER-bazarsync-demo.hf.space/api/v1`
+- `VITE_API_BASE_URL=https://DOMAIN/api/v1`
+
+Then repeat backend step 7 with `--frontend https://YOUR-APP.vercel.app` and run
+`docker compose up -d` on the VM, so the API accepts requests from the site.
 
 `frontend/vercel.json` already rewrites SPA routes.
 

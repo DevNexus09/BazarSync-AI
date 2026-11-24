@@ -1,21 +1,9 @@
 {
-  "mode": "APPLY",
+  "mode": "VALIDATE_ONLY",
   "as_of_date": "2026-11-24",
   "seller_id": "0e9494ab-0d90-4e19-870e-df79094b8703",
   "product_count": 25,
-  "created": {
-    "sales_records": 3340,
-    "excluded_sales_records": 174,
-    "sales_data_coverage": 25,
-    "inventory_history": 1100,
-    "inventory_stock_in": 50,
-    "product_price_history": 200,
-    "scrape_runs": 103,
-    "competitors": 100,
-    "competitor_snapshots": 359,
-    "promotion_plans": 4,
-    "promotion_results": 3
-  },
+  "created": {},
   "totals": {
     "seller_email": "bazardemo@gmail.com",
     "sales_date_start": "2026-07-27",
@@ -27,11 +15,11 @@
     "historical_revenue_bdt": "885087.00",
     "inventory_snapshots": 1125,
     "stock_receipts": 50,
-    "competitors": 100,
-    "completed_scrape_runs": 103,
-    "competitor_snapshots": 359,
-    "competitor_events": 125,
-    "rankings": 359,
+    "competitors": 168,
+    "completed_scrape_runs": 106,
+    "competitor_snapshots": 427,
+    "competitor_events": 193,
+    "rankings": 427,
     "market_opportunities": 75,
     "sales_velocity": 25,
     "stockout_predictions": 25,
@@ -49,18 +37,18 @@
     "promotion_results": 3,
     "pricing_analytics": 25,
     "dynamic_pricing": 25,
-    "generic_recommendations": 0,
+    "generic_recommendations": 3,
     "recommendation_jobs": 0,
     "completed_recommendation_jobs": 0,
     "alerts": 0,
     "telegram_inventory_alerts": 19,
     "rag_documents": 5462,
     "rag_chunks": 5462,
-    "rag_chunks_embedded": 0,
-    "rag_chunks_pending": 5462,
-    "copilot_conversations": 0,
-    "copilot_messages": 0,
-    "copilot_tool_calls": 0,
+    "rag_chunks_embedded": 55,
+    "rag_chunks_pending": 5407,
+    "copilot_conversations": 1,
+    "copilot_messages": 2,
+    "copilot_tool_calls": 1,
     "copilot_action_proposals": 0,
     "rag_query_logs": 0,
     "coverage_distribution": {
@@ -74,7 +62,7 @@
       "PRICE_RISE": 25,
       "OUT_OF_STOCK": 25,
       "BACK_IN_STOCK": 25,
-      "NEW_COMPETITOR": 0,
+      "NEW_COMPETITOR": 68,
       "COMPETITOR_REMOVED": 25
     },
     "pricing_action_distribution": {
@@ -99,7 +87,7 @@
     "generic_recommendation_action_distribution": {
       "LOWER": 0,
       "RAISE": 0,
-      "HOLD": 0,
+      "HOLD": 3,
       "REORDER": 0
     },
     "recommendation_job_status_distribution": {
@@ -116,41 +104,7 @@
       "MISSING_FEE_DATA": 8
     }
   },
-  "workflows": {
-    "competitor": {
-      "events": 125,
-      "rankings": 359,
-      "opportunities": 75
-    },
-    "inventory": {
-      "velocity_created": 25,
-      "stockout_created": 25,
-      "reorder_created": 25,
-      "risk_created": 25,
-      "aging_created": 25,
-      "dead_stock_created": 25,
-      "alerts_created": 19,
-      "alerts_skipped": 0
-    },
-    "pricing": {
-      "analytics": 25,
-      "elasticity": 25,
-      "dynamic_recommendations": 25
-    },
-    "dead_stock": {
-      "recovery_recommendations": 25,
-      "capital_estimates": 25
-    },
-    "rag": {
-      "created_count": 5462,
-      "skipped_count": 1369,
-      "updated_count": 0,
-      "failed_count": 0,
-      "dry_run_count": 0,
-      "soft_deleted_count": 0,
-      "unsupported_count": 0
-    }
-  },
+  "workflows": {},
   "scenarios": [
     {
       "code": "P01",
@@ -160,13 +114,13 @@
       "scenario": "healthy_strong_sales",
       "valid_sales": 266,
       "inventory": 180,
-      "competitors": 4,
+      "competitors": 26,
       "risk": "LOW",
       "reorder": "HOLD",
       "pricing_outcome": "PRICE_RAISE",
-      "recommendation": null,
+      "recommendation": "HOLD",
       "rag_documents": 358,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P02",
@@ -182,7 +136,7 @@
       "pricing_outcome": "HOLD",
       "recommendation": null,
       "rag_documents": 145,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P03",
@@ -198,7 +152,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 353,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P04",
@@ -214,7 +168,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 201,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P05",
@@ -230,7 +184,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 350,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P06",
@@ -246,7 +200,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 355,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P07",
@@ -262,7 +216,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 129,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P08",
@@ -272,13 +226,13 @@
       "scenario": "slow_promotion_distorted",
       "valid_sales": 107,
       "inventory": 64,
-      "competitors": 4,
+      "competitors": 28,
       "risk": "MEDIUM",
       "reorder": "REORDER",
       "pricing_outcome": "HOLD",
-      "recommendation": null,
+      "recommendation": "HOLD",
       "rag_documents": 194,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P09",
@@ -294,7 +248,7 @@
       "pricing_outcome": "HOLD",
       "recommendation": null,
       "rag_documents": 102,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P10",
@@ -310,7 +264,7 @@
       "pricing_outcome": "HOLD",
       "recommendation": null,
       "rag_documents": 211,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P11",
@@ -326,7 +280,7 @@
       "pricing_outcome": "PRICE_LOWER",
       "recommendation": null,
       "rag_documents": 213,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P12",
@@ -342,7 +296,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 211,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P13",
@@ -358,7 +312,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 351,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P14",
@@ -374,7 +328,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 205,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P15",
@@ -390,7 +344,7 @@
       "pricing_outcome": "HOLD",
       "recommendation": null,
       "rag_documents": 81,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P16",
@@ -406,7 +360,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 152,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P17",
@@ -422,7 +376,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 218,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P18",
@@ -438,7 +392,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 144,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P19",
@@ -454,7 +408,7 @@
       "pricing_outcome": "HOLD",
       "recommendation": null,
       "rag_documents": 205,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P20",
@@ -464,13 +418,13 @@
       "scenario": "intermittent_gift_box",
       "valid_sales": 28,
       "inventory": 22,
-      "competitors": 4,
+      "competitors": 26,
       "risk": "LOW",
       "reorder": "HOLD",
       "pricing_outcome": "PRICE_RAISE",
-      "recommendation": null,
+      "recommendation": "HOLD",
       "rag_documents": 112,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P21",
@@ -486,7 +440,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 360,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P22",
@@ -502,7 +456,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 352,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P23",
@@ -518,7 +472,7 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 148,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P24",
@@ -534,7 +488,7 @@
       "pricing_outcome": "HOLD",
       "recommendation": null,
       "rag_documents": 106,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     },
     {
       "code": "P25",
@@ -550,11 +504,9 @@
       "pricing_outcome": "PRICE_RAISE",
       "recommendation": null,
       "rag_documents": 204,
-      "rag_status": "PENDING"
+      "rag_status": "MIXED"
     }
   ],
-  "warnings": [
-    "External Groq/Copilot and embedding-provider execution was skipped; local RAG documents/chunks were still built where supported."
-  ],
+  "warnings": [],
   "errors": []
 }
